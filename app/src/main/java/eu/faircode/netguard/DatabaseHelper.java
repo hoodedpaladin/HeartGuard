@@ -46,7 +46,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "NetGuard.Database";
 
     private static final String DB_NAME = "Netguard";
-    private static final int DB_VERSION = 21;
+    // HeartGuard change - version 22 adds rules table
+    private static final int DB_VERSION = 22;
 
     private static boolean once = true;
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
@@ -124,6 +125,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         createTableDns(db);
         createTableForward(db);
         createTableApp(db);
+        // HeartGuard change - add rules table
+        createTableRules(db);
     }
 
     @Override
@@ -177,6 +180,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE UNIQUE INDEX idx_access ON access(uid, version, protocol, daddr, dport)");
         db.execSQL("CREATE INDEX idx_access_daddr ON access(daddr)");
         db.execSQL("CREATE INDEX idx_access_block ON access(block)");
+    }
+
+    // HeartGuard change - make a table to hold rules
+    private void createTableRules(SQLiteDatabase db) {
+        Log.i(TAG, "Creating rules table");
+        db.execSQL("CREATE TABLE rules (" +
+                " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
+                ", uid INTEGER NOT NULL" +
+                ", daddr TEXT NOT NULL" +
+                ", allowed INTEGER NOT NULL" +
+                ", anybody INTEGER NOT NULL" +
+                ");");
+
+        ContentValues cv = new ContentValues();
+
+        cv.put("uid", 0);
+        cv.put("allowed", 1);
+        cv.put("daddr", "pluckeye.net");
+        cv.put("anybody", 1);
+        db.insertOrThrow("rules", null, cv);
     }
 
     private void createTableDns(SQLiteDatabase db) {
@@ -347,6 +370,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 oldVersion = 21;
             }
 
+            // HeartGuard change - version 22 adds a rules table
+            if (oldVersion < DB_VERSION) {
+                db.execSQL("DROP TABLE rules");
+                createTableRules(db);
+                oldVersion = DB_VERSION;
+            }
+
             if (oldVersion == DB_VERSION) {
                 db.setVersion(oldVersion);
                 db.setTransactionSuccessful();
@@ -514,14 +544,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // Access
 
     // HeartGuard change - simple whitelist feature
-    private boolean isWhitelisted(Packet packet, String dname)
+    private boolean isWhitelisted(SQLiteDatabase db, Packet packet, String dname)
     {
         if (dname == null)
             return false;
-        if (dname.endsWith("pluckeye.net"))
-            return true;
-        if (dname.endsWith("calpoly.edu"))
-            return true;
+
+        Cursor cursor = db.query("rules", new String[]{"daddr", "allowed"}, "uid=? OR anybody=?", new String[]{Integer.toString(packet.uid), "1"}, null, null, null, null);
+        int colAllowed = cursor.getColumnIndexOrThrow("allowed");
+        int colDaddr = cursor.getColumnIndexOrThrow("daddr");
+
+        while(cursor.moveToNext())
+        {
+            String daddr = cursor.getString(colDaddr);
+            if (!dname.endsWith(daddr))
+                continue;
+            int allowed = cursor.getInt(colAllowed);
+            if (allowed >= 0)
+                return allowed == 1;
+        }
+
         return false;
     }
 
@@ -556,7 +597,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     cv.put("dport", packet.dport);
                     if (block < 0) {
                         // HeartGuard change - simple whitelist feature
-                        if (isWhitelisted(packet, dname))
+                        if (isWhitelisted(db, packet, dname))
                         {
                             Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
                             block = 0;
