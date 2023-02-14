@@ -543,29 +543,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // Access
 
-    // HeartGuard change - simple whitelist feature
-    private boolean isWhitelisted(SQLiteDatabase db, Packet packet, String dname)
-    {
-        if (dname == null)
-            return false;
-
-        Cursor cursor = db.query("rules", new String[]{"daddr", "allowed"}, "uid=? OR anybody=?", new String[]{Integer.toString(packet.uid), "1"}, null, null, null, null);
-        int colAllowed = cursor.getColumnIndexOrThrow("allowed");
-        int colDaddr = cursor.getColumnIndexOrThrow("daddr");
-
-        while(cursor.moveToNext())
-        {
-            String daddr = cursor.getString(colDaddr);
-            if (!dname.endsWith(daddr))
-                continue;
-            int allowed = cursor.getInt(colAllowed);
-            if (allowed >= 0)
-                return allowed == 1;
-        }
-
-        return false;
-    }
-
     public boolean updateAccess(Packet packet, String dname, int block) {
         int rows;
 
@@ -597,7 +574,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     cv.put("dport", packet.dport);
                     if (block < 0) {
                         // HeartGuard change - simple whitelist feature
-                        if (isWhitelisted(db, packet, dname))
+                        WhitelistManager wm = WhitelistManager.getInstance();
+                        if (wm.isAllowed(packet, dname))
                         {
                             Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
                             block = 0;

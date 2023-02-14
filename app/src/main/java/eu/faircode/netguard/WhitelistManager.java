@@ -1,0 +1,94 @@
+package eu.faircode.netguard;
+
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+interface RuleForApp {
+    int isAllowed(Packet packet, String dname);
+}
+
+class DomainRule implements RuleForApp {
+    private String domain;
+    private int allowed;
+
+    DomainRule(String domain, int allowed) {
+        this.domain = domain;
+        this.allowed = allowed;
+    }
+
+    public int isAllowed(Packet packet, String dname) {
+        if (dname == null)
+            return -1;
+        if (dname.endsWith(this.domain))
+            return this.allowed;
+        return -1;
+    }
+}
+
+class IPRule implements RuleForApp {
+    private String ip;
+    private int allowed;
+
+    IPRule(String ip, int allowed) {
+        this.ip = ip;
+        this.allowed = allowed;
+    }
+
+    public int isAllowed(Packet packet, String dname) {
+        // TODO: allow IP address block allowing
+        // TODO: better way to match?
+        // TODO: IPV6?
+        if (packet.daddr.equals(this.ip))
+            return this.allowed;
+        return -1;
+    }
+}
+
+// HeartGuard code - decide based on existing rules whether to allow a site
+public class WhitelistManager {
+
+    private Map<Integer, List<RuleForApp>> app_specific_rules;
+    private List<RuleForApp> global_rules;
+
+    private static WhitelistManager global_wm = null;
+
+    public static WhitelistManager getInstance() {
+        if (global_wm == null) {
+            global_wm = new WhitelistManager();
+        }
+        return global_wm;
+    }
+
+    public WhitelistManager() {
+        this.app_specific_rules = new HashMap<>();
+        this.global_rules = new LinkedList<>();
+
+        this.global_rules.add(new DomainRule("pluckeye.net", 1));
+        this.global_rules.add(new IPRule("192.168.0.8", 1));
+        this.global_rules.add(new IPRule("192.168.0.29", 1));
+    }
+
+    public boolean isAllowed(Packet packet, String dname) {
+        // TODO: common code for both loops
+        // TODO: make sure domain is a whole word
+        List<RuleForApp> rules = this.app_specific_rules.get(packet.uid);
+        if (rules != null) {
+            for (RuleForApp rule : rules) {
+                int allowed = rule.isAllowed(packet, dname);
+                if (allowed >= 0)
+                    return allowed == 1;
+            }
+        }
+
+        rules = this.global_rules;
+        for (RuleForApp rule : rules) {
+            int allowed = rule.isAllowed(packet, dname);
+            if (allowed >= 0)
+                return allowed == 1;
+        }
+
+        return false;
+    }
+}
