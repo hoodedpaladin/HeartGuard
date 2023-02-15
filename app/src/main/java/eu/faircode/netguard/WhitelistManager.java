@@ -65,9 +65,8 @@ public class WhitelistManager {
         this.app_specific_rules = new HashMap<>();
         this.global_rules = new LinkedList<>();
 
-        this.global_rules.add(new DomainRule("pluckeye.net", 1));
-        this.global_rules.add(new IPRule("192.168.0.8", 1));
-        this.global_rules.add(new IPRule("192.168.0.29", 1));
+        RulesManager rm = RulesManager.getInstance();
+        rm.getCurrentRules(this);
     }
 
     public boolean isAllowed(Packet packet, String dname) {
@@ -90,5 +89,17 @@ public class WhitelistManager {
         }
 
         return false;
+    }
+
+    public void addGlobalRule(RuleForApp rule) {
+        this.global_rules.add(rule);
+    }
+
+    public void addAppRule(int uid, RuleForApp rule) {
+        if (!this.app_specific_rules.containsKey(uid)) {
+            this.app_specific_rules.put(uid, new LinkedList<RuleForApp>());
+        }
+        List<RuleForApp> list = this.app_specific_rules.get(uid);
+        list.add(rule);
     }
 }
