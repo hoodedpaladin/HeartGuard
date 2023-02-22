@@ -53,6 +53,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
     private static List<AccessChangedListener> accessChangedListeners = new ArrayList<>();
     private static List<ForwardChangedListener> forwardChangedListeners = new ArrayList<>();
+    // HeartGuard change - notify of whitelist changes
+    private static List<WhitelistChangedListener> whitelistChangedListeners = new ArrayList<>();
 
     private static HandlerThread hthread = null;
     private static Handler handler = null;
@@ -62,6 +64,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private final static int MSG_LOG = 1;
     private final static int MSG_ACCESS = 2;
     private final static int MSG_FORWARD = 3;
+    // HeartGuard change - notify of whitelist changes
+    private final static int MSG_WHITELIST = 4;
 
     private SharedPreferences prefs;
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -545,6 +549,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public boolean updateAccess(Packet packet, String dname, int block) {
         int rows;
+        // HeartGuard change - notify of whitelist changes
+        boolean changed_whitelist = false;
 
         lock.writeLock().lock();
         try {
@@ -579,6 +585,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         {
                             Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
                             block = 0;
+                            changed_whitelist = true;
                         }
                         cv.put("block", block);
                     }
@@ -597,6 +604,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
 
         notifyAccessChanged();
+        // HeartGuard change - notify of whitelist changes
+        if (changed_whitelist) {
+            notifyWhitelistChanged();
+        }
         return (rows == 0);
     }
 
@@ -1134,6 +1145,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         forwardChangedListeners.remove(listener);
     }
 
+    // HeartGuard change - notify of whitelist changes
+    public void addWhitelistChangedListener(WhitelistChangedListener listener) {
+        whitelistChangedListeners.add(listener);
+    }
+
+    public void removeWhitelistChangedListener(WhitelistChangedListener listener) {
+        whitelistChangedListeners.remove(listener);
+    }
+
     private void notifyLogChanged() {
         Message msg = handler.obtainMessage();
         msg.what = MSG_LOG;
@@ -1152,11 +1172,30 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         handler.sendMessage(msg);
     }
 
+    // HeartGuard change - notify of whitelist changes
+    private void notifyWhitelistChanged() {
+        Message msg = handler.obtainMessage();
+        msg.what = MSG_WHITELIST;
+        handler.sendMessage(msg);
+    }
+
     private static void handleChangedNotification(Message msg) {
         // Batch notifications
         try {
-            Thread.sleep(1000);
-            if (handler.hasMessages(msg.what))
+            // HeartGuard change - inform of whitelist changes first (so that we don't delay traffic)
+            int sleep_time = 1000;
+            if (msg.what == MSG_WHITELIST || handler.hasMessages(MSG_WHITELIST)) {
+                handler.removeMessages(msg.what);
+                for (WhitelistChangedListener listener : whitelistChangedListeners)
+                    try {
+                        listener.onChanged();
+                    } catch (Throwable ex) {
+                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                    }
+                sleep_time = 100;
+            }
+            Thread.sleep(sleep_time);
+            if ((msg.what != MSG_WHITELIST) && handler.hasMessages(msg.what))
                 handler.removeMessages(msg.what);
         } catch (InterruptedException ignored) {
         }
@@ -1197,6 +1236,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public interface ForwardChangedListener {
+        void onChanged();
+    }
+
+    // HeartGuard change - notify of whitelist changes
+    public interface WhitelistChangedListener {
         void onChanged();
     }
 }

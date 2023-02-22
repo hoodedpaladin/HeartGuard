@@ -2399,6 +2399,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
+        // HeartGuard change - notify of whitelist changes
+        DatabaseHelper dh = DatabaseHelper.getInstance(this);
+        dh.addWhitelistChangedListener(this.whitelistChangedListener);
+
         if (jni_context != 0) {
             Log.w(TAG, "Create with context=" + jni_context);
             jni_stop(jni_context);
@@ -2758,6 +2762,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 unregisterReceiver(connectivityChangedReceiver);
                 registeredConnectivityChanged = false;
             }
+
+            // HeartGuard change - notify of whitelist changes
+            DatabaseHelper dh = DatabaseHelper.getInstance(this);
+            dh.removeWhitelistChangedListener(this.whitelistChangedListener);
 
             ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
             cm.unregisterNetworkCallback(networkMonitorCallback);
@@ -3328,4 +3336,13 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         intent.putExtra(EXTRA_REASON, reason);
         ContextCompat.startForegroundService(context, intent);
     }
+
+    // HeartGuard change - notify of whitelist changes
+    private DatabaseHelper.WhitelistChangedListener whitelistChangedListener = new DatabaseHelper.WhitelistChangedListener() {
+        @Override
+        public void onChanged() {
+            reload("whitelist changed", ServiceSinkhole.this, false);
+        }
+    };
+
 }
