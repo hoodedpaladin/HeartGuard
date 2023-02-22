@@ -191,18 +191,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         Log.i(TAG, "Creating rules table");
         db.execSQL("CREATE TABLE rules (" +
                 " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
-                ", uid INTEGER NOT NULL" +
-                ", daddr TEXT NOT NULL" +
-                ", allowed INTEGER NOT NULL" +
-                ", anybody INTEGER NOT NULL" +
+                ", ruletext TEXT NOT NULL" +
+                ", create_time INTEGER NOT NULL" +
+                ", enact_time INTEGER NOT NULL" +
+                ", enacted INTEGER NOT NULL" +
+                ", major_category INTEGER NOT NULL" +
+                ", minor_category INTEGER NOT NULL" +
                 ");");
 
         ContentValues cv = new ContentValues();
 
-        cv.put("uid", 0);
-        cv.put("allowed", 1);
-        cv.put("daddr", "pluckeye.net");
-        cv.put("anybody", 1);
+        // Two example rules
+        cv.put("ruletext", "allow host:pluckeye.net");
+        cv.put("create_time", System.currentTimeMillis());
+        cv.put("enact_time", System.currentTimeMillis());
+        cv.put("enacted", 1);
+        cv.put("major_category", 0);
+        cv.put("minor_category", 0);
+        db.insertOrThrow("rules", null, cv);
+        cv.remove("ruletext");
+        cv.put("ruletext", "allow ipv4:192.168.0.8");
         db.insertOrThrow("rules", null, cv);
     }
 
@@ -580,7 +588,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     cv.put("dport", packet.dport);
                     if (block < 0) {
                         // HeartGuard change - simple whitelist feature
-                        WhitelistManager wm = WhitelistManager.getInstance();
+                        WhitelistManager wm = WhitelistManager.getInstance(this);
                         if (wm.isAllowed(packet, dname))
                         {
                             Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
@@ -1242,5 +1250,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // HeartGuard change - notify of whitelist changes
     public interface WhitelistChangedListener {
         void onChanged();
+    }
+
+    // HeartGuard change - get cursor of enacted rules from the DB
+    public Cursor getEnactedRules() {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            // There is a segmented index on uid
+            // There is an index on block
+            return db.query("rules", null, "enacted == 1", null, null, null, null);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 }

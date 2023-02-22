@@ -9,6 +9,18 @@ interface RuleForApp {
     int isAllowed(Packet packet, String dname);
 }
 
+class RuleAndUid {
+    public final static int UID_GLOBAL = 0;
+
+    public int uid;
+    public RuleForApp rule;
+
+    RuleAndUid(int uid, RuleForApp rule) {
+        this.uid = uid;
+        this.rule = rule;
+    }
+}
+
 class DomainRule implements RuleForApp {
     private String domain;
     private int allowed;
@@ -54,19 +66,19 @@ public class WhitelistManager {
 
     private static WhitelistManager global_wm = null;
 
-    public static WhitelistManager getInstance() {
+    public static WhitelistManager getInstance(DatabaseHelper dh) {
         if (global_wm == null) {
-            global_wm = new WhitelistManager();
+            global_wm = new WhitelistManager(dh);
         }
         return global_wm;
     }
 
-    public WhitelistManager() {
+    public WhitelistManager(DatabaseHelper dh) {
         this.app_specific_rules = new HashMap<>();
         this.global_rules = new LinkedList<>();
 
         RulesManager rm = RulesManager.getInstance();
-        rm.getCurrentRules(this);
+        rm.getCurrentRules(this, dh);
     }
 
     public boolean isAllowed(Packet packet, String dname) {
