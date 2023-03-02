@@ -1176,7 +1176,6 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         prefs.edit().putBoolean("lockdown", item.isChecked()).apply();
         ServiceSinkhole.reload("lockdown", this, false);
-        WidgetLockdown.updateWidgets(this);
     }
 
     private void menu_about() {
