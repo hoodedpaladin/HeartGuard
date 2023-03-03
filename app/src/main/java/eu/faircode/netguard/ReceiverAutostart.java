@@ -72,13 +72,13 @@ public class ReceiverAutostart extends BroadcastReceiver {
             if (initialized) {
                 if (oldVersion < 38) {
                     Log.i(TAG, "Converting screen wifi/mobile");
-                    editor.putBoolean("screen_wifi", prefs.getBoolean("unused", false));
-                    editor.putBoolean("screen_other", prefs.getBoolean("unused", false));
+                    editor.putBoolean(Rule.PREFERENCE_STRING_SCREEN_WIFI, prefs.getBoolean("unused", false));
+                    editor.putBoolean(Rule.PREFERENCE_STRING_SCREEN_OTHER, prefs.getBoolean("unused", false));
                     editor.remove("unused");
 
                     SharedPreferences unused = context.getSharedPreferences("unused", Context.MODE_PRIVATE);
-                    SharedPreferences screen_wifi = context.getSharedPreferences("screen_wifi", Context.MODE_PRIVATE);
-                    SharedPreferences screen_other = context.getSharedPreferences("screen_other", Context.MODE_PRIVATE);
+                    SharedPreferences screen_wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE);
+                    SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
 
                     Map<String, ?> punused = unused.getAll();
                     SharedPreferences.Editor edit_screen_wifi = screen_wifi.edit();
@@ -96,8 +96,8 @@ public class ReceiverAutostart extends BroadcastReceiver {
             } else {
                 Log.i(TAG, "Initializing sdk=" + Build.VERSION.SDK_INT);
                 editor.putBoolean("filter_udp", true);
-                editor.putBoolean("whitelist_wifi", false);
-                editor.putBoolean("whitelist_other", false);
+                editor.putBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, false);
+                editor.putBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, false);
                 if (Build.VERSION.SDK_INT == Build.VERSION_CODES.LOLLIPOP)
                     editor.putBoolean(Rule.PREFERENCE_STRING_FILTER, true); // Optional
             }
@@ -112,8 +112,8 @@ public class ReceiverAutostart extends BroadcastReceiver {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 editor.remove("show_top");
-                if ("data".equals(prefs.getString("sort", "name")))
-                    editor.remove("sort");
+                if ("data".equals(prefs.getString(Rule.PREFERENCE_STRING_SORT, "name")))
+                    editor.remove(Rule.PREFERENCE_STRING_SORT);
             }
 
             if (Util.isPlayStoreInstall(context)) {

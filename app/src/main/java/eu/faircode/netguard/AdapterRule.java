@@ -387,9 +387,9 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         holder.tvHosts.setText(Long.toString(rule.hosts));
 
         // Lockdown settings
-        boolean lockdown = prefs.getBoolean("lockdown", false);
-        boolean lockdown_wifi = prefs.getBoolean("lockdown_wifi", true);
-        boolean lockdown_other = prefs.getBoolean("lockdown_other", true);
+        boolean lockdown = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, false);
+        boolean lockdown_wifi = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN_WIFI, true);
+        boolean lockdown_other = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN_OTHER, true);
         if ((otherActive && !lockdown_other) || (wifiActive && !lockdown_wifi))
             lockdown = false;
 
@@ -889,14 +889,14 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
     }
 
     private void updateRule(Context context, Rule rule, boolean root, List<Rule> listAll) {
-        SharedPreferences wifi = context.getSharedPreferences("wifi", Context.MODE_PRIVATE);
-        SharedPreferences other = context.getSharedPreferences("other", Context.MODE_PRIVATE);
-        SharedPreferences apply = context.getSharedPreferences("apply", Context.MODE_PRIVATE);
-        SharedPreferences screen_wifi = context.getSharedPreferences("screen_wifi", Context.MODE_PRIVATE);
-        SharedPreferences screen_other = context.getSharedPreferences("screen_other", Context.MODE_PRIVATE);
-        SharedPreferences roaming = context.getSharedPreferences("roaming", Context.MODE_PRIVATE);
-        SharedPreferences lockdown = context.getSharedPreferences("lockdown", Context.MODE_PRIVATE);
-        SharedPreferences notify = context.getSharedPreferences("notify", Context.MODE_PRIVATE);
+        SharedPreferences wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
+        SharedPreferences other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
+        SharedPreferences apply = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_APPLY, Context.MODE_PRIVATE);
+        SharedPreferences screen_wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE);
+        SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
+        SharedPreferences roaming = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE);
+        SharedPreferences lockdown = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE);
+        SharedPreferences notify = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
 
         if (rule.wifi_blocked == rule.wifi_default)
             wifi.edit().remove(rule.packageName).apply();

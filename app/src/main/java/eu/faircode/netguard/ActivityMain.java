@@ -631,33 +631,33 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             if (swEnabled.isChecked() != enabled)
                 swEnabled.setChecked(enabled);
 
-        } else if ("whitelist_wifi".equals(name) ||
+        } else if (Rule.PREFERENCE_STRING_WHITELIST_WIFI.equals(name) ||
                 Rule.PREFERENCE_STRING_SCREEN_ON.equals(name) ||
-                "screen_wifi".equals(name) ||
-                "whitelist_other".equals(name) ||
-                "screen_other".equals(name) ||
-                "whitelist_roaming".equals(name) ||
-                "show_user".equals(name) ||
-                "show_system".equals(name) ||
-                "show_nointernet".equals(name) ||
-                "show_disabled".equals(name) ||
-                "sort".equals(name) ||
+                Rule.PREFERENCE_STRING_SCREEN_WIFI.equals(name) ||
+                Rule.PREFERENCE_STRING_WHITELIST_OTHER.equals(name) ||
+                Rule.PREFERENCE_STRING_SCREEN_OTHER.equals(name) ||
+                Rule.PREFERENCE_STRING_WHITELIST_ROAMING.equals(name) ||
+                Rule.PREFERENCE_STRING_SHOW_USER.equals(name) ||
+                Rule.PREFERENCE_STRING_SHOW_SYSTEM.equals(name) ||
+                Rule.PREFERENCE_STRING_SHOW_NOINTERNET.equals(name) ||
+                Rule.PREFERENCE_STRING_SHOW_DISABLED.equals(name) ||
+                Rule.PREFERENCE_STRING_SORT.equals(name) ||
                 "imported".equals(name)) {
             updateApplicationList(null);
 
             final LinearLayout llWhitelist = findViewById(R.id.llWhitelist);
             boolean screen_on = prefs.getBoolean(Rule.PREFERENCE_STRING_SCREEN_ON, true);
-            boolean whitelist_wifi = prefs.getBoolean("whitelist_wifi", false);
-            boolean whitelist_other = prefs.getBoolean("whitelist_other", false);
+            boolean whitelist_wifi = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, false);
+            boolean whitelist_other = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, false);
             boolean hintWhitelist = prefs.getBoolean("hint_whitelist", true);
             llWhitelist.setVisibility(!(whitelist_wifi || whitelist_other) && screen_on && hintWhitelist ? View.VISIBLE : View.GONE);
 
-        } else if ("manage_system".equals(name)) {
+        } else if (Rule.PREFERENCE_STRING_MANAGE_SYSTEM.equals(name)) {
             invalidateOptionsMenu();
             updateApplicationList(null);
 
             LinearLayout llSystem = findViewById(R.id.llSystem);
-            boolean system = prefs.getBoolean("manage_system", false);
+            boolean system = prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false);
             boolean hint = prefs.getBoolean("hint_system", true);
             llSystem.setVisibility(!system && hint ? View.VISIBLE : View.GONE);
 
@@ -813,25 +813,25 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
     public boolean onPrepareOptionsMenu(Menu menu) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
-        if (prefs.getBoolean("manage_system", false)) {
-            menu.findItem(R.id.menu_app_user).setChecked(prefs.getBoolean("show_user", true));
-            menu.findItem(R.id.menu_app_system).setChecked(prefs.getBoolean("show_system", false));
+        if (prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false)) {
+            menu.findItem(R.id.menu_app_user).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true));
+            menu.findItem(R.id.menu_app_system).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, false));
         } else {
             Menu submenu = menu.findItem(R.id.menu_filter).getSubMenu();
             submenu.removeItem(R.id.menu_app_user);
             submenu.removeItem(R.id.menu_app_system);
         }
 
-        menu.findItem(R.id.menu_app_nointernet).setChecked(prefs.getBoolean("show_nointernet", true));
-        menu.findItem(R.id.menu_app_disabled).setChecked(prefs.getBoolean("show_disabled", true));
+        menu.findItem(R.id.menu_app_nointernet).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_NOINTERNET, true));
+        menu.findItem(R.id.menu_app_disabled).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_DISABLED, true));
 
-        String sort = prefs.getString("sort", "name");
+        String sort = prefs.getString(Rule.PREFERENCE_STRING_SORT, "name");
         if ("uid".equals(sort))
             menu.findItem(R.id.menu_sort_uid).setChecked(true);
         else
             menu.findItem(R.id.menu_sort_name).setChecked(true);
 
-        menu.findItem(R.id.menu_lockdown).setChecked(prefs.getBoolean("lockdown", false));
+        menu.findItem(R.id.menu_lockdown).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, false));
 
         return super.onPrepareOptionsMenu(menu);
     }
@@ -845,32 +845,32 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         switch (item.getItemId()) {
             case R.id.menu_app_user:
                 item.setChecked(!item.isChecked());
-                prefs.edit().putBoolean("show_user", item.isChecked()).apply();
+                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_USER, item.isChecked()).apply();
                 return true;
 
             case R.id.menu_app_system:
                 item.setChecked(!item.isChecked());
-                prefs.edit().putBoolean("show_system", item.isChecked()).apply();
+                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, item.isChecked()).apply();
                 return true;
 
             case R.id.menu_app_nointernet:
                 item.setChecked(!item.isChecked());
-                prefs.edit().putBoolean("show_nointernet", item.isChecked()).apply();
+                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_NOINTERNET, item.isChecked()).apply();
                 return true;
 
             case R.id.menu_app_disabled:
                 item.setChecked(!item.isChecked());
-                prefs.edit().putBoolean("show_disabled", item.isChecked()).apply();
+                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_DISABLED, item.isChecked()).apply();
                 return true;
 
             case R.id.menu_sort_name:
                 item.setChecked(true);
-                prefs.edit().putString("sort", "name").apply();
+                prefs.edit().putString(Rule.PREFERENCE_STRING_SORT, "name").apply();
                 return true;
 
             case R.id.menu_sort_uid:
                 item.setChecked(true);
-                prefs.edit().putString("sort", "uid").apply();
+                prefs.edit().putString(Rule.PREFERENCE_STRING_SORT, "uid").apply();
                 return true;
 
             case R.id.menu_lockdown:
@@ -927,8 +927,8 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         // Hint white listing
         final LinearLayout llWhitelist = findViewById(R.id.llWhitelist);
         Button btnWhitelist = findViewById(R.id.btnWhitelist);
-        boolean whitelist_wifi = prefs.getBoolean("whitelist_wifi", false);
-        boolean whitelist_other = prefs.getBoolean("whitelist_other", false);
+        boolean whitelist_wifi = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, false);
+        boolean whitelist_other = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, false);
         boolean hintWhitelist = prefs.getBoolean("hint_whitelist", true);
         llWhitelist.setVisibility(!(whitelist_wifi || whitelist_other) && hintWhitelist && !hintUsage ? View.VISIBLE : View.GONE);
         btnWhitelist.setOnClickListener(new View.OnClickListener() {
@@ -955,7 +955,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         // Hint system applications
         final LinearLayout llSystem = findViewById(R.id.llSystem);
         Button btnSystem = findViewById(R.id.btnSystem);
-        boolean system = prefs.getBoolean("manage_system", false);
+        boolean system = prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false);
         boolean hintSystem = prefs.getBoolean("hint_system", true);
         llSystem.setVisibility(!system && hintSystem ? View.VISIBLE : View.GONE);
         btnSystem.setOnClickListener(new View.OnClickListener() {
@@ -1174,8 +1174,8 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
     private void menu_lockdown(MenuItem item) {
         item.setChecked(!item.isChecked());
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        prefs.edit().putBoolean("lockdown", item.isChecked()).apply();
-        ServiceSinkhole.reload("lockdown", this, false);
+        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, item.isChecked()).apply();
+        ServiceSinkhole.reload(Rule.PREFERENCE_STRING_LOCKDOWN, this, false);
     }
 
     private void menu_about() {

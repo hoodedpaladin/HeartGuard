@@ -530,15 +530,15 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         if (Rule.PREFERENCE_STRING_SCREEN_ON.equals(name))
             ServiceSinkhole.reload("changed " + Rule.PREFERENCE_STRING_SCREEN_ON, this, false);
 
-        else if ("whitelist_wifi".equals(name) ||
-                "screen_wifi".equals(name))
+        else if (Rule.PREFERENCE_STRING_WHITELIST_WIFI.equals(name) ||
+                Rule.PREFERENCE_STRING_SCREEN_WIFI.equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
 
-        else if ("whitelist_other".equals(name) ||
-                "screen_other".equals(name))
+        else if (Rule.PREFERENCE_STRING_WHITELIST_OTHER.equals(name) ||
+                Rule.PREFERENCE_STRING_SCREEN_OTHER.equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
 
-        else if ("whitelist_roaming".equals(name))
+        else if (Rule.PREFERENCE_STRING_WHITELIST_ROAMING.equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
 
         else if ("auto_enable".equals(name))
@@ -592,14 +592,14 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             } else
                 ServiceSinkhole.reload("changed " + name, this, false);
 
-        } else if ("lockdown_wifi".equals(name) || "lockdown_other".equals(name))
+        } else if (Rule.PREFERENCE_STRING_LOCKDOWN_WIFI.equals(name) || Rule.PREFERENCE_STRING_LOCKDOWN_OTHER.equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
 
-        else if ("manage_system".equals(name)) {
+        else if (Rule.PREFERENCE_STRING_MANAGE_SYSTEM.equals(name)) {
             boolean manage = prefs.getBoolean(name, false);
             if (!manage)
-                prefs.edit().putBoolean("show_user", true).apply();
-            prefs.edit().putBoolean("show_system", manage).apply();
+                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true).apply();
+            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, manage).apply();
             ServiceSinkhole.reload("changed " + name, this, false);
 
         } else if (Rule.PREFERENCE_STRING_LOG_APP.equals(name)) {
@@ -1097,37 +1097,37 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         xmlExport(PreferenceManager.getDefaultSharedPreferences(this), serializer);
         serializer.endTag(null, "application");
 
-        serializer.startTag(null, "wifi");
-        xmlExport(getSharedPreferences("wifi", Context.MODE_PRIVATE), serializer);
-        serializer.endTag(null, "wifi");
+        serializer.startTag(null, Rule.PREFERENCE_STRING_PERAPP_WIFI);
+        xmlExport(getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE), serializer);
+        serializer.endTag(null, Rule.PREFERENCE_STRING_PERAPP_WIFI);
 
         serializer.startTag(null, "mobile");
-        xmlExport(getSharedPreferences("other", Context.MODE_PRIVATE), serializer);
+        xmlExport(getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE), serializer);
         serializer.endTag(null, "mobile");
 
-        serializer.startTag(null, "screen_wifi");
-        xmlExport(getSharedPreferences("screen_wifi", Context.MODE_PRIVATE), serializer);
-        serializer.endTag(null, "screen_wifi");
+        serializer.startTag(null, Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI);
+        xmlExport(getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE), serializer);
+        serializer.endTag(null, Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI);
 
-        serializer.startTag(null, "screen_other");
-        xmlExport(getSharedPreferences("screen_other", Context.MODE_PRIVATE), serializer);
-        serializer.endTag(null, "screen_other");
+        serializer.startTag(null, Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER);
+        xmlExport(getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE), serializer);
+        serializer.endTag(null, Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER);
 
-        serializer.startTag(null, "roaming");
-        xmlExport(getSharedPreferences("roaming", Context.MODE_PRIVATE), serializer);
-        serializer.endTag(null, "roaming");
+        serializer.startTag(null, Rule.PREFERENCE_STRING_PERAPP_ROAMING);
+        xmlExport(getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE), serializer);
+        serializer.endTag(null, Rule.PREFERENCE_STRING_PERAPP_ROAMING);
 
-        serializer.startTag(null, "lockdown");
-        xmlExport(getSharedPreferences("lockdown", Context.MODE_PRIVATE), serializer);
-        serializer.endTag(null, "lockdown");
+        serializer.startTag(null, Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN);
+        xmlExport(getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE), serializer);
+        serializer.endTag(null, Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN);
 
-        serializer.startTag(null, "apply");
-        xmlExport(getSharedPreferences("apply", Context.MODE_PRIVATE), serializer);
-        serializer.endTag(null, "apply");
+        serializer.startTag(null, Rule.PREFERENCE_STRING_PERAPP_APPLY);
+        xmlExport(getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_APPLY, Context.MODE_PRIVATE), serializer);
+        serializer.endTag(null, Rule.PREFERENCE_STRING_PERAPP_APPLY);
 
-        serializer.startTag(null, "notify");
-        xmlExport(getSharedPreferences("notify", Context.MODE_PRIVATE), serializer);
-        serializer.endTag(null, "notify");
+        serializer.startTag(null, Rule.PREFERENCE_STRING_PERAPP_NOTIFY);
+        xmlExport(getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE), serializer);
+        serializer.endTag(null, Rule.PREFERENCE_STRING_PERAPP_NOTIFY);
 
         serializer.startTag(null, "filter");
         filterExport(serializer);
@@ -1256,14 +1256,14 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         reader.parse(new InputSource(in));
 
         xmlImport(handler.application, prefs);
-        xmlImport(handler.wifi, getSharedPreferences("wifi", Context.MODE_PRIVATE));
-        xmlImport(handler.mobile, getSharedPreferences("other", Context.MODE_PRIVATE));
-        xmlImport(handler.screen_wifi, getSharedPreferences("screen_wifi", Context.MODE_PRIVATE));
-        xmlImport(handler.screen_other, getSharedPreferences("screen_other", Context.MODE_PRIVATE));
-        xmlImport(handler.roaming, getSharedPreferences("roaming", Context.MODE_PRIVATE));
-        xmlImport(handler.lockdown, getSharedPreferences("lockdown", Context.MODE_PRIVATE));
-        xmlImport(handler.apply, getSharedPreferences("apply", Context.MODE_PRIVATE));
-        xmlImport(handler.notify, getSharedPreferences("notify", Context.MODE_PRIVATE));
+        xmlImport(handler.wifi, getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE));
+        xmlImport(handler.mobile, getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE));
+        xmlImport(handler.screen_wifi, getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE));
+        xmlImport(handler.screen_other, getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE));
+        xmlImport(handler.roaming, getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE));
+        xmlImport(handler.lockdown, getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE));
+        xmlImport(handler.apply, getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_APPLY, Context.MODE_PRIVATE));
+        xmlImport(handler.notify, getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE));
 
         // Upgrade imported settings
         ReceiverAutostart.upgrade(true, this);
@@ -1327,28 +1327,28 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             else if (qName.equals("application"))
                 current = application;
 
-            else if (qName.equals("wifi"))
+            else if (qName.equals(Rule.PREFERENCE_STRING_PERAPP_WIFI))
                 current = wifi;
 
             else if (qName.equals("mobile"))
                 current = mobile;
 
-            else if (qName.equals("screen_wifi"))
+            else if (qName.equals(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI))
                 current = screen_wifi;
 
-            else if (qName.equals("screen_other"))
+            else if (qName.equals(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER))
                 current = screen_other;
 
-            else if (qName.equals("roaming"))
+            else if (qName.equals(Rule.PREFERENCE_STRING_PERAPP_ROAMING))
                 current = roaming;
 
-            else if (qName.equals("lockdown"))
+            else if (qName.equals(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN))
                 current = lockdown;
 
-            else if (qName.equals("apply"))
+            else if (qName.equals(Rule.PREFERENCE_STRING_PERAPP_APPLY))
                 current = apply;
 
-            else if (qName.equals("notify"))
+            else if (qName.equals(Rule.PREFERENCE_STRING_PERAPP_NOTIFY))
                 current = notify;
 
             else if (qName.equals("filter")) {
