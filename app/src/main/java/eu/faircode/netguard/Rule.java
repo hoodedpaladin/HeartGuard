@@ -47,6 +47,9 @@ import java.util.Map;
 public class Rule {
     private static final String TAG = "NetGuard.Rule";
 
+    //HeartGuard change - replace preference names with constants for code clarity
+    public static final String PREFERENCE_STRING_ENABLED = "enabled";
+
     public int uid;
     public String packageName;
     public int icon;

@@ -46,7 +46,7 @@ public class ReceiverAutostart extends BroadcastReceiver {
 
                 // Start service
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-                if (prefs.getBoolean("enabled", false))
+                if (prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false))
                     ServiceSinkhole.start("receiver", context);
                 else if (prefs.getBoolean("show_stats", false))
                     ServiceSinkhole.run("receiver", context);

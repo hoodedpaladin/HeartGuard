@@ -1247,7 +1247,7 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
     private void xmlImport(InputStream in) throws IOException, SAXException, ParserConfigurationException {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         prefs.unregisterOnSharedPreferenceChangeListener(this);
-        prefs.edit().putBoolean("enabled", false).apply();
+        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
         ServiceSinkhole.stop("import", this, false);
 
         XMLReader reader = SAXParserFactory.newInstance().newSAXParser().getXMLReader();
@@ -1280,7 +1280,7 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
 
         // Clear existing setting
         for (String key : prefs.getAll().keySet())
-            if (!"enabled".equals(key))
+            if (!Rule.PREFERENCE_STRING_ENABLED.equals(key))
                 editor.remove(key);
 
         // Apply new settings
@@ -1369,7 +1369,7 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
                 if (current == null)
                     Log.e(TAG, "No current key=" + key);
                 else {
-                    if ("enabled".equals(key))
+                    if (Rule.PREFERENCE_STRING_ENABLED.equals(key))
                         enabled = Boolean.parseBoolean(value);
                     else {
                         if (current == application) {

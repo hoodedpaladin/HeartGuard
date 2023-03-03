@@ -367,7 +367,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         @Override
                         public void onCallStateChanged(int state, String incomingNumber) {
                             Log.i(TAG, "New call state=" + state);
-                            if (prefs.getBoolean("enabled", false))
+                            if (prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false))
                                 if (state == TelephonyManager.CALL_STATE_IDLE)
                                     ServiceSinkhole.start("call state", ServiceSinkhole.this);
                                 else
@@ -462,7 +462,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 // Stop service if needed
                 if (!commandHandler.hasMessages(Command.start.ordinal()) &&
                         !commandHandler.hasMessages(Command.reload.ordinal()) &&
-                        !prefs.getBoolean("enabled", false) &&
+                        !prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false) &&
                         !prefs.getBoolean("show_stats", false))
                     stopForeground(true);
 
@@ -485,7 +485,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
                         // Disable firewall
                         if (!(ex instanceof StartFailedException)) {
-                            prefs.edit().putBoolean("enabled", false).apply();
+                            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
                         }
                     }
                 } else
@@ -669,7 +669,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         private void watchdog(Intent intent) {
             if (vpn == null) {
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-                if (prefs.getBoolean("enabled", false)) {
+                if (prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false)) {
                     Log.e(TAG, "Service was killed");
                     start();
                 }
@@ -1855,7 +1855,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             showErrorNotification(reason);
 
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-            prefs.edit().putBoolean("enabled", false).apply();
+            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
         }
     }
 
@@ -2066,7 +2066,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
             if (user_foreground) {
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-                if (prefs.getBoolean("enabled", false)) {
+                if (prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false)) {
                     // Allow service of background user to stop
                     try {
                         Thread.sleep(3000);
@@ -2638,7 +2638,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         // Get state
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean enabled = prefs.getBoolean("enabled", false);
+        boolean enabled = prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false);
 
         // Handle service restart
         if (intent == null) {
@@ -2703,7 +2703,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         // Disable firewall (will result in stop command)
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        prefs.edit().putBoolean("enabled", false).apply();
+        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
 
         // Feedback
         showDisabledNotification();
@@ -3307,7 +3307,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     public static void reload(String reason, Context context, boolean interactive) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        if (prefs.getBoolean("enabled", false)) {
+        if (prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false)) {
             Intent intent = new Intent(context, ServiceSinkhole.class);
             intent.putExtra(EXTRA_COMMAND, Command.reload);
             intent.putExtra(EXTRA_REASON, reason);

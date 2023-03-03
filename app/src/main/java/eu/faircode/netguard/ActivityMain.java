@@ -137,7 +137,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         running = true;
 
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean enabled = prefs.getBoolean("enabled", false);
+        boolean enabled = prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false);
         boolean initialized = prefs.getBoolean("initialized", false);
 
         // Upgrade
@@ -190,7 +190,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         swEnabled.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 Log.i(TAG, "Switch=" + isChecked);
-                prefs.edit().putBoolean("enabled", isChecked).apply();
+                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, isChecked).apply();
 
                 if (isChecked) {
                     try {
@@ -244,7 +244,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                                                 } catch (Throwable ex) {
                                                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                                                     onActivityResult(REQUEST_VPN, RESULT_CANCELED, null);
-                                                    prefs.edit().putBoolean("enabled", false).apply();
+                                                    prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
                                                 }
                                             }
                                         }
@@ -261,7 +261,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                     } catch (Throwable ex) {
                         // Prepare failed
                         Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                        prefs.edit().putBoolean("enabled", false).apply();
+                        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
                     }
 
                 } else
@@ -577,7 +577,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         if (requestCode == REQUEST_VPN) {
             // Handle VPN approval
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-            prefs.edit().putBoolean("enabled", resultCode == RESULT_OK).apply();
+            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, resultCode == RESULT_OK).apply();
             if (resultCode == RESULT_OK) {
                 ServiceSinkhole.start("prepared", this);
 
@@ -618,9 +618,9 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
     @Override
     public void onSharedPreferenceChanged(SharedPreferences prefs, String name) {
         Log.i(TAG, "Preference " + name + "=" + prefs.getAll().get(name));
-        if ("enabled".equals(name)) {
+        if (Rule.PREFERENCE_STRING_ENABLED.equals(name)) {
             // Get enabled
-            boolean enabled = prefs.getBoolean(name, false);
+            boolean enabled = prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false);
 
             // Display disabled warning
             TextView tvDisabled = findViewById(R.id.tvDisabled);
