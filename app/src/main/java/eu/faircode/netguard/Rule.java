@@ -76,6 +76,9 @@ public class Rule {
     public static final String PREFERENCE_STRING_PERAPP_APPLY = "apply";
     public static final String PREFERENCE_STRING_PERAPP_NOTIFY = "notify";
 
+    public static final String PREDEFINED_XML_WIFI = "wifi";
+    public static final String PREDEFINED_XML_OTHER = "other";
+
     public int uid;
     public String packageName;
     public int icon;
@@ -269,12 +272,12 @@ public class Rule {
                 int eventType = xml.getEventType();
                 while (eventType != XmlPullParser.END_DOCUMENT) {
                     if (eventType == XmlPullParser.START_TAG)
-                        if (Rule.PREFERENCE_STRING_PERAPP_WIFI.equals(xml.getName())) {
+                        if (Rule.PREDEFINED_XML_WIFI.equals(xml.getName())) {
                             String pkg = xml.getAttributeValue(null, "package");
                             boolean pblocked = xml.getAttributeBooleanValue(null, "blocked", false);
                             pre_wifi_blocked.put(pkg, pblocked);
 
-                        } else if (Rule.PREFERENCE_STRING_PERAPP_OTHER.equals(xml.getName())) {
+                        } else if (Rule.PREDEFINED_XML_OTHER.equals(xml.getName())) {
                             String pkg = xml.getAttributeValue(null, "package");
                             boolean pblocked = xml.getAttributeBooleanValue(null, "blocked", false);
                             boolean proaming = xml.getAttributeBooleanValue(null, Rule.PREFERENCE_STRING_PERAPP_ROAMING, default_roaming);
