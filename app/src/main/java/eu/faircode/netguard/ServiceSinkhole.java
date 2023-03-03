@@ -803,7 +803,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             // Get settings
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
             boolean log = prefs.getBoolean("log", false);
-            boolean log_app = prefs.getBoolean("log_app", false);
+            boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
 
             DatabaseHelper dh = DatabaseHelper.getInstance(ServiceSinkhole.this);
 
@@ -832,7 +832,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             if (usage.Uid >= 0 && !(usage.Uid == 0 && usage.Protocol == 17 && usage.DPort == 53)) {
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
                 boolean filter = prefs.getBoolean("filter", false);
-                boolean log_app = prefs.getBoolean("log_app", false);
+                boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
                 boolean track_usage = prefs.getBoolean("track_usage", false);
                 if (filter && log_app && track_usage) {
                     DatabaseHelper dh = DatabaseHelper.getInstance(ServiceSinkhole.this);
@@ -1455,7 +1455,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     private void startNative(final ParcelFileDescriptor vpn, List<Rule> listAllowed, List<Rule> listRule) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
         boolean log = prefs.getBoolean("log", false);
-        boolean log_app = prefs.getBoolean("log_app", false);
+        boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
         boolean filter = prefs.getBoolean("filter", false);
 
         Log.i(TAG, "Start native log=" + log + "/" + log_app + " filter=" + filter);
@@ -1985,7 +1985,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         lock.readLock().unlock();
 
-        if (prefs.getBoolean("log", false) || prefs.getBoolean("log_app", false))
+        if (prefs.getBoolean("log", false) || prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false))
             if (packet.protocol != 6 /* TCP */ || !"".equals(packet.flags))
                 if (packet.uid != Process.myUid())
                     logPacket(packet);

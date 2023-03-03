@@ -106,7 +106,7 @@ public class ReceiverAutostart extends BroadcastReceiver {
                 editor.putBoolean("filter", true); // Mandatory
 
             if (!Util.canFilter(context)) {
-                editor.putBoolean("log_app", false);
+                editor.putBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
                 editor.putBoolean("filter", false);
             }
 

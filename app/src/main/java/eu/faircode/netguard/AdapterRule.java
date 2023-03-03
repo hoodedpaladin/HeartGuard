@@ -338,7 +338,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         final Context context = holder.itemView.getContext();
 
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        final boolean log_app = prefs.getBoolean("log_app", false);
+        final boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
         final boolean filter = prefs.getBoolean("filter", false);
         final boolean notify_access = prefs.getBoolean("notify_access", false);
 
@@ -654,7 +654,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                 cbLogging.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                     @Override
                     public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
-                        prefs.edit().putBoolean("log_app", checked).apply();
+                        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOG_APP, checked).apply();
                         cbNotify.setEnabled(checked);
                         if (!checked) {
                             cbNotify.setChecked(false);

@@ -231,7 +231,7 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         });
 
         boolean can = Util.canFilter(this);
-        TwoStatePreference pref_log_app = (TwoStatePreference) screen.findPreference("log_app");
+        TwoStatePreference pref_log_app = (TwoStatePreference) screen.findPreference(Rule.PREFERENCE_STRING_LOG_APP);
         TwoStatePreference pref_filter = (TwoStatePreference) screen.findPreference("filter");
         pref_log_app.setEnabled(can);
         pref_filter.setEnabled(can);
@@ -602,10 +602,10 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             prefs.edit().putBoolean("show_system", manage).apply();
             ServiceSinkhole.reload("changed " + name, this, false);
 
-        } else if ("log_app".equals(name)) {
+        } else if (Rule.PREFERENCE_STRING_LOG_APP.equals(name)) {
             Intent ruleset = new Intent(ActivityMain.ACTION_RULES_CHANGED);
             LocalBroadcastManager.getInstance(this).sendBroadcast(ruleset);
-            ServiceSinkhole.reload("changed " + name, this, false);
+            ServiceSinkhole.reload("changed " + Rule.PREFERENCE_STRING_LOG_APP, this, false);
 
         } else if ("notify_access".equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
