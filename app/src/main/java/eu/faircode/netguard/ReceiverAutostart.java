@@ -99,15 +99,15 @@ public class ReceiverAutostart extends BroadcastReceiver {
                 editor.putBoolean("whitelist_wifi", false);
                 editor.putBoolean("whitelist_other", false);
                 if (Build.VERSION.SDK_INT == Build.VERSION_CODES.LOLLIPOP)
-                    editor.putBoolean("filter", true); // Optional
+                    editor.putBoolean(Rule.PREFERENCE_STRING_FILTER, true); // Optional
             }
 
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
-                editor.putBoolean("filter", true); // Mandatory
+                editor.putBoolean(Rule.PREFERENCE_STRING_FILTER, true); // Mandatory
 
             if (!Util.canFilter(context)) {
                 editor.putBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
-                editor.putBoolean("filter", false);
+                editor.putBoolean(Rule.PREFERENCE_STRING_FILTER, false);
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

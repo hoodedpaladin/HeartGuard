@@ -199,7 +199,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                         if (!TextUtils.isEmpty(alwaysOn))
                             if (getPackageName().equals(alwaysOn)) {
                                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-                                        prefs.getBoolean("filter", false)) {
+                                        prefs.getBoolean(Rule.PREFERENCE_STRING_FILTER, false)) {
                                     int lockdown = Settings.Secure.getInt(getContentResolver(), "always_on_vpn_lockdown", 0);
                                     Log.i(TAG, "Lockdown=" + lockdown);
                                     if (lockdown != 0) {
@@ -217,7 +217,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                         Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                     }
 
-                    boolean filter = prefs.getBoolean("filter", false);
+                    boolean filter = prefs.getBoolean(Rule.PREFERENCE_STRING_FILTER, false);
                     if (filter && Util.isPrivateDns(ActivityMain.this))
                         Toast.makeText(ActivityMain.this, R.string.msg_private_dns, Toast.LENGTH_LONG).show();
 

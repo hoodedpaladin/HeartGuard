@@ -339,7 +339,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
 
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         final boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
-        final boolean filter = prefs.getBoolean("filter", false);
+        final boolean filter = prefs.getBoolean(Rule.PREFERENCE_STRING_FILTER, false);
         final boolean notify_access = prefs.getBoolean("notify_access", false);
 
         // Get rule
@@ -670,7 +670,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                     public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
                         if (checked)
                             cbLogging.setChecked(true);
-                        prefs.edit().putBoolean("filter", checked).apply();
+                        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_FILTER, checked).apply();
                         ServiceSinkhole.reload("changed filter", context, false);
                         AdapterRule.this.notifyDataSetChanged();
                     }
