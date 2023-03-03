@@ -51,6 +51,7 @@ public class Rule {
     public static final String PREFERENCE_STRING_ENABLED = "enabled";
     public static final String PREFERENCE_STRING_LOG_APP = "log_app";
     public static final String PREFERENCE_STRING_FILTER = "filter";
+    public static final String PREFERENCE_STRING_SCREEN_ON = "screen_on";
 
     public int uid;
     public String packageName;
@@ -225,7 +226,7 @@ public class Rule {
             boolean default_roaming = prefs.getBoolean("whitelist_roaming", true);
 
             boolean manage_system = prefs.getBoolean("manage_system", false);
-            boolean screen_on = prefs.getBoolean("screen_on", true);
+            boolean screen_on = prefs.getBoolean(Rule.PREFERENCE_STRING_SCREEN_ON, true);
             boolean show_user = prefs.getBoolean("show_user", true);
             boolean show_system = prefs.getBoolean("show_system", false);
             boolean show_nointernet = prefs.getBoolean("show_nointernet", true);
@@ -443,7 +444,7 @@ public class Rule {
 
     public void updateChanged(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean screen_on = prefs.getBoolean("screen_on", false);
+        boolean screen_on = prefs.getBoolean(Rule.PREFERENCE_STRING_SCREEN_ON, false);
         boolean default_wifi = prefs.getBoolean("whitelist_wifi", true) && screen_on;
         boolean default_other = prefs.getBoolean("whitelist_other", true) && screen_on;
         boolean default_roaming = prefs.getBoolean("whitelist_roaming", true);

@@ -338,7 +338,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             }
 
             // Optionally listen for interactive state changes
-            if (prefs.getBoolean("screen_on", true)) {
+            if (prefs.getBoolean(Rule.PREFERENCE_STRING_SCREEN_ON, true)) {
                 if (!registeredInteractiveState) {
                     Log.i(TAG, "Starting listening for interactive state changes");
                     last_interactive = Util.isInteractive(ServiceSinkhole.this);
