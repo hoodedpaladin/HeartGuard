@@ -230,12 +230,9 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
 
         boolean can = Util.canFilter(this);
         TwoStatePreference pref_log_app = (TwoStatePreference) screen.findPreference(Rule.PREFERENCE_STRING_LOG_APP);
-        TwoStatePreference pref_filter = (TwoStatePreference) screen.findPreference(Rule.PREFERENCE_STRING_FILTER);
         pref_log_app.setEnabled(can);
-        pref_filter.setEnabled(can);
         if (!can) {
             pref_log_app.setSummary(R.string.msg_unavailable);
-            pref_filter.setSummary(R.string.msg_unavailable);
         }
 
         // VPN parameters
@@ -586,38 +583,7 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         } else if ("notify_access".equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
 
-        else if (Rule.PREFERENCE_STRING_FILTER.equals(name)) {
-            // Show dialog
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && prefs.getBoolean(Rule.PREFERENCE_STRING_FILTER, false)) {
-                LayoutInflater inflater = LayoutInflater.from(ActivitySettings.this);
-                View view = inflater.inflate(R.layout.filter, null, false);
-                dialogFilter = new AlertDialog.Builder(ActivitySettings.this)
-                        .setView(view)
-                        .setCancelable(false)
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                // Do nothing
-                            }
-                        })
-                        .setOnDismissListener(new DialogInterface.OnDismissListener() {
-                            @Override
-                            public void onDismiss(DialogInterface dialogInterface) {
-                                dialogFilter = null;
-                            }
-                        })
-                        .create();
-                dialogFilter.show();
-            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP && !prefs.getBoolean(name, false)) {
-                prefs.edit().putBoolean(name, true).apply();
-                Toast.makeText(ActivitySettings.this, R.string.msg_filter4, Toast.LENGTH_SHORT).show();
-            }
-
-            ((TwoStatePreference) getPreferenceScreen().findPreference(name)).setChecked(prefs.getBoolean(name, false));
-
-            ServiceSinkhole.reload("changed " + name, this, false);
-
-        } else if ("use_hosts".equals(name))
+        else if ("use_hosts".equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
 
         else if ("vpn4".equals(name)) {

@@ -50,7 +50,7 @@ public class Rule {
     //HeartGuard change - replace preference names with constants for code clarity
     public static final String PREFERENCE_STRING_ENABLED = "enabled";
     public static final String PREFERENCE_STRING_LOG_APP = "log_app";
-    public static final String PREFERENCE_STRING_FILTER = "filter";
+    //public static final String PREFERENCE_STRING_FILTER = "filter";
     public static final String PREFERENCE_STRING_SCREEN_ON = "screen_on";
     public static final String PREFERENCE_STRING_WHITELIST_WIFI = "whitelist_wifi";
     public static final String PREFERENCE_STRING_WHITELIST_OTHER = "whitelist_other";

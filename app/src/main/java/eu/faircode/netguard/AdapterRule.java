@@ -339,7 +339,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
 
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         final boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
-        final boolean filter = prefs.getBoolean(Rule.PREFERENCE_STRING_FILTER, false);
+        final boolean filter = RulesManager.getInstance().getPreferenceFilter(context);
         final boolean notify_access = prefs.getBoolean("notify_access", false);
 
         // Get rule
@@ -646,7 +646,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
 
                 cbLogging.setChecked(log_app);
                 cbFiltering.setChecked(filter);
-                cbFiltering.setEnabled(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP);
+                cbFiltering.setEnabled(false);
                 tvFilter4.setVisibility(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ? View.GONE : View.VISIBLE);
                 cbNotify.setChecked(notify_access);
                 cbNotify.setEnabled(log_app);
@@ -661,17 +661,6 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                             prefs.edit().putBoolean("notify_access", false).apply();
                         }
                         ServiceSinkhole.reload("changed notify", context, false);
-                        AdapterRule.this.notifyDataSetChanged();
-                    }
-                });
-
-                cbFiltering.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
-                        if (checked)
-                            cbLogging.setChecked(true);
-                        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_FILTER, checked).apply();
-                        ServiceSinkhole.reload("changed filter", context, false);
                         AdapterRule.this.notifyDataSetChanged();
                     }
                 });

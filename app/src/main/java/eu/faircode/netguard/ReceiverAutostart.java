@@ -98,16 +98,10 @@ public class ReceiverAutostart extends BroadcastReceiver {
                 editor.putBoolean("filter_udp", true);
                 editor.putBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, false);
                 editor.putBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, false);
-                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.LOLLIPOP)
-                    editor.putBoolean(Rule.PREFERENCE_STRING_FILTER, true); // Optional
             }
-
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
-                editor.putBoolean(Rule.PREFERENCE_STRING_FILTER, true); // Mandatory
 
             if (!Util.canFilter(context)) {
                 editor.putBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
-                editor.putBoolean(Rule.PREFERENCE_STRING_FILTER, false);
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

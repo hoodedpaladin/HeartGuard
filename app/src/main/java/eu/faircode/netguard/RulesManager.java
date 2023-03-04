@@ -1,14 +1,18 @@
 package eu.faircode.netguard;
 
+import android.content.Context;
 import android.database.Cursor;
 import android.util.Log;
 
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 // HeartGuard code - get and process rules from SQL, make decisions
 public class RulesManager {
     private static final String TAG = "NetGuard.Database";
+
+    private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     private static RulesManager global_rm = null;
 
@@ -59,6 +63,8 @@ public class RulesManager {
     }
 
     public void getCurrentRules(WhitelistManager wm, DatabaseHelper dh) {
+        lock.readLock().lock();
+
         Cursor cursor = dh.getEnactedRules();
         int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
 
@@ -74,5 +80,11 @@ public class RulesManager {
                 wm.addAppRule(ruleanduid.uid, ruleanduid.rule);
             }
         }
+
+        lock.readLock().unlock();
+    }
+
+    public boolean getPreferenceFilter(Context context) {
+        return true;
     }
 }
