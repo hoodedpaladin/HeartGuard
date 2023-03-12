@@ -254,10 +254,15 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     }
 
     synchronized private static void releaseLock(Context context) {
-        if (wlInstance != null) {
-            while (wlInstance.isHeld())
-                wlInstance.release();
-            wlInstance = null;
+        // HeartGuard change - debugging exception catch
+        try {
+            if (wlInstance != null) {
+                while (wlInstance.isHeld())
+                    wlInstance.release();
+                wlInstance = null;
+            }
+        } catch (Throwable ex) {
+            Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
         }
     }
 
@@ -300,12 +305,15 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     reportQueueSize();
                 }
                 try {
-                    PowerManager.WakeLock wl = getLock(ServiceSinkhole.this);
-                    if (wl.isHeld())
-                        wl.release();
-                    else
-                        Log.w(TAG, "Wakelock under-locked");
-                    Log.i(TAG, "Messages=" + hasMessages(0) + " wakelock=" + wlInstance.isHeld());
+                    // HeartGuard change - bugfix, synchronize, and use the return value for safety
+                    synchronized (ServiceSinkhole.this) {
+                        PowerManager.WakeLock wl = getLock(ServiceSinkhole.this);
+                        if (wl.isHeld())
+                            wl.release();
+                        else
+                            Log.w(TAG, "Wakelock under-locked");
+                        Log.i(TAG, "Messages=" + hasMessages(0) + " wakelock=" + wl.isHeld());
+                    }
                 } catch (Throwable ex) {
                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                 }
@@ -2662,7 +2670,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         }
 
         // Keep awake
-        getLock(this).acquire();
+        // HeartGuard change - synchronize for safety
+        synchronized(this) {
+            getLock(this).acquire();
+        }
 
         // Get state
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
