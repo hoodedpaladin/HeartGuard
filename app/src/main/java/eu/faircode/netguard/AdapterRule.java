@@ -400,7 +400,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
             DrawableCompat.setTint(wrap, rule.apply ? colorOff : colorGrayed);
         }
 
-        boolean screen_on = prefs.getBoolean(Rule.PREFERENCE_STRING_SCREEN_ON, true);
+        boolean screen_on = RulesManager.getInstance(context).getPreferenceScreenOn(context);
 
         // Wi-Fi settings
         holder.cbWifi.setEnabled(rule.apply);

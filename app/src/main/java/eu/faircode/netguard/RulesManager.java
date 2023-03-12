@@ -119,6 +119,18 @@ public class RulesManager {
         return true;
     }
 
+    public boolean getPreferenceScreenOnWifi(Context context) {
+        return false;
+    }
+
+    public boolean getPreferenceScreenOnOther(Context context) {
+        return false;
+    }
+
+    public boolean getPreferenceScreenOn(Context context) {
+        return false;
+    }
+
     private void setAlarmForTime(Context context, long time) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         //Intent i = new Intent(ACTION_RULES_UPDATE);

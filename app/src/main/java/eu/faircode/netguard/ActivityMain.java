@@ -645,10 +645,10 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                 swEnabled.setChecked(enabled);
 
         } else if (Rule.PREFERENCE_STRING_WHITELIST_WIFI.equals(name) ||
-                Rule.PREFERENCE_STRING_SCREEN_ON.equals(name) ||
-                Rule.PREFERENCE_STRING_SCREEN_WIFI.equals(name) ||
+                //Rule.PREFERENCE_STRING_SCREEN_ON.equals(name) ||
+                //Rule.PREFERENCE_STRING_SCREEN_WIFI.equals(name) ||
                 Rule.PREFERENCE_STRING_WHITELIST_OTHER.equals(name) ||
-                Rule.PREFERENCE_STRING_SCREEN_OTHER.equals(name) ||
+                //Rule.PREFERENCE_STRING_SCREEN_OTHER.equals(name) ||
                 Rule.PREFERENCE_STRING_WHITELIST_ROAMING.equals(name) ||
                 Rule.PREFERENCE_STRING_SHOW_USER.equals(name) ||
                 Rule.PREFERENCE_STRING_SHOW_SYSTEM.equals(name) ||
@@ -659,7 +659,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             updateApplicationList(null);
 
             final LinearLayout llWhitelist = findViewById(R.id.llWhitelist);
-            boolean screen_on = prefs.getBoolean(Rule.PREFERENCE_STRING_SCREEN_ON, true);
+            boolean screen_on = RulesManager.getInstance(this).getPreferenceScreenOn(this);
             boolean whitelist_wifi = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, false);
             boolean whitelist_other = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, false);
             boolean hintWhitelist = prefs.getBoolean("hint_whitelist", true);

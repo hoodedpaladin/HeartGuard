@@ -72,8 +72,8 @@ public class ReceiverAutostart extends BroadcastReceiver {
             if (initialized) {
                 if (oldVersion < 38) {
                     Log.i(TAG, "Converting screen wifi/mobile");
-                    editor.putBoolean(Rule.PREFERENCE_STRING_SCREEN_WIFI, prefs.getBoolean("unused", false));
-                    editor.putBoolean(Rule.PREFERENCE_STRING_SCREEN_OTHER, prefs.getBoolean("unused", false));
+                    //editor.putBoolean(Rule.PREFERENCE_STRING_SCREEN_WIFI, prefs.getBoolean("unused", false));
+                    //editor.putBoolean(Rule.PREFERENCE_STRING_SCREEN_OTHER, prefs.getBoolean("unused", false));
                     editor.remove("unused");
 
                     SharedPreferences unused = context.getSharedPreferences("unused", Context.MODE_PRIVATE);
