@@ -710,21 +710,6 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                     popup.getMenu().findItem(R.id.menu_host).setEnabled(multiple);
 
                     markPro(context, popup.getMenu().findItem(R.id.menu_allow), ActivityPro.SKU_FILTER);
-                    markPro(context, popup.getMenu().findItem(R.id.menu_block), ActivityPro.SKU_FILTER);
-
-                    // Whois
-                    final Intent lookupIP = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.dnslytics.com/whois-lookup/" + daddr));
-                    if (pm.resolveActivity(lookupIP, 0) == null)
-                        popup.getMenu().removeItem(R.id.menu_whois);
-                    else
-                        popup.getMenu().findItem(R.id.menu_whois).setTitle(context.getString(R.string.title_log_whois, daddr));
-
-                    // Lookup port
-                    final Intent lookupPort = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.speedguide.net/port.php?port=" + dport));
-                    if (dport <= 0 || pm.resolveActivity(lookupPort, 0) == null)
-                        popup.getMenu().removeItem(R.id.menu_port);
-                    else
-                        popup.getMenu().findItem(R.id.menu_port).setTitle(context.getString(R.string.title_log_port, dport));
 
                     popup.getMenu().findItem(R.id.menu_time).setTitle(
                             SimpleDateFormat.getDateTimeInstance().format(time));
@@ -735,29 +720,10 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                             int menu = menuItem.getItemId();
                             boolean result = false;
                             switch (menu) {
-                                case R.id.menu_whois:
-                                    context.startActivity(lookupIP);
-                                    result = true;
-                                    break;
-
-                                case R.id.menu_port:
-                                    context.startActivity(lookupPort);
-                                    result = true;
-                                    break;
-
                                 case R.id.menu_allow:
                                     if (IAB.isPurchased(ActivityPro.SKU_FILTER, context)) {
                                         DatabaseHelper.getInstance(context).setAccess(id, 0);
                                         ServiceSinkhole.reload("allow host", context, false);
-                                    } else
-                                        context.startActivity(new Intent(context, ActivityPro.class));
-                                    result = true;
-                                    break;
-
-                                case R.id.menu_block:
-                                    if (IAB.isPurchased(ActivityPro.SKU_FILTER, context)) {
-                                        DatabaseHelper.getInstance(context).setAccess(id, 1);
-                                        ServiceSinkhole.reload("block host", context, false);
                                     } else
                                         context.startActivity(new Intent(context, ActivityPro.class));
                                     result = true;
@@ -776,7 +742,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                                     return true;
                             }
 
-                            if (menu == R.id.menu_allow || menu == R.id.menu_block || menu == R.id.menu_reset)
+                            if (menu == R.id.menu_allow || menu == R.id.menu_reset)
                                 new AsyncTask<Object, Object, Long>() {
                                     @Override
                                     protected Long doInBackground(Object... objects) {
@@ -796,8 +762,6 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
 
                     if (block == 0)
                         popup.getMenu().removeItem(R.id.menu_allow);
-                    else if (block == 1)
-                        popup.getMenu().removeItem(R.id.menu_block);
 
                     popup.show();
                 }

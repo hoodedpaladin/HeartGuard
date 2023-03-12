@@ -200,28 +200,12 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
                 // Destination IP
                 popup.getMenu().findItem(R.id.menu_protocol).setTitle(Util.getProtocolName(protocol, version, false));
 
-                // Whois
-                final Intent lookupIP = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.dnslytics.com/whois-lookup/" + ip));
-                if (pm.resolveActivity(lookupIP, 0) == null)
-                    popup.getMenu().removeItem(R.id.menu_whois);
-                else
-                    popup.getMenu().findItem(R.id.menu_whois).setTitle(getString(R.string.title_log_whois, ip));
-
-                // Lookup port
-                final Intent lookupPort = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.speedguide.net/port.php?port=" + port));
-                if (port <= 0 || pm.resolveActivity(lookupPort, 0) == null)
-                    popup.getMenu().removeItem(R.id.menu_port);
-                else
-                    popup.getMenu().findItem(R.id.menu_port).setTitle(getString(R.string.title_log_port, port));
-
                 if (RulesManager.getInstance(ActivityLog.this).getPreferenceFilter(view.getContext())) {
                     if (uid <= 0) {
                         popup.getMenu().removeItem(R.id.menu_allow);
-                        popup.getMenu().removeItem(R.id.menu_block);
                     }
                 } else {
                     popup.getMenu().removeItem(R.id.menu_allow);
-                    popup.getMenu().removeItem(R.id.menu_block);
                 }
 
                 final Packet packet = new Packet();
@@ -248,29 +232,10 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
                                 return true;
                             }
 
-                            case R.id.menu_whois:
-                                startActivity(lookupIP);
-                                return true;
-
-                            case R.id.menu_port:
-                                startActivity(lookupPort);
-                                return true;
-
                             case R.id.menu_allow:
                                 if (IAB.isPurchased(ActivityPro.SKU_FILTER, ActivityLog.this)) {
                                     DatabaseHelper.getInstance(ActivityLog.this).updateAccess(ActivityLog.this, packet, dname, 0);
                                     ServiceSinkhole.reload("allow host", ActivityLog.this, false);
-                                    Intent main = new Intent(ActivityLog.this, ActivityMain.class);
-                                    main.putExtra(ActivityMain.EXTRA_SEARCH, Integer.toString(uid));
-                                    startActivity(main);
-                                } else
-                                    startActivity(new Intent(ActivityLog.this, ActivityPro.class));
-                                return true;
-
-                            case R.id.menu_block:
-                                if (IAB.isPurchased(ActivityPro.SKU_FILTER, ActivityLog.this)) {
-                                    DatabaseHelper.getInstance(ActivityLog.this).updateAccess(ActivityLog.this, packet, dname, 1);
-                                    ServiceSinkhole.reload("block host", ActivityLog.this, false);
                                     Intent main = new Intent(ActivityLog.this, ActivityMain.class);
                                     main.putExtra(ActivityMain.EXTRA_SEARCH, Integer.toString(uid));
                                     startActivity(main);
