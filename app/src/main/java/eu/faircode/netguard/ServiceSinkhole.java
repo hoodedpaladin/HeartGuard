@@ -1785,9 +1785,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     private boolean isLockedDown(boolean metered) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-        boolean lockdown = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, false);
-        boolean lockdown_wifi = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN_WIFI, true);
-        boolean lockdown_other = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN_OTHER, true);
+        boolean lockdown = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceLockdown(ServiceSinkhole.this);
+        boolean lockdown_wifi = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceLockdownWifi(ServiceSinkhole.this);
+        boolean lockdown_other = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceLockdownOther(ServiceSinkhole.this);
         if (metered ? !lockdown_other : !lockdown_wifi)
             lockdown = false;
 

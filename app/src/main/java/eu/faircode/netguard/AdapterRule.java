@@ -387,9 +387,9 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         holder.tvHosts.setText(Long.toString(rule.hosts));
 
         // Lockdown settings
-        boolean lockdown = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, false);
-        boolean lockdown_wifi = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN_WIFI, true);
-        boolean lockdown_other = prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN_OTHER, true);
+        boolean lockdown = RulesManager.getInstance(context).getPreferenceLockdown(context);
+        boolean lockdown_wifi = RulesManager.getInstance(context).getPreferenceLockdownWifi(context);
+        boolean lockdown_other = RulesManager.getInstance(context).getPreferenceLockdownOther(context);
         if ((otherActive && !lockdown_other) || (wifiActive && !lockdown_wifi))
             lockdown = false;
 

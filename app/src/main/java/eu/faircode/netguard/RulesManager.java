@@ -142,6 +142,22 @@ public class RulesManager {
         return true;
     }
 
+    public boolean getPreferenceLockdown(Context context) {
+        return false;
+    }
+
+    public boolean getPreferenceLockdownWifi(Context context) {
+        return false;
+    }
+
+    public boolean getPreferenceLockdownOther(Context context) {
+        return false;
+    }
+
+    public boolean getPreferenceWhitelistRoaming(Context context) {
+        return false;
+    }
+
     private void setAlarmForTime(Context context, long time) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         //Intent i = new Intent(ACTION_RULES_UPDATE);

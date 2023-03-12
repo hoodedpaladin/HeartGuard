@@ -502,8 +502,8 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         //else if (Rule.PREFERENCE_STRING_WHITELIST_OTHER.equals(name))
         //    ServiceSinkhole.reload("changed " + name, this, false);
 
-        else if (Rule.PREFERENCE_STRING_WHITELIST_ROAMING.equals(name))
-            ServiceSinkhole.reload("changed " + name, this, false);
+        //else if (Rule.PREFERENCE_STRING_WHITELIST_ROAMING.equals(name))
+        //    ServiceSinkhole.reload("changed " + name, this, false);
 
         else if ("auto_enable".equals(name))
             getPreferenceScreen().findPreference(name).setTitle(getString(R.string.setting_auto, prefs.getString(name, "0")));
@@ -556,8 +556,8 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             } else
                 ServiceSinkhole.reload("changed " + name, this, false);
 
-        } else if (Rule.PREFERENCE_STRING_LOCKDOWN_WIFI.equals(name) || Rule.PREFERENCE_STRING_LOCKDOWN_OTHER.equals(name))
-            ServiceSinkhole.reload("changed " + name, this, false);
+        }// else if (Rule.PREFERENCE_STRING_LOCKDOWN_WIFI.equals(name) || Rule.PREFERENCE_STRING_LOCKDOWN_OTHER.equals(name))
+        //    ServiceSinkhole.reload("changed " + name, this, false);
 
         else if (Rule.PREFERENCE_STRING_MANAGE_SYSTEM.equals(name)) {
             boolean manage = prefs.getBoolean(name, false);

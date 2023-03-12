@@ -48,10 +48,6 @@
         </menu>
     </item>
     <item
-        android:id="@+id/menu_lockdown"
-        android:checkable="true"
-        android:title="@string/setting_lockdown"/>
-    <item
         android:id="@+id/menu_log"
         android:title="@string/menu_log"/>
     <item

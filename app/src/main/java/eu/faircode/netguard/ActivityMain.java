@@ -649,7 +649,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                 //Rule.PREFERENCE_STRING_SCREEN_WIFI.equals(name) ||
                 //Rule.PREFERENCE_STRING_WHITELIST_OTHER.equals(name) ||
                 //Rule.PREFERENCE_STRING_SCREEN_OTHER.equals(name) ||
-                Rule.PREFERENCE_STRING_WHITELIST_ROAMING.equals(name) ||
+                //Rule.PREFERENCE_STRING_WHITELIST_ROAMING.equals(name) ||
                 Rule.PREFERENCE_STRING_SHOW_USER.equals(name) ||
                 Rule.PREFERENCE_STRING_SHOW_SYSTEM.equals(name) ||
                 Rule.PREFERENCE_STRING_SHOW_NOINTERNET.equals(name) ||
@@ -844,7 +844,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         else
             menu.findItem(R.id.menu_sort_name).setChecked(true);
 
-        menu.findItem(R.id.menu_lockdown).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, false));
+        //menu.findItem(R.id.menu_lockdown).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, false));
 
         return super.onPrepareOptionsMenu(menu);
     }
@@ -886,9 +886,9 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                 prefs.edit().putString(Rule.PREFERENCE_STRING_SORT, "uid").apply();
                 return true;
 
-            case R.id.menu_lockdown:
-                menu_lockdown(item);
-                return true;
+            //case R.id.menu_lockdown:
+            //    menu_lockdown(item);
+            //    return true;
 
             case R.id.menu_log:
                 if (Util.canFilter(this))
@@ -1184,12 +1184,12 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         dialogLegend.show();
     }
 
-    private void menu_lockdown(MenuItem item) {
-        item.setChecked(!item.isChecked());
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, item.isChecked()).apply();
-        ServiceSinkhole.reload(Rule.PREFERENCE_STRING_LOCKDOWN, this, false);
-    }
+    //private void menu_lockdown(MenuItem item) {
+    //    item.setChecked(!item.isChecked());
+    //    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+    //    prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOCKDOWN, item.isChecked()).apply();
+    //    ServiceSinkhole.reload(Rule.PREFERENCE_STRING_LOCKDOWN, this, false);
+    //}
 
     private void menu_about() {
         // Create view
