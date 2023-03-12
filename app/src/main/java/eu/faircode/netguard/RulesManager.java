@@ -46,7 +46,8 @@ public class RulesManager {
     }
 
     public RulesManager(Context context) {
-        setNextEnabledToggle(context);
+        //This will start a testing mode that toggles enabled
+        //setNextEnabledToggle(context);
     }
 
     private RuleAndUid parseTextToWhitelistRule(String text) {
@@ -152,7 +153,7 @@ public class RulesManager {
     }
 
     private void setNextEnabledToggle(Context context) {
-        nextEnableToggle = new Date().getTime() + 2 * 1000L;
+        nextEnableToggle = new Date().getTime() + 30 * 1000L;
 
         setAlarmForTime(context, nextEnableToggle);
     }
