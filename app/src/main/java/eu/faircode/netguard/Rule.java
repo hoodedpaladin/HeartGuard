@@ -67,10 +67,10 @@ public class Rule {
     public static final String PREFERENCE_STRING_SHOW_DISABLED = "show_disabled";
     public static final String PREFERENCE_STRING_SORT = "sort";
 
-    public static final String PREFERENCE_STRING_PERAPP_WIFI = "wifi";
-    public static final String PREFERENCE_STRING_PERAPP_OTHER = "other";
-    public static final String PREFERENCE_STRING_PERAPP_SCREEN_WIFI = "screen_wifi";
-    public static final String PREFERENCE_STRING_PERAPP_SCREEN_OTHER = "screen_other";
+    //public static final String PREFERENCE_STRING_PERAPP_WIFI = "wifi";
+    //public static final String PREFERENCE_STRING_PERAPP_OTHER = "other";
+    //public static final String PREFERENCE_STRING_PERAPP_SCREEN_WIFI = "screen_wifi";
+    //public static final String PREFERENCE_STRING_PERAPP_SCREEN_OTHER = "screen_other";
     public static final String PREFERENCE_STRING_PERAPP_ROAMING = "roaming";
     public static final String PREFERENCE_STRING_PERAPP_LOCKDOWN = "lockdown";
     public static final String PREFERENCE_STRING_PERAPP_APPLY = "apply";
@@ -235,10 +235,10 @@ public class Rule {
     public static List<Rule> getRules(final boolean all, Context context) {
         synchronized (context.getApplicationContext()) {
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-            SharedPreferences wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
-            SharedPreferences other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
-            SharedPreferences screen_wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE);
-            SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
+            //SharedPreferences wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
+            //SharedPreferences other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
+            //SharedPreferences screen_wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE);
+            //SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
             SharedPreferences roaming = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE);
             SharedPreferences lockdown = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE);
             SharedPreferences apply = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_APPLY, Context.MODE_PRIVATE);
@@ -393,10 +393,10 @@ public class Rule {
                         rule.screen_other_default = default_screen_other;
                         rule.roaming_default = (pre_roaming.containsKey(info.packageName) ? pre_roaming.get(info.packageName) : default_roaming);
 
-                        rule.wifi_blocked = (!(rule.system && !manage_system) && wifi.getBoolean(info.packageName, rule.wifi_default));
-                        rule.other_blocked = (!(rule.system && !manage_system) && other.getBoolean(info.packageName, rule.other_default));
-                        rule.screen_wifi = screen_wifi.getBoolean(info.packageName, rule.screen_wifi_default) && screen_on;
-                        rule.screen_other = screen_other.getBoolean(info.packageName, rule.screen_other_default) && screen_on;
+                        rule.wifi_blocked = (!(rule.system && !manage_system) && RulesManager.getInstance(context).getWifiEnabledForApp(context, info.packageName, rule.wifi_default));
+                        rule.other_blocked = (!(rule.system && !manage_system) && RulesManager.getInstance(context).getOtherEnabledForApp(context, info.packageName, rule.other_default));
+                        rule.screen_wifi = RulesManager.getInstance(context).getScreenWifiEnabledForApp(context, info.packageName, rule.screen_wifi_default) && screen_on;
+                        rule.screen_other = RulesManager.getInstance(context).getScreenOtherEnabledForApp(context, info.packageName, rule.screen_other_default) && screen_on;
                         rule.roaming = roaming.getBoolean(info.packageName, rule.roaming_default);
                         rule.lockdown = lockdown.getBoolean(info.packageName, false);
 

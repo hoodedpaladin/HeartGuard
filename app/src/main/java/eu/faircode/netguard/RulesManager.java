@@ -17,7 +17,9 @@ import androidx.annotation.GuardedBy;
 import androidx.preference.PreferenceManager;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
@@ -39,6 +41,8 @@ public class RulesManager {
     private boolean enabled = true;
     private long nextEnableToggle;
     private ExecutorService executor = Executors.newCachedThreadPool();
+
+    private Map<String, Boolean> allowedPackages = new HashMap<String, Boolean>();
 
     public static RulesManager getInstance(Context context) {
         if (global_rm == null) {
@@ -213,6 +217,25 @@ public class RulesManager {
 
     public boolean getPreferenceWhitelistRoaming(Context context) {
         return false;
+    }
+
+    public boolean getWifiEnabledForApp(Context context, String packagename, boolean defaultVal) {
+        if (allowedPackages.containsKey(packagename)) {
+            return allowedPackages.get(packagename);
+        }
+        return defaultVal;
+    }
+    public boolean getOtherEnabledForApp(Context context, String packagename, boolean defaultVal) {
+        // Identical settings to above
+        return getWifiEnabledForApp(context, packagename, defaultVal);
+    }
+    public boolean getScreenWifiEnabledForApp(Context context, String packagename, boolean defaultVal) {
+        // Identical settings to above
+        return getWifiEnabledForApp(context, packagename, defaultVal);
+    }
+    public boolean getScreenOtherEnabledForApp(Context context, String packagename, boolean defaultVal) {
+        // Identical settings to above
+        return getWifiEnabledForApp(context, packagename, defaultVal);
     }
 
     private void setAlarmForTime(Context context, long time) {

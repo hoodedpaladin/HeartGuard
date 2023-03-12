@@ -76,19 +76,19 @@ public class ReceiverAutostart extends BroadcastReceiver {
                     //editor.putBoolean(Rule.PREFERENCE_STRING_SCREEN_OTHER, prefs.getBoolean("unused", false));
                     editor.remove("unused");
 
-                    SharedPreferences unused = context.getSharedPreferences("unused", Context.MODE_PRIVATE);
-                    SharedPreferences screen_wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE);
-                    SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
+                    //SharedPreferences unused = context.getSharedPreferences("unused", Context.MODE_PRIVATE);
+                    //SharedPreferences screen_wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE);
+                    //SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
 
-                    Map<String, ?> punused = unused.getAll();
-                    SharedPreferences.Editor edit_screen_wifi = screen_wifi.edit();
-                    SharedPreferences.Editor edit_screen_other = screen_other.edit();
-                    for (String key : punused.keySet()) {
-                        edit_screen_wifi.putBoolean(key, (Boolean) punused.get(key));
-                        edit_screen_other.putBoolean(key, (Boolean) punused.get(key));
-                    }
-                    edit_screen_wifi.apply();
-                    edit_screen_other.apply();
+                    //Map<String, ?> punused = unused.getAll();
+                    //SharedPreferences.Editor edit_screen_wifi = screen_wifi.edit();
+                    //SharedPreferences.Editor edit_screen_other = screen_other.edit();
+                    //for (String key : punused.keySet()) {
+                    //    edit_screen_wifi.putBoolean(key, (Boolean) punused.get(key));
+                    //    edit_screen_other.putBoolean(key, (Boolean) punused.get(key));
+                    //}
+                    //edit_screen_wifi.apply();
+                    //edit_screen_other.apply();
 
                 } else if (oldVersion <= 2017032112)
                     editor.remove("ip6");

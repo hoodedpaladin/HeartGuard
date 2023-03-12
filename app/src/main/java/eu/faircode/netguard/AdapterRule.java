@@ -829,39 +829,39 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
     }
 
     private void updateRule(Context context, Rule rule, boolean root, List<Rule> listAll) {
-        SharedPreferences wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
-        SharedPreferences other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
+        //SharedPreferences wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
+        //SharedPreferences other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
         SharedPreferences apply = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_APPLY, Context.MODE_PRIVATE);
-        SharedPreferences screen_wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE);
-        SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
+        //SharedPreferences screen_wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE);
+        //SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
         SharedPreferences roaming = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE);
         SharedPreferences lockdown = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE);
         SharedPreferences notify = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
 
-        if (rule.wifi_blocked == rule.wifi_default)
-            wifi.edit().remove(rule.packageName).apply();
-        else
-            wifi.edit().putBoolean(rule.packageName, rule.wifi_blocked).apply();
+        //if (rule.wifi_blocked == rule.wifi_default)
+        //    wifi.edit().remove(rule.packageName).apply();
+        //else
+        //    wifi.edit().putBoolean(rule.packageName, rule.wifi_blocked).apply();
 
-        if (rule.other_blocked == rule.other_default)
-            other.edit().remove(rule.packageName).apply();
-        else
-            other.edit().putBoolean(rule.packageName, rule.other_blocked).apply();
+        //if (rule.other_blocked == rule.other_default)
+        //    other.edit().remove(rule.packageName).apply();
+        //else
+        //    other.edit().putBoolean(rule.packageName, rule.other_blocked).apply();
 
         if (rule.apply)
             apply.edit().remove(rule.packageName).apply();
         else
             apply.edit().putBoolean(rule.packageName, rule.apply).apply();
 
-        if (rule.screen_wifi == rule.screen_wifi_default)
-            screen_wifi.edit().remove(rule.packageName).apply();
-        else
-            screen_wifi.edit().putBoolean(rule.packageName, rule.screen_wifi).apply();
+        //if (rule.screen_wifi == rule.screen_wifi_default)
+        //    screen_wifi.edit().remove(rule.packageName).apply();
+        //else
+        //    screen_wifi.edit().putBoolean(rule.packageName, rule.screen_wifi).apply();
 
-        if (rule.screen_other == rule.screen_other_default)
-            screen_other.edit().remove(rule.packageName).apply();
-        else
-            screen_other.edit().putBoolean(rule.packageName, rule.screen_other).apply();
+        //if (rule.screen_other == rule.screen_other_default)
+        //    screen_other.edit().remove(rule.packageName).apply();
+        //else
+        //    screen_other.edit().putBoolean(rule.packageName, rule.screen_other).apply();
 
         if (rule.roaming == rule.roaming_default)
             roaming.edit().remove(rule.packageName).apply();

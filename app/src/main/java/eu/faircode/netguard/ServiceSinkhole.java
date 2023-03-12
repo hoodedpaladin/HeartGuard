@@ -2299,10 +2299,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         // Remove settings
                         String packageName = intent.getData().getSchemeSpecificPart();
                         Log.i(TAG, "Deleting settings package=" + packageName);
-                        context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE).edit().remove(packageName).apply();
-                        context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE).edit().remove(packageName).apply();
-                        context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE).edit().remove(packageName).apply();
-                        context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE).edit().remove(packageName).apply();
+                        //context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE).edit().remove(packageName).apply();
+                        //context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE).edit().remove(packageName).apply();
+                        //context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_WIFI, Context.MODE_PRIVATE).edit().remove(packageName).apply();
+                        //context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE).edit().remove(packageName).apply();
                         context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE).edit().remove(packageName).apply();
                         context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE).edit().remove(packageName).apply();
                         context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_APPLY, Context.MODE_PRIVATE).edit().remove(packageName).apply();
@@ -2369,10 +2369,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         .setVisibility(NotificationCompat.VISIBILITY_SECRET);
 
             // Get defaults
-            SharedPreferences prefs_wifi = getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
-            SharedPreferences prefs_other = getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
-            boolean wifi = prefs_wifi.getBoolean(packages[0], RulesManager.getInstance(ServiceSinkhole.this).getPreferenceWhitelistWifi(ServiceSinkhole.this));
-            boolean other = prefs_other.getBoolean(packages[0], RulesManager.getInstance(ServiceSinkhole.this).getPreferenceWhitelistOther(ServiceSinkhole.this));
+            //SharedPreferences prefs_wifi = getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
+            //SharedPreferences prefs_other = getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
+            boolean wifi = RulesManager.getInstance(ServiceSinkhole.this).getWifiEnabledForApp(ServiceSinkhole.this, packages[0], RulesManager.getInstance(ServiceSinkhole.this).getPreferenceWhitelistWifi(ServiceSinkhole.this));
+            boolean other = RulesManager.getInstance(ServiceSinkhole.this).getOtherEnabledForApp(ServiceSinkhole.this, packages[0], RulesManager.getInstance(ServiceSinkhole.this).getPreferenceWhitelistOther(ServiceSinkhole.this));
 
             // Build Wi-Fi action
             Intent riWifi = new Intent(this, ServiceSinkhole.class);
