@@ -140,7 +140,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         running = true;
 
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean enabled = prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false);
+        boolean enabled = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(this);
         boolean initialized = prefs.getBoolean("initialized", false);
 
         // Upgrade
@@ -193,7 +193,9 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         swEnabled.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 Log.i(TAG, "Switch=" + isChecked);
-                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, isChecked).apply();
+                //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, isChecked).apply();
+                isChecked = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(ActivityMain.this);
+                swEnabled.setChecked(isChecked);
 
                 if (isChecked) {
                     try {
@@ -202,27 +204,31 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                         if (!TextUtils.isEmpty(alwaysOn))
                             if (getPackageName().equals(alwaysOn)) {
                                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-                                        RulesManager.getInstance().getPreferenceFilter(ActivityMain.this.getApplicationContext())) {
+                                        RulesManager.getInstance(ActivityMain.this).getPreferenceFilter(ActivityMain.this.getApplicationContext())) {
                                     int lockdown = Settings.Secure.getInt(getContentResolver(), "always_on_vpn_lockdown", 0);
                                     Log.i(TAG, "Lockdown=" + lockdown);
                                     if (lockdown != 0) {
                                         swEnabled.setChecked(false);
-                                        Toast.makeText(ActivityMain.this, R.string.msg_always_on_lockdown, Toast.LENGTH_LONG).show();
+                                        //TODO: safety check for this as a user reminder
+                                        //Toast.makeText(ActivityMain.this, R.string.msg_always_on_lockdown, Toast.LENGTH_LONG).show();
                                         return;
                                     }
                                 }
                             } else {
                                 swEnabled.setChecked(false);
-                                Toast.makeText(ActivityMain.this, R.string.msg_always_on, Toast.LENGTH_LONG).show();
+                                //TODO: safety check for this as a user reminder
+                                //Toast.makeText(ActivityMain.this, R.string.msg_always_on, Toast.LENGTH_LONG).show();
                                 return;
                             }
                     } catch (Throwable ex) {
                         Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                     }
 
-                    boolean filter = RulesManager.getInstance().getPreferenceFilter(ActivityMain.this.getApplicationContext());
-                    if (filter && Util.isPrivateDns(ActivityMain.this))
-                        Toast.makeText(ActivityMain.this, R.string.msg_private_dns, Toast.LENGTH_LONG).show();
+                    boolean filter = RulesManager.getInstance(ActivityMain.this).getPreferenceFilter(ActivityMain.this.getApplicationContext());
+                    if (filter && Util.isPrivateDns(ActivityMain.this)) {
+                        //TODO: safety check for this as a user reminder
+                        //Toast.makeText(ActivityMain.this, R.string.msg_private_dns, Toast.LENGTH_LONG).show();
+                    }
 
                     try {
                         final Intent prepare = VpnService.prepare(ActivityMain.this);
@@ -247,7 +253,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                                                 } catch (Throwable ex) {
                                                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                                                     onActivityResult(REQUEST_VPN, RESULT_CANCELED, null);
-                                                    prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
+                                                    //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
                                                 }
                                             }
                                         }
@@ -264,7 +270,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                     } catch (Throwable ex) {
                         // Prepare failed
                         Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
+                        //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
                     }
 
                 } else
@@ -582,17 +588,19 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         if (requestCode == REQUEST_VPN) {
             // Handle VPN approval
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, resultCode == RESULT_OK).apply();
+            //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, resultCode == RESULT_OK).apply();
             if (resultCode == RESULT_OK) {
                 ServiceSinkhole.start("prepared", this);
 
-                Toast on = Toast.makeText(ActivityMain.this, R.string.msg_on, Toast.LENGTH_LONG);
-                on.setGravity(Gravity.CENTER, 0, 0);
-                on.show();
+                //Toast on = Toast.makeText(ActivityMain.this, R.string.msg_on, Toast.LENGTH_LONG);
+                //on.setGravity(Gravity.CENTER, 0, 0);
+                //on.show();
 
                 checkDoze();
-            } else if (resultCode == RESULT_CANCELED)
-                Toast.makeText(this, R.string.msg_vpn_cancelled, Toast.LENGTH_LONG).show();
+            } else if (resultCode == RESULT_CANCELED) {
+                //TODO: safety check for this as a user reminder
+                //Toast.makeText(this, R.string.msg_vpn_cancelled, Toast.LENGTH_LONG).show();
+            }
 
         } else if (requestCode == REQUEST_INVITE) {
             // Do nothing
@@ -625,7 +633,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         Log.i(TAG, "Preference " + name + "=" + prefs.getAll().get(name));
         if (Rule.PREFERENCE_STRING_ENABLED.equals(name)) {
             // Get enabled
-            boolean enabled = prefs.getBoolean(Rule.PREFERENCE_STRING_ENABLED, false);
+            boolean enabled = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(this);
 
             // Display disabled warning
             TextView tvDisabled = findViewById(R.id.tvDisabled);
