@@ -1,9 +1,25 @@
 package eu.faircode.netguard;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.os.Build;
 import android.util.Log;
 
+import androidx.annotation.GuardedBy;
+import androidx.preference.PreferenceManager;
+
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.WeakHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -86,5 +102,44 @@ public class RulesManager {
 
     public boolean getPreferenceFilter(Context context) {
         return true;
+    }
+
+    // HeartGuard - the rules change listeners get broadcasts of rules updates
+    // (similar to OnSharedPreferenceChangeListener)
+    private final Object mLock = new Object();
+    private static final Object CONTENT = new Object();
+    @GuardedBy("mLock")
+    private final WeakHashMap<RulesManager.OnRuleChangeListener, Object> mListeners =
+            new WeakHashMap<RulesManager.OnRuleChangeListener, Object>();
+
+    public interface OnRuleChangeListener {
+        void onRuleChanged(RulesManager rm, Context context, String key);
+    }
+
+    public void registerOnRuleChangeListener(RulesManager.OnRuleChangeListener listener) {
+        synchronized(mLock) {
+            mListeners.put(listener, CONTENT);
+        }
+    }
+
+    public void unregisterOnRuleChangeListener(RulesManager.OnRuleChangeListener listener) {
+        synchronized(mLock) {
+            mListeners.remove(listener);
+        }
+    }
+
+    private void notifyListeners(Context context, String key) {
+        if (mListeners.size() < 1) {
+            return;
+        }
+
+        // Make a copy of the hashed listeners, since that hash is weak
+        Set<OnRuleChangeListener> listeners = new HashSet<RulesManager.OnRuleChangeListener>(mListeners.keySet());
+
+        for (RulesManager.OnRuleChangeListener listener : listeners) {
+            if (listener != null) {
+                listener.onRuleChanged(this, context, key);
+            }
+        }
     }
 }
