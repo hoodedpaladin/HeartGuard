@@ -496,11 +496,11 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         //if (Rule.PREFERENCE_STRING_SCREEN_ON.equals(name))
         //    ServiceSinkhole.reload("changed " + Rule.PREFERENCE_STRING_SCREEN_ON, this, false);
 
-        else if (Rule.PREFERENCE_STRING_WHITELIST_WIFI.equals(name))
-            ServiceSinkhole.reload("changed " + name, this, false);
+        //else if (Rule.PREFERENCE_STRING_WHITELIST_WIFI.equals(name))
+        //    ServiceSinkhole.reload("changed " + name, this, false);
 
-        else if (Rule.PREFERENCE_STRING_WHITELIST_OTHER.equals(name))
-            ServiceSinkhole.reload("changed " + name, this, false);
+        //else if (Rule.PREFERENCE_STRING_WHITELIST_OTHER.equals(name))
+        //    ServiceSinkhole.reload("changed " + name, this, false);
 
         else if (Rule.PREFERENCE_STRING_WHITELIST_ROAMING.equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);

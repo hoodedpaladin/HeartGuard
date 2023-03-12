@@ -132,6 +132,16 @@ public class RulesManager {
         return false;
     }
 
+    // "whitelist_wifi", when true, blocks apps on wifi. Nomenclature skills ???
+    public boolean getPreferenceWhitelistWifi(Context context) {
+        return true;
+    }
+
+    // "whitelist_wifi", when true, blocks apps on other. Nomenclature skills ???
+    public boolean getPreferenceWhitelistOther(Context context) {
+        return true;
+    }
+
     private void setAlarmForTime(Context context, long time) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         //Intent i = new Intent(ACTION_RULES_UPDATE);

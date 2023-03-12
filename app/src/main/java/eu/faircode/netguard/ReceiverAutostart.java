@@ -96,8 +96,8 @@ public class ReceiverAutostart extends BroadcastReceiver {
             } else {
                 Log.i(TAG, "Initializing sdk=" + Build.VERSION.SDK_INT);
                 editor.putBoolean("filter_udp", true);
-                editor.putBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, false);
-                editor.putBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, false);
+                //editor.putBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, false);
+                //editor.putBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, false);
             }
 
             if (!Util.canFilter(context)) {

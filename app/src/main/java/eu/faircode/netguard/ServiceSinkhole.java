@@ -2371,8 +2371,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             // Get defaults
             SharedPreferences prefs_wifi = getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
             SharedPreferences prefs_other = getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
-            boolean wifi = prefs_wifi.getBoolean(packages[0], prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, true));
-            boolean other = prefs_other.getBoolean(packages[0], prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, true));
+            boolean wifi = prefs_wifi.getBoolean(packages[0], RulesManager.getInstance(ServiceSinkhole.this).getPreferenceWhitelistWifi(ServiceSinkhole.this));
+            boolean other = prefs_other.getBoolean(packages[0], RulesManager.getInstance(ServiceSinkhole.this).getPreferenceWhitelistOther(ServiceSinkhole.this));
 
             // Build Wi-Fi action
             Intent riWifi = new Intent(this, ServiceSinkhole.class);
@@ -2718,8 +2718,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         // Get defaults
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-        boolean default_wifi = settings.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, true);
-        boolean default_other = settings.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, true);
+        boolean default_wifi = RulesManager.getInstance(this).getPreferenceWhitelistWifi(this);
+        boolean default_other = RulesManager.getInstance(this).getPreferenceWhitelistOther(this);
 
         // Update setting
         SharedPreferences prefs = getSharedPreferences(network, Context.MODE_PRIVATE);

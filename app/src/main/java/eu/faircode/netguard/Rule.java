@@ -52,8 +52,8 @@ public class Rule {
     //public static final String PREFERENCE_STRING_LOG_APP = "log_app";
     //public static final String PREFERENCE_STRING_FILTER = "filter";
     //public static final String PREFERENCE_STRING_SCREEN_ON = "screen_on";
-    public static final String PREFERENCE_STRING_WHITELIST_WIFI = "whitelist_wifi";
-    public static final String PREFERENCE_STRING_WHITELIST_OTHER = "whitelist_other";
+    //public static final String PREFERENCE_STRING_WHITELIST_WIFI = "whitelist_wifi";
+    //public static final String PREFERENCE_STRING_WHITELIST_OTHER = "whitelist_other";
     //public static final String PREFERENCE_STRING_SCREEN_WIFI = "screen_wifi";
     //public static final String PREFERENCE_STRING_SCREEN_OTHER = "screen_other";
     public static final String PREFERENCE_STRING_LOCKDOWN = "lockdown";
@@ -245,8 +245,8 @@ public class Rule {
             SharedPreferences notify = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
 
             // Get settings
-            boolean default_wifi = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, true);
-            boolean default_other = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, true);
+            boolean default_wifi = RulesManager.getInstance(context).getPreferenceWhitelistWifi(context);
+            boolean default_other = RulesManager.getInstance(context).getPreferenceWhitelistOther(context);
             boolean default_screen_wifi = RulesManager.getInstance(context).getPreferenceScreenOnWifi(context);
             boolean default_screen_other = RulesManager.getInstance(context).getPreferenceScreenOnOther(context);
             boolean default_roaming = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_ROAMING, true);
@@ -471,8 +471,8 @@ public class Rule {
     public void updateChanged(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean screen_on = RulesManager.getInstance(context).getPreferenceScreenOn(context);
-        boolean default_wifi = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_WIFI, true) && screen_on;
-        boolean default_other = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_OTHER, true) && screen_on;
+        boolean default_wifi = RulesManager.getInstance(context).getPreferenceWhitelistWifi(context) && screen_on;
+        boolean default_other = RulesManager.getInstance(context).getPreferenceWhitelistOther(context) && screen_on;
         boolean default_roaming = prefs.getBoolean(Rule.PREFERENCE_STRING_WHITELIST_ROAMING, true);
         updateChanged(default_wifi, default_other, default_roaming);
     }
