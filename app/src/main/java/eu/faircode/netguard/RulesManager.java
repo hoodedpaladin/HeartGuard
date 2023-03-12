@@ -7,8 +7,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 
 import androidx.annotation.GuardedBy;
@@ -50,44 +52,99 @@ public class RulesManager {
         //setNextEnabledToggle(context);
     }
 
-    private RuleAndUid parseTextToWhitelistRule(String text) {
+    // Convenience functions to throw exceptions if a rule uses the same phrase twice
+    private void putNewInt(Bundle bundle, String key, int value) {
+        if (bundle.containsKey(key)) {
+            throw new AssertionError("Already contains key " + key);
+        }
+        bundle.putInt(key, value);
+    }
+    private void putNewString(Bundle bundle, String key, String value) {
+        if (bundle.containsKey(key)) {
+            throw new AssertionError("Already contains key " + key);
+        }
+        bundle.putString(key, value);
+    }
+
+    // Somewhat general function to parse an allow rule into a bundle of all phrases
+    private Bundle parseAllowTextToBundle(Context context, String text) {
+        Bundle data_bundle = new Bundle();
+
         Pattern p = Pattern.compile("allow (.*)");
         Matcher m = p.matcher(text);
         if (!m.matches())
             return null;
         String constraints = m.group(1);
 
-        int uid = 0;
-        RuleForApp rule = null;
         String[] separated = constraints.split(" ");
+
         for (String phrase : separated) {
             m = Pattern.compile("packagename:(.*)").matcher(phrase);
             if (m.matches()) {
-                // TODO: implement package name -> UID
-                Log.e(TAG, "not implemented!");
+                String packagename = m.group(1);
+                try {
+                    int uid = context.getPackageManager().getApplicationInfo(packagename, 0).uid;
+                    putNewInt(data_bundle, "uid", uid);
+                    putNewString(data_bundle, "packagename", packagename);
+                } catch (PackageManager.NameNotFoundException e) {
+                    Log.w(TAG, "package " + packagename + " not found");
+                    return null;
+                }
             }
 
             m = Pattern.compile("host:(.+)").matcher(phrase);
             if (m.matches()) {
-                assert rule == null;
-                rule = new DomainRule(m.group(1), 1);
+                putNewString(data_bundle, "host", m.group(1));
             }
 
             m = Pattern.compile("ipv4:(.+)").matcher(phrase);
             if (m.matches()) {
-                assert rule == null;
-                rule = new IPRule(m.group(1), 1);
+                putNewString(data_bundle, "ipv4", m.group(1));
             }
         }
 
-        if (rule == null)
-            return null;
-
-        return new RuleAndUid(uid, rule);
+        return data_bundle;
     }
 
-    public void getCurrentRules(WhitelistManager wm, DatabaseHelper dh) {
+    // Returns a RuleAndUid for whitelist rules
+    // (Only applies to a rule which allows a hostname/IP and optionally a package name.
+    // Does not apply to rules which enable a package unconditionally.)
+    private RuleAndUid parseTextToWhitelistRule(Context context, String text) {
+        Bundle data_bundle = parseAllowTextToBundle(context, text);
+
+        if (data_bundle == null)
+            return null;
+
+        int uid = 0;
+        if (data_bundle.containsKey("uid")) {
+            uid = data_bundle.getInt("uid");
+        }
+
+        if (data_bundle.containsKey("host"))
+        {
+            if (data_bundle.containsKey("ipv4")) {
+                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                return null;
+            }
+            return new RuleAndUid(uid, new DomainRule(data_bundle.getString("host"), 1));
+        }
+
+        if (data_bundle.containsKey("ipv4"))
+        {
+            if (data_bundle.containsKey("host")) {
+                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                return null;
+            }
+            return new RuleAndUid(uid, new IPRule(data_bundle.getString("ipv4"), 1));
+        }
+
+        // No rule found
+        return null;
+    }
+
+    public void getCurrentRules(WhitelistManager wm, Context context) {
         lock.readLock().lock();
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
 
         Cursor cursor = dh.getEnactedRules();
         int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
@@ -95,7 +152,7 @@ public class RulesManager {
         while (cursor.moveToNext()) {
             String ruletext = cursor.getString(col_ruletext);
 
-            RuleAndUid ruleanduid = parseTextToWhitelistRule(ruletext);
+            RuleAndUid ruleanduid = parseTextToWhitelistRule(context, ruletext);
             if (ruleanduid == null)
                 continue;
             if (ruleanduid.uid == RuleAndUid.UID_GLOBAL) {

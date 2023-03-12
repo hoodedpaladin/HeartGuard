@@ -79,9 +79,8 @@ public class WhitelistManager {
         this.app_specific_rules = new HashMap<>();
         this.global_rules = new LinkedList<>();
 
-        DatabaseHelper dh = DatabaseHelper.getInstance(context);
         RulesManager rm = RulesManager.getInstance(context);
-        rm.getCurrentRules(this, dh);
+        rm.getCurrentRules(this, context);
     }
 
     public boolean isAllowed(Packet packet, String dname) {
