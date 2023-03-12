@@ -28,18 +28,25 @@ import java.util.regex.Pattern;
 public class RulesManager {
     private static final String TAG = "NetGuard.Database";
 
+    public static final String ACTION_RULES_UPDATE = "eu.faircode.netguard.RULES_UPDATE";
+
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     private static RulesManager global_rm = null;
 
-    public static RulesManager getInstance() {
+    private boolean enabled = true;
+    private long nextEnableToggle;
+    private ExecutorService executor = Executors.newCachedThreadPool();
+
+    public static RulesManager getInstance(Context context) {
         if (global_rm == null) {
-            global_rm = new RulesManager();
+            global_rm = new RulesManager(context);
         }
         return global_rm;
     }
 
-    public RulesManager() {
+    public RulesManager(Context context) {
+        setNextEnabledToggle(context);
     }
 
     private RuleAndUid parseTextToWhitelistRule(String text) {
@@ -103,6 +110,61 @@ public class RulesManager {
     public boolean getPreferenceFilter(Context context) {
         return true;
     }
+
+    public boolean getPreferenceEnabled(Context context) {
+        return enabled;
+    }
+
+    private void setAlarmForTime(Context context, long time) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        //Intent i = new Intent(ACTION_RULES_UPDATE);
+        Intent i = new Intent(context, ServiceSinkhole.class);
+        i.setAction(ACTION_RULES_UPDATE);
+        //PendingIntent pi = PendingIntent.getBroadcast(context, 0, i, 0);
+        PendingIntent pi;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            pi = PendingIntent.getForegroundService(context, 1, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+        else
+            pi = PendingIntent.getService(context, 1, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+        am.cancel(pi);
+
+        am.set(AlarmManager.RTC_WAKEUP, time, pi);
+        //if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M)
+        //    am.set(AlarmManager.RTC_WAKEUP, time, pi);
+        //else
+        //    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pi);
+    }
+
+    private void setNextEnabledToggle(Context context) {
+        nextEnableToggle = new Date().getTime() + 2 * 1000L;
+
+        setAlarmForTime(context, nextEnableToggle);
+    }
+
+    private void toggleEnabled(Context context) {
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+
+        enabled = !enabled;
+        //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, enabled).apply();
+        notifyListeners(context, Rule.PREFERENCE_STRING_ENABLED);
+        setNextEnabledToggle(context);
+    }
+
+    public void rulesChanged(Context context) {
+        toggleEnabled(context);
+    }
+
+    private BroadcastReceiver updateRulesChanged = new BroadcastReceiver() {
+        @Override
+        public void onReceive(final Context context, final Intent intent) {
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    RulesManager.this.rulesChanged(context);
+                }
+            });
+        }
+    };
 
     // HeartGuard - the rules change listeners get broadcasts of rules updates
     // (similar to OnSharedPreferenceChangeListener)

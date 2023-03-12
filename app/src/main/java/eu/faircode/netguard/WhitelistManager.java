@@ -1,5 +1,7 @@
 package eu.faircode.netguard;
 
+import android.content.Context;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -66,18 +68,19 @@ public class WhitelistManager {
 
     private static WhitelistManager global_wm = null;
 
-    public static WhitelistManager getInstance(DatabaseHelper dh) {
+    public static WhitelistManager getInstance(Context context) {
         if (global_wm == null) {
-            global_wm = new WhitelistManager(dh);
+            global_wm = new WhitelistManager(context);
         }
         return global_wm;
     }
 
-    public WhitelistManager(DatabaseHelper dh) {
+    public WhitelistManager(Context context) {
         this.app_specific_rules = new HashMap<>();
         this.global_rules = new LinkedList<>();
 
-        RulesManager rm = RulesManager.getInstance();
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        RulesManager rm = RulesManager.getInstance(context);
         rm.getCurrentRules(this, dh);
     }
 

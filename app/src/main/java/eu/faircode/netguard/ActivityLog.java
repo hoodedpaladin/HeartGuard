@@ -258,7 +258,7 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
 
                             case R.id.menu_allow:
                                 if (IAB.isPurchased(ActivityPro.SKU_FILTER, ActivityLog.this)) {
-                                    DatabaseHelper.getInstance(ActivityLog.this).updateAccess(packet, dname, 0);
+                                    DatabaseHelper.getInstance(ActivityLog.this).updateAccess(ActivityLog.this, packet, dname, 0);
                                     ServiceSinkhole.reload("allow host", ActivityLog.this, false);
                                     Intent main = new Intent(ActivityLog.this, ActivityMain.class);
                                     main.putExtra(ActivityMain.EXTRA_SEARCH, Integer.toString(uid));
@@ -269,7 +269,7 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
 
                             case R.id.menu_block:
                                 if (IAB.isPurchased(ActivityPro.SKU_FILTER, ActivityLog.this)) {
-                                    DatabaseHelper.getInstance(ActivityLog.this).updateAccess(packet, dname, 1);
+                                    DatabaseHelper.getInstance(ActivityLog.this).updateAccess(ActivityLog.this, packet, dname, 1);
                                     ServiceSinkhole.reload("block host", ActivityLog.this, false);
                                     Intent main = new Intent(ActivityLog.this, ActivityMain.class);
                                     main.putExtra(ActivityMain.EXTRA_SEARCH, Integer.toString(uid));

@@ -555,7 +555,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // Access
 
-    public boolean updateAccess(Packet packet, String dname, int block) {
+    public boolean updateAccess(Context context, Packet packet, String dname, int block) {
         int rows;
         // HeartGuard change - notify of whitelist changes
         boolean changed_whitelist = false;
@@ -588,7 +588,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     cv.put("dport", packet.dport);
                     if (block < 0) {
                         // HeartGuard change - simple whitelist feature
-                        WhitelistManager wm = WhitelistManager.getInstance(this);
+                        WhitelistManager wm = WhitelistManager.getInstance(context);
                         if (wm.isAllowed(packet, dname))
                         {
                             Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
