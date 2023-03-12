@@ -338,7 +338,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         final Context context = holder.itemView.getContext();
 
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        final boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
+        final boolean log_app = RulesManager.getInstance(context).getPreferenceLogApp(context);
         final boolean filter = RulesManager.getInstance(context).getPreferenceFilter(context);
         final boolean notify_access = prefs.getBoolean("notify_access", false);
 
@@ -645,25 +645,12 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                 TextView tvFilter4 = view.findViewById(R.id.tvFilter4);
 
                 cbLogging.setChecked(log_app);
+                cbLogging.setEnabled(false);
                 cbFiltering.setChecked(filter);
                 cbFiltering.setEnabled(false);
                 tvFilter4.setVisibility(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ? View.GONE : View.VISIBLE);
                 cbNotify.setChecked(notify_access);
                 cbNotify.setEnabled(log_app);
-
-                cbLogging.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
-                        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOG_APP, checked).apply();
-                        cbNotify.setEnabled(checked);
-                        if (!checked) {
-                            cbNotify.setChecked(false);
-                            prefs.edit().putBoolean("notify_access", false).apply();
-                        }
-                        ServiceSinkhole.reload("changed notify", context, false);
-                        AdapterRule.this.notifyDataSetChanged();
-                    }
-                });
 
                 cbNotify.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                     @Override

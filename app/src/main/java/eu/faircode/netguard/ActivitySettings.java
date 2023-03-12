@@ -228,13 +228,6 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             }
         });
 
-        boolean can = Util.canFilter(this);
-        TwoStatePreference pref_log_app = (TwoStatePreference) screen.findPreference(Rule.PREFERENCE_STRING_LOG_APP);
-        pref_log_app.setEnabled(can);
-        if (!can) {
-            pref_log_app.setSummary(R.string.msg_unavailable);
-        }
-
         // VPN parameters
         screen.findPreference("vpn4").setTitle(getString(R.string.setting_vpn4, prefs.getString("vpn4", "10.1.10.1")));
         screen.findPreference("vpn6").setTitle(getString(R.string.setting_vpn6, prefs.getString("vpn6", "fd00:1:fd00:1:fd00:1:fd00:1")));
@@ -575,10 +568,10 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, manage).apply();
             ServiceSinkhole.reload("changed " + name, this, false);
 
-        } else if (Rule.PREFERENCE_STRING_LOG_APP.equals(name)) {
-            Intent ruleset = new Intent(ActivityMain.ACTION_RULES_CHANGED);
-            LocalBroadcastManager.getInstance(this).sendBroadcast(ruleset);
-            ServiceSinkhole.reload("changed " + Rule.PREFERENCE_STRING_LOG_APP, this, false);
+        //} else if (Rule.PREFERENCE_STRING_LOG_APP.equals(name)) {
+        //    Intent ruleset = new Intent(ActivityMain.ACTION_RULES_CHANGED);
+        //    LocalBroadcastManager.getInstance(this).sendBroadcast(ruleset);
+        //    ServiceSinkhole.reload("changed " + Rule.PREFERENCE_STRING_LOG_APP, this, false);
 
         } else if ("notify_access".equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);

@@ -115,6 +115,10 @@ public class RulesManager {
         return enabled;
     }
 
+    public boolean getPreferenceLogApp(Context context) {
+        return true;
+    }
+
     private void setAlarmForTime(Context context, long time) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         //Intent i = new Intent(ACTION_RULES_UPDATE);

@@ -101,7 +101,7 @@ public class ReceiverAutostart extends BroadcastReceiver {
             }
 
             if (!Util.canFilter(context)) {
-                editor.putBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
+                //editor.putBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {

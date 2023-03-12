@@ -163,12 +163,6 @@
                 android:title="@string/setting_system" />
             <eu.faircode.netguard.SwitchPreference
                 android:defaultValue="false"
-                android:key="log_app"
-                android:summary="@string/summary_log_app"
-                android:title="@string/setting_log_app" />
-            <eu.faircode.netguard.SwitchPreference
-                android:defaultValue="false"
-                android:dependency="log_app"
                 android:key="notify_access"
                 android:summary="@string/summary_access"
                 android:title="@string/setting_access" />

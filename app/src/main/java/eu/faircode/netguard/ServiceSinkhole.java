@@ -839,7 +839,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             // Get settings
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
             boolean log = prefs.getBoolean("log", false);
-            boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
+            boolean log_app = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceLogApp(ServiceSinkhole.this);
 
             DatabaseHelper dh = DatabaseHelper.getInstance(ServiceSinkhole.this);
 
@@ -868,7 +868,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             if (usage.Uid >= 0 && !(usage.Uid == 0 && usage.Protocol == 17 && usage.DPort == 53)) {
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
                 boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
-                boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
+                boolean log_app = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceLogApp(ServiceSinkhole.this);
                 boolean track_usage = prefs.getBoolean("track_usage", false);
                 if (filter && log_app && track_usage) {
                     DatabaseHelper dh = DatabaseHelper.getInstance(ServiceSinkhole.this);
@@ -1491,7 +1491,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     private void startNative(final ParcelFileDescriptor vpn, List<Rule> listAllowed, List<Rule> listRule) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
         boolean log = prefs.getBoolean("log", false);
-        boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
+        boolean log_app = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceLogApp(ServiceSinkhole.this);
         boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
 
         Log.i(TAG, "Start native log=" + log + "/" + log_app + " filter=" + filter);
@@ -2021,7 +2021,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         lock.readLock().unlock();
 
-        if (prefs.getBoolean("log", false) || prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false))
+        if (prefs.getBoolean("log", false) || RulesManager.getInstance(this).getPreferenceLogApp(this))
             if (packet.protocol != 6 /* TCP */ || !"".equals(packet.flags))
                 if (packet.uid != Process.myUid())
                     logPacket(packet);
