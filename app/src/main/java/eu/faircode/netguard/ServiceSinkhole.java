@@ -457,7 +457,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
                 if (cmd == Command.start || cmd == Command.reload) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        boolean filter = RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this);
+                        boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
                         if (filter && isLockdownEnabled())
                             showLockdownNotification();
                         else
@@ -583,7 +583,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 vpn = startVPN(last_builder);
 
             } else {
-                if (vpn != null && RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this) && builder.equals(last_builder)) {
+                if (vpn != null && RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this) && builder.equals(last_builder)) {
                     Log.i(TAG, "Native restart");
                     stopNative(vpn);
 
@@ -859,7 +859,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         private void usage(Usage usage) {
             if (usage.Uid >= 0 && !(usage.Uid == 0 && usage.Protocol == 17 && usage.DPort == 53)) {
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-                boolean filter = RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this);
+                boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
                 boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
                 boolean track_usage = prefs.getBoolean("track_usage", false);
                 if (filter && log_app && track_usage) {
@@ -949,7 +949,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
             long frequency = Long.parseLong(prefs.getString("stats_frequency", "1000"));
             long samples = Long.parseLong(prefs.getString("stats_samples", "90"));
-            boolean filter = RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this);
+            boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
             boolean show_top = prefs.getBoolean("show_top", false);
             int loglevel = Integer.parseInt(prefs.getString("loglevel", Integer.toString(Log.WARN)));
 
@@ -1163,7 +1163,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         // Get custom DNS servers
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean ip6 = prefs.getBoolean("ip6", true);
-        boolean filter = RulesManager.getInstance().getPreferenceFilter(context);
+        boolean filter = RulesManager.getInstance(context).getPreferenceFilter(context);
         String vpnDns1 = prefs.getString("dns", null);
         String vpnDns2 = prefs.getString("dns2", null);
         Log.i(TAG, "DNS system=" + TextUtils.join(",", sysDns) + " config=" + vpnDns1 + "," + vpnDns2);
@@ -1281,7 +1281,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         boolean tethering = prefs.getBoolean("tethering", false);
         boolean lan = prefs.getBoolean("lan", false);
         boolean ip6 = prefs.getBoolean("ip6", true);
-        boolean filter = RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this);
+        boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
         boolean system = prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false);
 
         // Build VPN service
@@ -1484,7 +1484,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
         boolean log = prefs.getBoolean("log", false);
         boolean log_app = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG_APP, false);
-        boolean filter = RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this);
+        boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
 
         Log.i(TAG, "Start native log=" + log + "/" + log_app + " filter=" + filter);
 
@@ -1598,7 +1598,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     private void prepareHostsBlocked() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-        boolean use_hosts = RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this) && prefs.getBoolean("use_hosts", false);
+        boolean use_hosts = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this) && prefs.getBoolean("use_hosts", false);
         File hosts = new File(getFilesDir(), "hosts.txt");
         if (!use_hosts || !hosts.exists() || !hosts.canRead()) {
             Log.i(TAG, "Hosts file use=" + use_hosts + " exists=" + hosts.exists());
@@ -1741,7 +1741,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         mapForward.clear();
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if (RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this)) {
+        if (RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this)) {
             try (Cursor cursor = DatabaseHelper.getInstance(ServiceSinkhole.this).getForwarding()) {
                 int colProtocol = cursor.getColumnIndex("protocol");
                 int colDPort = cursor.getColumnIndex("dport");
@@ -1804,7 +1804,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         boolean national = prefs.getBoolean("national_roaming", false);
         boolean eu = prefs.getBoolean("eu_roaming", false);
         boolean tethering = prefs.getBoolean("tethering", false);
-        boolean filter = RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this);
+        boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
 
         // Update connected state
         last_connected = Util.isConnected(ServiceSinkhole.this);
@@ -1947,7 +1947,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         lock.readLock().lock();
 
         packet.allowed = false;
-        if (RulesManager.getInstance().getPreferenceFilter(ServiceSinkhole.this)) {
+        if (RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this)) {
             // https://android.googlesource.com/platform/system/core/+/master/include/private/android_filesystem_config.h
             if (packet.protocol == 17 /* UDP */ && !prefs.getBoolean("filter_udp", false)) {
                 // Allow unfiltered UDP
