@@ -1970,7 +1970,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     !mapUidKnown.containsKey(packet.uid) && isSupported(packet.protocol)) {
                 // Allow unknown system traffic
                 packet.allowed = true;
-                Log.w(TAG, "Allowing unknown system " + packet);
+                Log.i(TAG, "Allowing unknown system " + packet);
             } else if (packet.uid == Process.myUid()) {
                 // Allow self
                 packet.allowed = true;
@@ -2001,7 +2001,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     if (mapUidAllowed.containsKey(packet.uid))
                         packet.allowed = mapUidAllowed.get(packet.uid);
                     else
-                        Log.w(TAG, "No rules for " + packet);
+                        Log.i(TAG, "No rules for " + packet);
             }
         }
 
