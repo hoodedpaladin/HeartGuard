@@ -80,7 +80,15 @@ public class WhitelistManager {
         this.global_rules = new LinkedList<>();
 
         RulesManager rm = RulesManager.getInstance(context);
-        rm.getCurrentRules(this, context);
+        List<RuleAndUid> ruleslist = rm.getCurrentRules(context);
+
+        for (RuleAndUid ruleanduid : ruleslist) {
+            if (ruleanduid.uid == RuleAndUid.UID_GLOBAL) {
+                addGlobalRule(ruleanduid.rule);
+            } else {
+                addAppRule(ruleanduid.uid, ruleanduid.rule);
+            }
+        }
     }
 
     public boolean isAllowed(Packet packet, String dname) {

@@ -17,9 +17,11 @@ import androidx.annotation.GuardedBy;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -39,11 +41,14 @@ public class RulesManager {
 
     private static RulesManager global_rm = null;
 
-    private boolean enabled = true;
+    // Members that contain the current state of rules
+    private boolean m_enabled = true;
+    private int m_delay = 0;
+    private Map<String, Boolean> m_allowedPackages = new HashMap<String, Boolean>();
+    private List<RuleAndUid> m_whitelistRules = new ArrayList<RuleAndUid>();
+
     private long nextEnableToggle;
     private ExecutorService executor = Executors.newCachedThreadPool();
-
-    private Map<String, Boolean> allowedPackages = new HashMap<String, Boolean>();
 
     public static RulesManager getInstance(Context context) {
         if (global_rm == null) {
@@ -53,6 +58,8 @@ public class RulesManager {
     }
 
     public RulesManager(Context context) {
+        getAllEnactedRulesFromDb(context);
+
         //This will start a testing mode that toggles enabled
         //setNextEnabledToggle(context);
     }
@@ -84,28 +91,39 @@ public class RulesManager {
         String[] separated = constraints.split(" ");
 
         for (String phrase : separated) {
-            m = Pattern.compile("packagename:(.*)").matcher(phrase);
+            m = Pattern.compile("package:(.*)").matcher(phrase);
             if (m.matches()) {
                 String packagename = m.group(1);
                 try {
                     int uid = context.getPackageManager().getApplicationInfo(packagename, 0).uid;
                     putNewInt(data_bundle, "uid", uid);
-                    putNewString(data_bundle, "packagename", packagename);
+                    putNewString(data_bundle, "package", packagename);
                 } catch (PackageManager.NameNotFoundException e) {
                     Log.w(TAG, "package " + packagename + " not found");
                     return null;
                 }
+
+                // Done parsing this phrase
+                continue;
             }
 
             m = Pattern.compile("host:(.+)").matcher(phrase);
             if (m.matches()) {
                 putNewString(data_bundle, "host", m.group(1));
+
+                // Done parsing this phrase
+                continue;
             }
 
             m = Pattern.compile("ipv4:(.+)").matcher(phrase);
             if (m.matches()) {
                 putNewString(data_bundle, "ipv4", m.group(1));
+
+                // Done parsing this phrase
+                continue;
             }
+
+            throw new AssertionError("\"" + phrase + "\" didn't contain any recognized phrases");
         }
 
         return data_bundle;
@@ -147,27 +165,17 @@ public class RulesManager {
         return null;
     }
 
-    public void getCurrentRules(WhitelistManager wm, Context context) {
+    // Give a copy of the current whitelist rules
+    public List<RuleAndUid> getCurrentRules(Context context) {
         lock.readLock().lock();
-        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        List<RuleAndUid> results = new ArrayList<RuleAndUid>();
 
-        Cursor cursor = dh.getEnactedRules();
-        int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-
-        while (cursor.moveToNext()) {
-            String ruletext = cursor.getString(col_ruletext);
-
-            RuleAndUid ruleanduid = parseTextToWhitelistRule(context, ruletext);
-            if (ruleanduid == null)
-                continue;
-            if (ruleanduid.uid == RuleAndUid.UID_GLOBAL) {
-                wm.addGlobalRule(ruleanduid.rule);
-            } else {
-                wm.addAppRule(ruleanduid.uid, ruleanduid.rule);
-            }
+        for (RuleAndUid ruleanduid : m_whitelistRules) {
+            results.add(ruleanduid);
         }
-
         lock.readLock().unlock();
+
+        return results;
     }
 
     public boolean getPreferenceFilter(Context context) {
@@ -175,7 +183,7 @@ public class RulesManager {
     }
 
     public boolean getPreferenceEnabled(Context context) {
-        return enabled;
+        return m_enabled;
     }
 
     public boolean getPreferenceLogApp(Context context) {
@@ -221,8 +229,8 @@ public class RulesManager {
     }
 
     public boolean getWifiEnabledForApp(Context context, String packagename, boolean defaultVal) {
-        if (allowedPackages.containsKey(packagename)) {
-            return allowedPackages.get(packagename);
+        if (m_allowedPackages.containsKey(packagename)) {
+            return m_allowedPackages.get(packagename);
         }
         return defaultVal;
     }
@@ -260,7 +268,7 @@ public class RulesManager {
     }
 
     private void toggleEnabled(Context context) {
-        enabled = !enabled;
+        m_enabled = !m_enabled;
 
         LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
         setNextEnabledToggle(context);
@@ -268,5 +276,71 @@ public class RulesManager {
 
     public void rulesChanged(Context context) {
         toggleEnabled(context);
+    }
+
+    public void setPackageAllowed(Context context, String packagename) {
+        m_allowedPackages.put(packagename, false);
+
+        // Update UI
+        LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
+        ServiceSinkhole.reload("rule changed", context, false);
+    }
+
+    private void getAllEnactedRulesFromDb(Context context) {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+
+        lock.writeLock().lock();
+
+        Cursor cursor = dh.getEnactedRules();
+        int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+
+        // If there are no delay rules, delay will be 0
+        int newDelay = 0;
+        Map<String, Boolean> newAllowedPackages = new HashMap<String, Boolean>();
+        List<RuleAndUid> newWhitelistRules = new ArrayList<RuleAndUid>();
+
+        while (cursor.moveToNext()) {
+            String ruletext = cursor.getString(col_ruletext);
+
+            try {
+                Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+
+                if (!m.matches()) {
+                    throw new AssertionError("no category");
+                }
+
+                String category = m.group(1);
+                String rest = m.group(2);
+
+                if (category.equals("delay")) {
+                    int thisdelay = Integer.parseInt(rest);
+
+                    if (thisdelay > newDelay)
+                        newDelay = thisdelay;
+                } else if (category.equals("allow")) {
+                    Bundle bundle = parseAllowTextToBundle(context, ruletext);
+                    if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
+                        // This is an allowed package
+                        newAllowedPackages.put(bundle.getString("package"), false);
+                    } else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
+                        // This is a whitelisted URL
+                        RuleAndUid newrule = parseTextToWhitelistRule(context, ruletext);
+                        if (newrule == null) {
+                            throw new AssertionError("Didn't parse into a RuleAndUid");
+                        }
+                        newWhitelistRules.add(newrule);
+                    }
+                }
+            } catch (Throwable e) {
+                Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't work: " + e.getLocalizedMessage());
+            }
+        }
+
+        Log.w(TAG, "Got rules: new delay = " + Integer.toString(newDelay) + ", allowed packages = " + Integer.toString(newAllowedPackages.size()) + ", whitelisted URLs = " + Integer.toString(newWhitelistRules.size()));
+        m_delay = newDelay;
+        m_allowedPackages = newAllowedPackages;
+        m_whitelistRules = newWhitelistRules;
+
+        lock.writeLock().unlock();
     }
 }

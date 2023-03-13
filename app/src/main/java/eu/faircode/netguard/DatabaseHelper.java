@@ -212,6 +212,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         cv.remove("ruletext");
         cv.put("ruletext", "allow ipv4:192.168.0.8");
         db.insertOrThrow("rules", null, cv);
+        cv.remove("ruletext");
+        cv.put("ruletext", "allow package:com.dozingcatsoftware.bouncy");
+        db.insertOrThrow("rules", null, cv);
     }
 
     private void createTableDns(SQLiteDatabase db) {
