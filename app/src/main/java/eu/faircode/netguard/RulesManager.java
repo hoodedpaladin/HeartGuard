@@ -39,7 +39,7 @@ public class RulesManager {
 
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
-    private static RulesManager global_rm = null;
+    private static volatile RulesManager global_rm = null;
 
     // Members that contain the current state of rules
     private boolean m_enabled = true;
@@ -52,7 +52,12 @@ public class RulesManager {
 
     public static RulesManager getInstance(Context context) {
         if (global_rm == null) {
-            global_rm = new RulesManager(context);
+            // Synchronize so that definitely only one instance is created
+            synchronized(RulesManager.class) {
+                if (global_rm == null) {
+                    global_rm = new RulesManager(context.getApplicationContext());
+                }
+            }
         }
         return global_rm;
     }
