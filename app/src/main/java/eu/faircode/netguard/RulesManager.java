@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.util.Log;
 
 import androidx.annotation.GuardedBy;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
 import java.util.Date;
@@ -240,10 +241,8 @@ public class RulesManager {
 
     private void setAlarmForTime(Context context, long time) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        //Intent i = new Intent(ACTION_RULES_UPDATE);
         Intent i = new Intent(context, ServiceSinkhole.class);
         i.setAction(ACTION_RULES_UPDATE);
-        //PendingIntent pi = PendingIntent.getBroadcast(context, 0, i, 0);
         PendingIntent pi;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             pi = PendingIntent.getForegroundService(context, 1, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
@@ -252,79 +251,22 @@ public class RulesManager {
         am.cancel(pi);
 
         am.set(AlarmManager.RTC_WAKEUP, time, pi);
-        //if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M)
-        //    am.set(AlarmManager.RTC_WAKEUP, time, pi);
-        //else
-        //    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time, pi);
     }
 
     private void setNextEnabledToggle(Context context) {
-        nextEnableToggle = new Date().getTime() + 30 * 1000L;
+        nextEnableToggle = new Date().getTime() + 5 * 1000L;
 
         setAlarmForTime(context, nextEnableToggle);
     }
 
     private void toggleEnabled(Context context) {
-        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-
         enabled = !enabled;
-        //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, enabled).apply();
-        notifyListeners(context, Rule.PREFERENCE_STRING_ENABLED);
+
+        LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
         setNextEnabledToggle(context);
     }
 
     public void rulesChanged(Context context) {
         toggleEnabled(context);
-    }
-
-    private BroadcastReceiver updateRulesChanged = new BroadcastReceiver() {
-        @Override
-        public void onReceive(final Context context, final Intent intent) {
-            executor.submit(new Runnable() {
-                @Override
-                public void run() {
-                    RulesManager.this.rulesChanged(context);
-                }
-            });
-        }
-    };
-
-    // HeartGuard - the rules change listeners get broadcasts of rules updates
-    // (similar to OnSharedPreferenceChangeListener)
-    private final Object mLock = new Object();
-    private static final Object CONTENT = new Object();
-    @GuardedBy("mLock")
-    private final WeakHashMap<RulesManager.OnRuleChangeListener, Object> mListeners =
-            new WeakHashMap<RulesManager.OnRuleChangeListener, Object>();
-
-    public interface OnRuleChangeListener {
-        void onRuleChanged(RulesManager rm, Context context, String key);
-    }
-
-    public void registerOnRuleChangeListener(RulesManager.OnRuleChangeListener listener) {
-        synchronized(mLock) {
-            mListeners.put(listener, CONTENT);
-        }
-    }
-
-    public void unregisterOnRuleChangeListener(RulesManager.OnRuleChangeListener listener) {
-        synchronized(mLock) {
-            mListeners.remove(listener);
-        }
-    }
-
-    private void notifyListeners(Context context, String key) {
-        if (mListeners.size() < 1) {
-            return;
-        }
-
-        // Make a copy of the hashed listeners, since that hash is weak
-        Set<OnRuleChangeListener> listeners = new HashSet<RulesManager.OnRuleChangeListener>(mListeners.keySet());
-
-        for (RulesManager.OnRuleChangeListener listener : listeners) {
-            if (listener != null) {
-                listener.onRuleChanged(this, context, key);
-            }
-        }
     }
 }

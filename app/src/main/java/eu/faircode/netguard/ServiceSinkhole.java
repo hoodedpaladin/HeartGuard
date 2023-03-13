@@ -118,7 +118,6 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     private boolean registeredIdleState = false;
     private boolean registeredConnectivityChanged = false;
     private boolean registeredPackageChanged = false;
-    private boolean registeredRulesChanged = false;
 
     private boolean phone_state = false;
     private Object networkCallback = null;
@@ -364,15 +363,6 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     unregisterReceiver(interactiveStateReceiver);
                     registeredInteractiveState = false;
                     last_interactive = false;
-                }
-            }
-
-            synchronized(ServiceSinkhole.this) {
-                if (!registeredRulesChanged) {
-                    IntentFilter ifRulesChanged = new IntentFilter();
-                    ifRulesChanged.addAction(RulesManager.ACTION_RULES_UPDATE);
-                    registerReceiver(updateRulesChanged, ifRulesChanged);
-                    registeredRulesChanged = true;
                 }
             }
 
@@ -2770,10 +2760,6 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 unregisterReceiver(interactiveStateReceiver);
                 registeredInteractiveState = false;
             }
-            if (registeredRulesChanged) {
-                unregisterReceiver(updateRulesChanged);
-                registeredRulesChanged = false;
-            }
             if (callStateListener != null) {
                 TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
                 tm.listen(callStateListener, PhoneStateListener.LISTEN_NONE);
@@ -3377,31 +3363,11 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         ContextCompat.startForegroundService(context, intent);
     }
 
-    public static void rules_update(String reason, Context context) {
-        Intent intent = new Intent(context, ServiceSinkhole.class);
-        intent.putExtra(EXTRA_COMMAND, Command.rules_update);
-        intent.putExtra(EXTRA_REASON, reason);
-        ContextCompat.startForegroundService(context, intent);
-    }
-
     // HeartGuard change - notify of whitelist changes
     private DatabaseHelper.WhitelistChangedListener whitelistChangedListener = new DatabaseHelper.WhitelistChangedListener() {
         @Override
         public void onChanged() {
             reload("whitelist changed", ServiceSinkhole.this, false);
-        }
-    };
-
-    private BroadcastReceiver updateRulesChanged = new BroadcastReceiver() {
-        @Override
-        public void onReceive(final Context context, final Intent intent) {
-            executor.submit(new Runnable() {
-                @Override
-                public void run() {
-                    RulesManager rm = RulesManager.getInstance(context);
-                    rm.rulesChanged(context);
-                }
-            });
         }
     };
 }

@@ -75,7 +75,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.util.List;
 
-public class ActivityMain extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, RulesManager.OnRuleChangeListener {
+public class ActivityMain extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG = "NetGuard.Main";
 
     private boolean running = false;
@@ -359,7 +359,6 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
 
         // Listen for preference changes
         prefs.registerOnSharedPreferenceChangeListener(this);
-        RulesManager.getInstance(ActivityMain.this).registerOnRuleChangeListener(this);
 
         // Listen for rule set changes
         IntentFilter ifr = new IntentFilter(ACTION_RULES_CHANGED);
@@ -545,7 +544,6 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         adapter = null;
 
         PreferenceManager.getDefaultSharedPreferences(this).unregisterOnSharedPreferenceChangeListener(this);
-        RulesManager.getInstance(this).unregisterOnRuleChangeListener(this);
 
         LocalBroadcastManager.getInstance(this).unregisterReceiver(onRulesChanged);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(onQueueChanged);
@@ -714,6 +712,8 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                     }
                 } else
                     updateApplicationList(null);
+            // HeartGuard change - rules changes can also include main UI changes
+            updateMainUi();
         }
     };
 
@@ -1314,38 +1314,18 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         return intent;
     }
 
-    // HeartGuard change - add a handler so that we can do UI changes in response to RulesManager broadasts
-    private static final int RULE_CHANGED_MESSAGE = 1;
-    private static final String RULE_CHANGED_KEY = "rulechanged";
+    // HeartGuard change - also updates the main UI on "rules changes"
+    private void updateMainUi() {
+        // Get enabled
+        boolean enabled = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(ActivityMain.this);
 
-    Handler mHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(Message message) {
-            if (message.what == RULE_CHANGED_MESSAGE) {
-                String key = message.getData().getString(RULE_CHANGED_KEY);
-                if (Rule.PREFERENCE_STRING_ENABLED.equals(key)) {
-                    // Get enabled
-                    boolean enabled = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(ActivityMain.this);
+        // Display disabled warning
+        TextView tvDisabled = findViewById(R.id.tvDisabled);
+        tvDisabled.setVisibility(enabled ? View.GONE : View.VISIBLE);
 
-                    // Display disabled warning
-                    TextView tvDisabled = findViewById(R.id.tvDisabled);
-                    tvDisabled.setVisibility(enabled ? View.GONE : View.VISIBLE);
-
-                    // Check switch state
-                    SwitchCompat swEnabled = getSupportActionBar().getCustomView().findViewById(R.id.swEnabled);
-                    if (swEnabled.isChecked() != enabled)
-                        swEnabled.setChecked(enabled);
-                }
-            }
-        }
-    };
-
-    // HeartGuard change - receiver for updates from RulesManager
-    public void onRuleChanged(RulesManager rm, Context context, String key) {
-        Message message = mHandler.obtainMessage(RULE_CHANGED_MESSAGE);
-        Bundle bundle = new Bundle();
-        bundle.putString(RULE_CHANGED_KEY, key);
-        message.setData(bundle);
-        mHandler.sendMessage(message);
+        // Check switch state
+        SwitchCompat swEnabled = getSupportActionBar().getCustomView().findViewById(R.id.swEnabled);
+        if (swEnabled.isChecked() != enabled)
+            swEnabled.setChecked(enabled);
     }
 }
