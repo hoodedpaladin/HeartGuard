@@ -142,7 +142,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private void createTableLog(SQLiteDatabase db) {
         Log.i(TAG, "Creating log table");
         db.execSQL("CREATE TABLE log (" +
-                " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
+                " ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL" +
                 ", time INTEGER NOT NULL" +
                 ", version INTEGER" +
                 ", protocol INTEGER" +
@@ -1265,6 +1265,54 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             return db.query("rules", null, "enacted == 1", null, null, null, null);
         } finally {
             lock.readLock().unlock();
+        }
+    }
+
+    // HeartGuard change - get cursor of pending rules
+    public Cursor getPendingRules() {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            // There is a segmented index on uid
+            // There is an index on block
+            return db.query("rules", null, "enacted == 0", null, null, null, "enact_time DESC");
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    // HeartGuard change - add new rule, enacted or not
+    public void addNewRule(String ruletext, long enact_time, int enacted) {
+        ContentValues cv = new ContentValues();
+        cv.put("ruletext", ruletext);
+        cv.put("create_time", System.currentTimeMillis());
+        cv.put("enact_time", enact_time);
+        cv.put("enacted", enacted);
+        cv.put("major_category", 0);
+        cv.put("minor_category", 0);
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+
+            db.insertOrThrow("rules", null, cv);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    // HeartGuard change - set exact row to enacted
+    public void setRuleEnacted(String ID, int enacted) {
+        ContentValues cv = new ContentValues();
+        cv.put("enacted", enacted);
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+
+            db.update("rules", cv, "ID = ?", new String[]{ID});
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 }

@@ -47,6 +47,8 @@ public class RulesManager {
     private Map<String, Boolean> m_allowedPackages = new HashMap<String, Boolean>();
     private List<RuleAndUid> m_whitelistRules = new ArrayList<RuleAndUid>();
 
+    private long next_pending_time = 0;
+
     private long nextEnableToggle;
     private ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -63,10 +65,19 @@ public class RulesManager {
     }
 
     public RulesManager(Context context) {
+        long curr_time = System.currentTimeMillis();
+
+        // Now parse all rules
+        // (Do this before any other logical steps, just in case we logically need the
+        // current rules for our decisions.)
         getAllEnactedRulesFromDb(context);
 
-        //This will start a testing mode that toggles enabled
-        //setNextEnabledToggle(context);
+        // Activate rules that took effect while we were asleep
+        // But don't send change notifications, because we are just starting up
+        activateRulesUpTo(context, curr_time, true);
+
+        // We want an alarm for any pending rules
+        setAlarmForPending(context);
     }
 
     // Convenience functions to throw exceptions if a rule uses the same phrase twice
@@ -266,29 +277,96 @@ public class RulesManager {
         am.set(AlarmManager.RTC_WAKEUP, time, pi);
     }
 
-    private void setNextEnabledToggle(Context context) {
-        nextEnableToggle = new Date().getTime() + 5 * 1000L;
+    private void setAlarmForPending(Context context) {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        Cursor cursor = dh.getPendingRules();
 
-        setAlarmForTime(context, nextEnableToggle);
+        if (!cursor.moveToFirst()) {
+            // No pending rules
+            return;
+        }
+
+        int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+        int col_id = cursor.getColumnIndexOrThrow("ID");
+        int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
+
+        String ruletext = cursor.getString(col_ruletext);
+        long id = cursor.getLong(col_id);
+        long enact_time = cursor.getLong(col_enact_time);
+
+        Log.w(TAG, "Pending rule \"" + ruletext + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
+
+        // For comparison later when we get the alarm
+        next_pending_time = enact_time;
+
+        setAlarmForTime(context, enact_time);
     }
 
-    private void toggleEnabled(Context context) {
-        m_enabled = !m_enabled;
+    // Activate all rules up to a certain time.
+    // Upon initial object creation, set startup=true, and we will not reload rules / alert listeners
+    private void activateRulesUpTo(Context context, long current_time, boolean startup) {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        Cursor cursor = dh.getPendingRules();
 
-        LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
-        setNextEnabledToggle(context);
+        int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+        int col_id = cursor.getColumnIndexOrThrow("ID");
+        int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
+
+        int num_enacted = 0;
+        while (cursor.moveToNext()) {
+            String ruletext = cursor.getString(col_ruletext);
+            long id = cursor.getLong(col_id);
+            long enact_time = cursor.getLong(col_enact_time);
+
+            Log.d(TAG, "Pending rule \"" + ruletext + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
+
+            if (enact_time > current_time) {
+                break;
+            }
+            enactRule(context, ruletext, id);
+            num_enacted += 1;
+        }
+
+        if (num_enacted > 0) {
+            getAllEnactedRulesFromDb(context);
+            if (!startup) {
+                LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
+            }
+        }
+    }
+
+    private void enactRule(Context context, String ruletext, long id) {
+        Log.w(TAG, "Enacting rule \"" + ruletext + "\" ID=" + Long.toString(id));
+
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        lock.writeLock().lock();
+        try {
+            dh.setRuleEnacted(Long.toString(id), 1);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     public void rulesChanged(Context context) {
-        toggleEnabled(context);
+        Long curr_time = System.currentTimeMillis();
+
+        Log.w(TAG, "Got a rulesChanged update - next pending time was " +
+                Long.toString(next_pending_time) + ", time is now " +
+                Long.toString(curr_time));
+
+        activateRulesUpTo(context, curr_time, false);
     }
 
     public void setPackageAllowed(Context context, String packagename) {
-        m_allowedPackages.put(packagename, false);
+        // Add a pending rule
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
 
-        // Update UI
-        LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
-        ServiceSinkhole.reload("rule changed", context, false);
+        String ruletext = "allow package:" + packagename;
+        long enact_time = System.currentTimeMillis() + 100 * 1000;
+        dh.addNewRule(ruletext, enact_time, 0);
+
+        // Wake up when that rule should be applied
+        setAlarmForPending(context);
     }
 
     private void getAllEnactedRulesFromDb(Context context) {
