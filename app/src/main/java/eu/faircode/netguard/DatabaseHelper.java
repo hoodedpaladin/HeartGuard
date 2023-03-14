@@ -224,6 +224,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         addExampleRuleToTable(db, "allow ipv4:192.168.0.8", System.currentTimeMillis(), System.currentTimeMillis(), 1, 0, 0);
         addExampleRuleToTable(db, "allow package:com.dozingcatsoftware.bouncy", System.currentTimeMillis(), System.currentTimeMillis(), 1, 0, 0);
         addExampleRuleToTable(db, "feature enabled", System.currentTimeMillis(), System.currentTimeMillis(), 1, 0, 0);
+        addExampleRuleToTable(db, "delay 30", System.currentTimeMillis(), System.currentTimeMillis(), 1, 0, 0);
     }
 
     private void createTableDns(SQLiteDatabase db) {
