@@ -1337,4 +1337,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             lock.writeLock().unlock();
         }
     }
+
+    public void removeRulesById(Long[] ids) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+
+            for (long id : ids) {
+                db.delete("rules", "ID = ?", new String[]{Long.toString(id)});
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
 }

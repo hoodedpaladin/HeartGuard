@@ -328,8 +328,10 @@ public class RulesManager {
             if (enact_time > current_time) {
                 break;
             }
-            enactRule(context, ruletext, id);
-            num_enacted += 1;
+            boolean changed = enactRule(context, ruletext, id);
+            if (changed) {
+                num_enacted += 1;
+            }
         }
 
         if (num_enacted > 0) {
@@ -340,8 +342,14 @@ public class RulesManager {
         }
     }
 
-    private void enactRule(Context context, String ruletext, long id) {
+    // Sets a row to enacted. Returns true if this makes a runtime change.
+    private boolean enactRule(Context context, String ruletext, long id) {
         Log.w(TAG, "Enacting rule \"" + ruletext + "\" ID=" + Long.toString(id));
+
+        if (ruletext.startsWith("- ")) {
+            // This is a negative rule
+            return enactNegativeRule(context, ruletext, id);
+        }
 
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
         lock.writeLock().lock();
@@ -350,6 +358,36 @@ public class RulesManager {
         } finally {
             lock.writeLock().unlock();
         }
+
+        return true;
+    }
+
+    private boolean enactNegativeRule(Context context, String ruletext, long id) {
+        Matcher m = Pattern.compile("- (.*)").matcher(ruletext);
+
+        if (!m.matches()) {
+            throw new AssertionError("Thought this string was negative: " + ruletext);
+        }
+
+        String otherruletext = m.group(1);
+
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        Cursor cursor = dh.getRuleMatchingRuletext(otherruletext);
+
+        if (!cursor.moveToFirst()) {
+            Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", ruletext));
+            return false;
+        }
+        int col_id = cursor.getColumnIndexOrThrow("ID");
+        int col_enacted = cursor.getColumnIndexOrThrow("enacted");
+
+        boolean was_enacted = cursor.getInt(col_enacted) != 0;
+        long otherid = cursor.getLong(col_id);
+
+        Log.w(TAG, String.format("Removing IDs %d and %d due to deletion rule", id, otherid));
+        dh.removeRulesById(new Long[]{id, otherid});
+
+        return was_enacted;
     }
 
     public void rulesChanged(Context context) {
@@ -364,30 +402,51 @@ public class RulesManager {
 
     private void queueRuleText(Context context, String ruletext) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
-
-        // Check for existing (enacted or pending) rule
-        Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext);
-        if (existing_rule.moveToFirst()) {
-            Log.w(TAG, String.format("Rule \"%s\" already exists", ruletext));
-            return;
-        }
-
-        // Parse to UniversalRule to get stats on it
-        UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
-
-        // Choose delay based on stats
         int delay = m_delay;
-        if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_free) {
-            delay = 0;
-        }
-        if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_depends) {
-            if (newrule.type == DelayRule.class) {
-                int other_delay = ((DelayRule)newrule.rule).getDelay();
 
-                if (other_delay > m_delay) {
-                    delay = 0;
-                } else {
-                    delay = m_delay - other_delay;
+        Matcher m = Pattern.compile("- (.*)").matcher(ruletext);
+
+        if (m.matches()) {
+            // This is a negative rule
+            String ruletext_to_remove = m.group(1);
+
+            Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext_to_remove);
+            if (!existing_rule.moveToFirst()) {
+                Log.w(TAG, String.format("Rule \"%s\" has nothing to delete", ruletext));
+                return;
+            }
+            RuleWithDelayClassification.Classification remove_classification =
+                    UniversalRule.getRuleFromText(context, ruletext_to_remove)
+                            .rule.getClassificationToRemove();
+            if (remove_classification == RuleWithDelayClassification.Classification.delay_free) {
+                delay = 0;
+            } else if (remove_classification == RuleWithDelayClassification.Classification.delay_depends) {
+                throw new AssertionError(String.format("Don't know how to deal with this deletion \"%s\"", ruletext));
+            }
+        } else {
+            // Check for existing (enacted or pending) rule
+            Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext);
+            if (existing_rule.moveToFirst()) {
+                Log.w(TAG, String.format("Rule \"%s\" already exists", ruletext));
+                return;
+            }
+
+            // Parse to UniversalRule to get stats on it
+            UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
+
+            // Choose delay based on stats
+            if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_free) {
+                delay = 0;
+            }
+            if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_depends) {
+                if (newrule.type == DelayRule.class) {
+                    int other_delay = ((DelayRule) newrule.rule).getDelay();
+
+                    if (other_delay > m_delay) {
+                        delay = 0;
+                    } else {
+                        delay = m_delay - other_delay;
+                    }
                 }
             }
         }
@@ -406,6 +465,10 @@ public class RulesManager {
 
     public void setPackageAllowed(Context context, String packagename) {
         String ruletext = "allow package:" + packagename;
+
+        if (m_allowedPackages.containsKey(packagename)) {
+            ruletext = "- " + ruletext;
+        }
         queueRuleText(context, ruletext);
     }
 
