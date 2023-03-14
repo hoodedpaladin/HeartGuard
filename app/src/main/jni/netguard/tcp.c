@@ -567,11 +567,11 @@ void check_tcp_socket(const struct arguments *args,
                         if (errno != EINTR && errno != EAGAIN)
                             write_rst(args, &s->tcp);
                     } else if (bytes == 0) {
-                        log_android(ANDROID_LOG_WARN, "%s recv eof", session);
+                        log_android(ANDROID_LOG_INFO, "%s recv eof", session);
 
                         if (s->tcp.forward == NULL) {
                             if (write_fin_ack(args, &s->tcp) >= 0) {
-                                log_android(ANDROID_LOG_WARN, "%s FIN sent", session);
+                                log_android(ANDROID_LOG_INFO, "%s FIN sent", session);
                                 s->tcp.local_seq++; // local FIN
                             }
 
@@ -719,7 +719,7 @@ jboolean handle_tcp(const struct arguments *args,
                 }
             }
 
-            log_android(ANDROID_LOG_WARN, "%s new session mss %u ws %u window %u",
+            log_android(ANDROID_LOG_INFO, "%s new session mss %u ws %u window %u",
                         packet, mss, ws, ntohs(tcphdr->window) << ws);
 
             // Register session
@@ -833,7 +833,7 @@ jboolean handle_tcp(const struct arguments *args,
 
         // Session found
         if (cur->tcp.state == TCP_CLOSING || cur->tcp.state == TCP_CLOSE) {
-            log_android(ANDROID_LOG_WARN, "%s was closed", session);
+            log_android(ANDROID_LOG_INFO, "%s was closed", session);
             write_rst(args, &cur->tcp);
             return 0;
         } else {
@@ -890,7 +890,7 @@ jboolean handle_tcp(const struct arguments *args,
                             log_android(ANDROID_LOG_WARN, "%s repeated FIN", session);
                             // The socket is probably not closed yet
                         } else if (cur->tcp.state == TCP_FIN_WAIT1) {
-                            log_android(ANDROID_LOG_WARN, "%s last ACK", session);
+                            log_android(ANDROID_LOG_INFO, "%s last ACK", session);
                             cur->tcp.remote_seq++; // remote FIN
                             if (write_ack(args, &cur->tcp) >= 0)
                                 cur->tcp.state = TCP_CLOSE;
@@ -933,7 +933,7 @@ jboolean handle_tcp(const struct arguments *args,
                                             "%s setsockopt SO_KEEPALIVE error %d: %s",
                                             session, errno, strerror(errno));
                             else
-                                log_android(ANDROID_LOG_WARN, "%s enabled keep alive", session);
+                                log_android(ANDROID_LOG_INFO, "%s enabled keep alive", session);
                         } else
                             log_android(ANDROID_LOG_WARN, "%s keep alive", session);
 

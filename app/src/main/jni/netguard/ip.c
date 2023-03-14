@@ -324,7 +324,7 @@ void handle_ip(const struct arguments *args,
         if (protocol == IPPROTO_UDP)
             block_udp(args, pkt, length, payload, uid);
 
-        log_android(ANDROID_LOG_WARN, "Address v%d p%d %s/%u syn %d not allowed",
+        log_android(ANDROID_LOG_INFO, "Address v%d p%d %s/%u syn %d not allowed",
                     version, protocol, dest, dport, syn);
     }
 }
