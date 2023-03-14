@@ -362,16 +362,51 @@ public class RulesManager {
         activateRulesUpTo(context, curr_time, false);
     }
 
-    public void setPackageAllowed(Context context, String packagename) {
-        // Add a pending rule
+    private void queueRuleText(Context context, String ruletext) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
 
-        String ruletext = "allow package:" + packagename;
-        long enact_time = System.currentTimeMillis() + 100 * 1000;
+        // Check for existing (enacted or pending) rule
+        Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext);
+        if (existing_rule.moveToFirst()) {
+            Log.w(TAG, String.format("Rule \"%s\" already exists", ruletext));
+            return;
+        }
+
+        // Parse to UniversalRule to get stats on it
+        UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
+
+        // Choose delay based on stats
+        int delay = m_delay;
+        if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_free) {
+            delay = 0;
+        }
+        if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_depends) {
+            if (newrule.type == DelayRule.class) {
+                int other_delay = ((DelayRule)newrule.rule).getDelay();
+
+                if (other_delay > m_delay) {
+                    delay = 0;
+                } else {
+                    delay = m_delay - other_delay;
+                }
+            }
+        }
+
+        long curr_time = System.currentTimeMillis();
+        long enact_time = curr_time + (delay * 1000L);
+        Log.w(TAG, String.format("Queueing new rule %s with %d delay (enact_time %d)", ruletext, delay, enact_time));
         dh.addNewRule(ruletext, enact_time, 0);
 
-        // Wake up when that rule should be applied
+        // Activate rules up to now, in case that was instantaneous
+        activateRulesUpTo(context, curr_time, false);
+
+        // Set a new alarm, in case it wasn't instantaneous
         setAlarmForPending(context);
+    }
+
+    public void setPackageAllowed(Context context, String packagename) {
+        String ruletext = "allow package:" + packagename;
+        queueRuleText(context, ruletext);
     }
 
     private void getAllEnactedRulesFromDb(Context context) {
@@ -392,7 +427,7 @@ public class RulesManager {
         m_allCurrentRules = allrules;
         updateFieldsFromCurrentRules();
 
-        Log.w(TAG, "Got " + Integer.toString(m_allCurrentRules.size()) + "rules from DB");
+        Log.w(TAG, "Got " + Integer.toString(m_allCurrentRules.size()) + " rules from DB");
 
         lock.writeLock().unlock();
     }
@@ -522,7 +557,7 @@ class FeatureRule implements RuleWithDelayClassification {
     }
 }
 
-class UniversalRule implements {
+class UniversalRule {
     private static final String TAG = "NetGuard.UniversalRule";
 
     public RuleWithDelayClassification rule;

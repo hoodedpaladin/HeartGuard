@@ -1290,6 +1290,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    // HeartGuard change - get rule by ruletext
+    public Cursor getRuleMatchingRuletext(String ruletext) {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            // There is a segmented index on uid
+            // There is an index on block
+            return db.query("rules", null, "ruletext == ?", new String[]{ruletext}, null, null, "enact_time DESC");
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     // HeartGuard change - add new rule, enacted or not
     public void addNewRule(String ruletext, long enact_time, int enacted) {
         ContentValues cv = new ContentValues();
