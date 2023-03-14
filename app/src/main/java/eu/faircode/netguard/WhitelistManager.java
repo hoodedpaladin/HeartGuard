@@ -11,7 +11,7 @@ interface RuleForApp {
     int isAllowed(Packet packet, String dname);
 }
 
-class RuleAndUid {
+class RuleAndUid implements RuleWithDelayClassification {
     public final static int UID_GLOBAL = 0;
 
     public int uid;
@@ -20,6 +20,14 @@ class RuleAndUid {
     RuleAndUid(int uid, RuleForApp rule) {
         this.uid = uid;
         this.rule = rule;
+    }
+
+    public Classification getClassification() {
+        return Classification.delay_normal;
+    }
+    public Classification getClassificationToRemove() {
+        // TODO: sticky keyword will change this
+        return Classification.delay_free;
     }
 }
 

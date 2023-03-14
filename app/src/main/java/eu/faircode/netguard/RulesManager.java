@@ -1,5 +1,7 @@
 package eu.faircode.netguard;
 
+import static java.lang.Math.max;
+
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -33,7 +35,7 @@ import java.util.regex.Pattern;
 
 // HeartGuard code - get and process rules from SQL, make decisions
 public class RulesManager {
-    private static final String TAG = "NetGuard.Database";
+    private static final String TAG = "NetGuard.RulesManager";
 
     public static final String ACTION_RULES_UPDATE = "eu.faircode.netguard.RULES_UPDATE";
 
@@ -42,14 +44,15 @@ public class RulesManager {
     private static volatile RulesManager global_rm = null;
 
     // Members that contain the current state of rules
+    // m_allCurrentRules being the master list, and the rest of these should
+    // always be updated based on its contents
+    private List<UniversalRule> m_allCurrentRules = new ArrayList<UniversalRule>();
     private boolean m_enabled = true;
     private int m_delay = 0;
-    private Map<String, Boolean> m_allowedPackages = new HashMap<String, Boolean>();
-    private List<RuleAndUid> m_whitelistRules = new ArrayList<RuleAndUid>();
+    private Map<String, Boolean> m_allowedPackages;
 
     private long next_pending_time = 0;
 
-    private long nextEnableToggle;
     private ExecutorService executor = Executors.newCachedThreadPool();
 
     public static RulesManager getInstance(Context context) {
@@ -81,13 +84,13 @@ public class RulesManager {
     }
 
     // Convenience functions to throw exceptions if a rule uses the same phrase twice
-    private void putNewInt(Bundle bundle, String key, int value) {
+    public static void putNewInt(Bundle bundle, String key, int value) {
         if (bundle.containsKey(key)) {
             throw new AssertionError("Already contains key " + key);
         }
         bundle.putInt(key, value);
     }
-    private void putNewString(Bundle bundle, String key, String value) {
+    public static void putNewString(Bundle bundle, String key, String value) {
         if (bundle.containsKey(key)) {
             throw new AssertionError("Already contains key " + key);
         }
@@ -95,7 +98,7 @@ public class RulesManager {
     }
 
     // Somewhat general function to parse an allow rule into a bundle of all phrases
-    private Bundle parseAllowTextToBundle(Context context, String text) {
+    public static Bundle parseAllowTextToBundle(Context context, String text) {
         Bundle data_bundle = new Bundle();
 
         Pattern p = Pattern.compile("allow (.*)");
@@ -148,7 +151,7 @@ public class RulesManager {
     // Returns a RuleAndUid for whitelist rules
     // (Only applies to a rule which allows a hostname/IP and optionally a package name.
     // Does not apply to rules which enable a package unconditionally.)
-    private RuleAndUid parseTextToWhitelistRule(Context context, String text) {
+    public static RuleAndUid parseTextToWhitelistRule(Context context, String text) {
         Bundle data_bundle = parseAllowTextToBundle(context, text);
 
         if (data_bundle == null)
@@ -186,8 +189,10 @@ public class RulesManager {
         lock.readLock().lock();
         List<RuleAndUid> results = new ArrayList<RuleAndUid>();
 
-        for (RuleAndUid ruleanduid : m_whitelistRules) {
-            results.add(ruleanduid);
+        for (UniversalRule rule : m_allCurrentRules) {
+            if (rule.type == RuleAndUid.class) {
+                results.add((RuleAndUid)rule.rule);
+            }
         }
         lock.readLock().unlock();
 
@@ -377,53 +382,215 @@ public class RulesManager {
         Cursor cursor = dh.getEnactedRules();
         int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
 
-        // If there are no delay rules, delay will be 0
-        int newDelay = 0;
-        Map<String, Boolean> newAllowedPackages = new HashMap<String, Boolean>();
-        List<RuleAndUid> newWhitelistRules = new ArrayList<RuleAndUid>();
-
+        // Read all rules from DB into list
+        List<UniversalRule> allrules = new ArrayList<UniversalRule>();
         while (cursor.moveToNext()) {
             String ruletext = cursor.getString(col_ruletext);
+            allrules.add(UniversalRule.getRuleFromText(context, ruletext));
+        }
 
-            try {
-                Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+        m_allCurrentRules = allrules;
+        updateFieldsFromCurrentRules();
 
-                if (!m.matches()) {
-                    throw new AssertionError("no category");
+        Log.w(TAG, "Got " + Integer.toString(m_allCurrentRules.size()) + "rules from DB");
+
+        lock.writeLock().unlock();
+    }
+
+    private void updateFieldsFromCurrentRules() {
+        // If there are no delay rules, delay will be 0
+        int newDelay = 0;
+        boolean newEnabled = false;
+        Map<String, Boolean> newAllowedPackages = new HashMap<>();
+
+        for (UniversalRule rule : m_allCurrentRules) {
+            if (rule.type == DelayRule.class) {
+                newDelay = max(newDelay, ((DelayRule)rule.rule).getDelay());
+            } else if (rule.type == FeatureRule.class) {
+                String featureName = ((FeatureRule)rule.rule).getFeatureName();
+
+                if ("enabled".equals(featureName)) {
+                    newEnabled = true;
                 }
+            } else if (rule.type == AllowedPackageRule.class) {
+                String packageName = ((AllowedPackageRule)rule.rule).getPackageName();
 
-                String category = m.group(1);
-                String rest = m.group(2);
-
-                if (category.equals("delay")) {
-                    int thisdelay = Integer.parseInt(rest);
-
-                    if (thisdelay > newDelay)
-                        newDelay = thisdelay;
-                } else if (category.equals("allow")) {
-                    Bundle bundle = parseAllowTextToBundle(context, ruletext);
-                    if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
-                        // This is an allowed package
-                        newAllowedPackages.put(bundle.getString("package"), false);
-                    } else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
-                        // This is a whitelisted URL
-                        RuleAndUid newrule = parseTextToWhitelistRule(context, ruletext);
-                        if (newrule == null) {
-                            throw new AssertionError("Didn't parse into a RuleAndUid");
-                        }
-                        newWhitelistRules.add(newrule);
-                    }
-                }
-            } catch (Throwable e) {
-                Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't work: " + e.getLocalizedMessage());
+                // False = not filtered i.e. allowed
+                newAllowedPackages.put(packageName, false);
             }
         }
 
-        Log.w(TAG, "Got rules: new delay = " + Integer.toString(newDelay) + ", allowed packages = " + Integer.toString(newAllowedPackages.size()) + ", whitelisted URLs = " + Integer.toString(newWhitelistRules.size()));
-        m_delay = newDelay;
+        if (m_delay != newDelay) {
+            m_delay = newDelay;
+            Log.w(TAG, "Delay changed from " + Integer.toString(m_delay) + " to " + Integer.toString(newDelay));
+        }
+        if (m_enabled != newEnabled) {
+            Log.w(TAG, "Enabled changed from " + Boolean.toString(m_enabled) + " to " + Boolean.toString(newEnabled));
+            m_enabled = newEnabled;
+        }
         m_allowedPackages = newAllowedPackages;
-        m_whitelistRules = newWhitelistRules;
+    }
+}
 
-        lock.writeLock().unlock();
+interface RuleWithDelayClassification {
+    public enum Classification {delay_free, delay_normal, delay_depends};
+
+    public Classification getClassification();
+    public Classification getClassificationToRemove();
+}
+
+class DelayRule implements RuleWithDelayClassification {
+    private int m_delay;
+
+    public DelayRule(int delay) {
+        m_delay = delay;
+    }
+
+    public int getDelay() {
+        return m_delay;
+    }
+
+    public Classification getClassification() {
+        return Classification.delay_depends;
+    }
+
+    public Classification getClassificationToRemove() {
+        return Classification.delay_depends;
+    }
+}
+
+class AllowedPackageRule implements RuleWithDelayClassification {
+    private String m_packagename;
+
+    public AllowedPackageRule(String packagename) {
+        m_packagename = packagename;
+    }
+
+    public String getPackageName() {
+        return m_packagename;
+    }
+
+    public Classification getClassification() {
+        return Classification.delay_normal;
+    }
+    public Classification getClassificationToRemove() {
+        // TODO: sticky keyword will affect this
+        return Classification.delay_free;
+    }
+}
+
+class FeatureRule implements RuleWithDelayClassification {
+    private String m_featurename;
+    private enum FeatureType {feature_restrictive, feature_permissive};
+    private FeatureType m_featuretype;
+
+    private static FeatureType getClassificationForName(String featurename) {
+        if ("enabled".equals(featurename)) {
+            return FeatureType.feature_restrictive;
+        }
+
+        throw new AssertionError("feature name \"" + featurename + "\" not present");
+    }
+
+    public FeatureRule(String featurename) {
+        m_featurename = featurename;
+        m_featuretype = getClassificationForName(featurename);
+    }
+
+    public String getFeatureName() {
+        return m_featurename;
+    }
+
+    public Classification getClassification() {
+        if (m_featuretype == FeatureType.feature_restrictive) {
+            return Classification.delay_free;
+        } else if (m_featuretype == FeatureType.feature_permissive) {
+            return Classification.delay_normal;
+        } else {
+            throw new AssertionError("Problem here");
+        }
+    }
+
+    public Classification getClassificationToRemove() {
+        if (m_featuretype == FeatureType.feature_restrictive) {
+            return Classification.delay_normal;
+        } else if (m_featuretype == FeatureType.feature_permissive) {
+            return Classification.delay_free;
+        } else {
+            throw new AssertionError("Problem here");
+        }
+    }
+}
+
+class UniversalRule implements {
+    private static final String TAG = "NetGuard.UniversalRule";
+
+    public RuleWithDelayClassification rule;
+    public Class type;
+    private String m_ruletext;
+
+    public UniversalRule(RuleAndUid ruleanduid, String ruletext) {
+        rule = ruleanduid;
+        type = RuleAndUid.class;
+        m_ruletext = ruletext;
+    }
+
+    public UniversalRule(DelayRule delayrule, String ruletext) {
+        rule = delayrule;
+        type = DelayRule.class;
+        m_ruletext = ruletext;
+    }
+
+    public UniversalRule(AllowedPackageRule allowedpackagerule, String ruletext) {
+        rule = allowedpackagerule;
+        type = AllowedPackageRule.class;
+        m_ruletext = ruletext;
+    }
+
+    public UniversalRule(FeatureRule featurerule, String ruletext) {
+        rule = featurerule;
+        type = FeatureRule.class;
+        m_ruletext = ruletext;
+    }
+
+    public static UniversalRule getRuleFromText(Context context, String ruletext) {
+        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+
+        if (!m.matches()) {
+            throw new AssertionError("no category");
+        }
+
+        String category = m.group(1);
+        String rest = m.group(2);
+
+        if (category.equals("delay")) {
+            int delay;
+            try {
+                delay = Integer.parseInt(rest);
+            } catch (NumberFormatException e) {
+                Log.w(TAG, "Delay rule \"" + ruletext + "\" didn't work");
+                return null;
+            }
+            return new UniversalRule(new DelayRule(delay), ruletext);
+        } else if (category.equals("allow")) {
+            Bundle bundle = RulesManager.parseAllowTextToBundle(context, ruletext);
+            if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
+                // This is an allowed package
+                String packagename = bundle.getString("package");
+
+                return new UniversalRule(new AllowedPackageRule(packagename), ruletext);
+            } else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
+                // This is a whitelisted URL
+                RuleAndUid newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
+                if (newrule == null) {
+                    throw new AssertionError("Didn't parse into a RuleAndUid");
+                }
+                return new UniversalRule(newrule, ruletext);
+            }
+        } else if (category.equals("feature")) {
+            return new UniversalRule(new FeatureRule(rest), ruletext);
+        }
+
+        return null;
     }
 }

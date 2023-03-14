@@ -186,6 +186,26 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX idx_access_block ON access(block)");
     }
 
+    private void addExampleRuleToTable(SQLiteDatabase db,
+                                String ruletext,
+                                long create_time,
+                                long enact_time,
+                                int enacted,
+                                int major_category,
+                                int minor_category) {
+
+        ContentValues cv = new ContentValues();
+
+        // Two example rules
+        cv.put("ruletext", ruletext);
+        cv.put("create_time", create_time);
+        cv.put("enact_time", enact_time);
+        cv.put("enacted", enacted);
+        cv.put("major_category", major_category);
+        cv.put("minor_category", minor_category);
+        db.insertOrThrow("rules", null, cv);
+    }
+
     // HeartGuard change - make a table to hold rules
     private void createTableRules(SQLiteDatabase db) {
         Log.i(TAG, "Creating rules table");
@@ -199,22 +219,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", minor_category INTEGER NOT NULL" +
                 ");");
 
-        ContentValues cv = new ContentValues();
-
-        // Two example rules
-        cv.put("ruletext", "allow host:pluckeye.net");
-        cv.put("create_time", System.currentTimeMillis());
-        cv.put("enact_time", System.currentTimeMillis());
-        cv.put("enacted", 1);
-        cv.put("major_category", 0);
-        cv.put("minor_category", 0);
-        db.insertOrThrow("rules", null, cv);
-        cv.remove("ruletext");
-        cv.put("ruletext", "allow ipv4:192.168.0.8");
-        db.insertOrThrow("rules", null, cv);
-        cv.remove("ruletext");
-        cv.put("ruletext", "allow package:com.dozingcatsoftware.bouncy");
-        db.insertOrThrow("rules", null, cv);
+        // Example rules
+        addExampleRuleToTable(db, "allow host:pluckeye.net", System.currentTimeMillis(), System.currentTimeMillis(), 1, 0, 0);
+        addExampleRuleToTable(db, "allow ipv4:192.168.0.8", System.currentTimeMillis(), System.currentTimeMillis(), 1, 0, 0);
+        addExampleRuleToTable(db, "allow package:com.dozingcatsoftware.bouncy", System.currentTimeMillis(), System.currentTimeMillis(), 1, 0, 0);
+        addExampleRuleToTable(db, "feature enabled", System.currentTimeMillis(), System.currentTimeMillis(), 1, 0, 0);
     }
 
     private void createTableDns(SQLiteDatabase db) {
