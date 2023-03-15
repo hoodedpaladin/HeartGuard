@@ -376,6 +376,7 @@ public class RulesManager {
 
         if (!cursor.moveToFirst()) {
             Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", ruletext));
+            dh.removeRulesById(new Long[]{id});
             return false;
         }
         int col_id = cursor.getColumnIndexOrThrow("ID");
@@ -400,9 +401,16 @@ public class RulesManager {
         activateRulesUpTo(context, curr_time, false);
     }
 
-    private void queueRuleText(Context context, String ruletext) {
+    public void queueRuleText(Context context, String ruletext) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
         int delay = m_delay;
+
+        // Check for existing (enacted or pending) rule
+        Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext);
+        if (existing_rule.moveToFirst()) {
+            Log.w(TAG, String.format("Rule \"%s\" already exists", ruletext));
+            return;
+        }
 
         Matcher m = Pattern.compile("- (.*)").matcher(ruletext);
 
@@ -410,7 +418,9 @@ public class RulesManager {
             // This is a negative rule
             String ruletext_to_remove = m.group(1);
 
-            Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext_to_remove);
+            // Not only do we not want a duplicate removal rule, we also don't want to
+            // queue a removal for a rule that doesn't exist
+            existing_rule = dh.getRuleMatchingRuletext(ruletext_to_remove);
             if (!existing_rule.moveToFirst()) {
                 Log.w(TAG, String.format("Rule \"%s\" has nothing to delete", ruletext));
                 return;
@@ -424,13 +434,6 @@ public class RulesManager {
                 throw new AssertionError(String.format("Don't know how to deal with this deletion \"%s\"", ruletext));
             }
         } else {
-            // Check for existing (enacted or pending) rule
-            Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext);
-            if (existing_rule.moveToFirst()) {
-                Log.w(TAG, String.format("Rule \"%s\" already exists", ruletext));
-                return;
-            }
-
             // Parse to UniversalRule to get stats on it
             UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
 
@@ -453,7 +456,7 @@ public class RulesManager {
 
         long curr_time = System.currentTimeMillis();
         long enact_time = curr_time + (delay * 1000L);
-        Log.w(TAG, String.format("Queueing new rule %s with %d delay (enact_time %d)", ruletext, delay, enact_time));
+        Log.w(TAG, String.format("Queueing new rule \"%s\" with %d delay (enact_time %d)", ruletext, delay, enact_time));
         dh.addNewRule(ruletext, enact_time, 0);
 
         // Activate rules up to now, in case that was instantaneous

@@ -1285,7 +1285,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             SQLiteDatabase db = this.getReadableDatabase();
             // There is a segmented index on uid
             // There is an index on block
-            return db.query("rules", null, "enacted == 0", null, null, null, "enact_time DESC");
+            return db.query("rules", null, "enacted == 0", null, null, null, "enact_time ASC");
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    // HeartGuard change - get cursor of all rules
+    public Cursor getAllRules() {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            // There is a segmented index on uid
+            // There is an index on block
+            return db.query("rules", null, "", null, null, null, "ID ASC");
         } finally {
             lock.readLock().unlock();
         }
