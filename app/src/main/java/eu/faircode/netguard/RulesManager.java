@@ -332,6 +332,7 @@ public class RulesManager {
             if (changed) {
                 num_enacted += 1;
             }
+            logAllRuleDbEntries(context, "just enacted a rule");
         }
 
         if (num_enacted > 0) {
@@ -458,6 +459,7 @@ public class RulesManager {
         long enact_time = curr_time + (delay * 1000L);
         Log.w(TAG, String.format("Queueing new rule \"%s\" with %d delay (enact_time %d)", ruletext, delay, enact_time));
         dh.addNewRule(ruletext, enact_time, 0);
+        logAllRuleDbEntries(context, "just queued new rule");
 
         // Activate rules up to now, in case that was instantaneous
         activateRulesUpTo(context, curr_time, false);
@@ -491,18 +493,20 @@ public class RulesManager {
         }
 
         m_allCurrentRules = allrules;
-        updateFieldsFromCurrentRules();
+        updateFieldsFromCurrentRules(context);
 
         Log.w(TAG, "Got " + Integer.toString(m_allCurrentRules.size()) + " rules from DB");
 
         lock.writeLock().unlock();
     }
 
-    private void updateFieldsFromCurrentRules() {
+    private void updateFieldsFromCurrentRules(Context context) {
         // If there are no delay rules, delay will be 0
         int newDelay = 0;
         boolean newEnabled = false;
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
+
+        logAllRuleDbEntries(context, "updateFieldsFromCurrentRules");
 
         for (UniversalRule rule : m_allCurrentRules) {
             if (rule.type == DelayRule.class) {
@@ -530,6 +534,33 @@ public class RulesManager {
             m_enabled = newEnabled;
         }
         m_allowedPackages = newAllowedPackages;
+    }
+
+    public static String getStringOfRuleDbEntry(Cursor cursor) {
+        String message = "DB entry:";
+        message += " ID=" + Long.toString(cursor.getLong(cursor.getColumnIndexOrThrow("ID")));
+        message += " ruletext=\"" + cursor.getString(cursor.getColumnIndexOrThrow("ruletext")) + "\"";
+        message += " create_time=" + Long.toString(cursor.getLong(cursor.getColumnIndexOrThrow("create_time")));
+        message += " enact_time=" + Long.toString(cursor.getLong(cursor.getColumnIndexOrThrow("enact_time")));
+        message += " enacted=" + Integer.toString(cursor.getInt(cursor.getColumnIndexOrThrow("enacted")));
+        message += " major_category=" + Integer.toString(cursor.getInt(cursor.getColumnIndexOrThrow("major_category")));
+        message += " minor_category=" + Integer.toString(cursor.getInt(cursor.getColumnIndexOrThrow("minor_category")));
+
+        return message;
+    }
+
+    public static void logAllRuleDbEntries(Context context, String explanation) {
+        Log.w(TAG, "Logging all rules DB entries at point of time \"" + explanation + "\"");
+
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        Cursor cursor = dh.getAllRules();
+
+        int i = 0;
+        while (cursor.moveToNext()) {
+            Log.w(TAG, Integer.toString(i) + ": " + getStringOfRuleDbEntry(cursor));
+            i += 1;
+        }
+        Log.w(TAG, Integer.toString(i) + " total entries");
     }
 }
 
