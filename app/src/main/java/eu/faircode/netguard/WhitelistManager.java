@@ -1,14 +1,19 @@
 package eu.faircode.netguard;
 
+import android.app.Service;
 import android.content.Context;
+import android.database.Cursor;
+import android.util.Log;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 interface RuleForApp {
     int isAllowed(Packet packet, String dname);
+    boolean matchesAddr(String dname);
 }
 
 class RuleAndUid implements RuleWithDelayClassification {
@@ -40,11 +45,19 @@ class DomainRule implements RuleForApp {
         this.allowed = allowed;
     }
 
-    public int isAllowed(Packet packet, String dname) {
-        if (dname == null)
-            return -1;
+    public boolean matchesAddr(String dname) {
+        if (dname == null) {
+            return false;
+        }
         if (dname.endsWith(this.domain))
+            return true;
+        return false;
+    }
+
+    public int isAllowed(Packet packet, String dname) {
+        if (matchesAddr(dname)) {
             return this.allowed;
+        }
         return -1;
     }
 }
@@ -59,20 +72,29 @@ class IPRule implements RuleForApp {
     }
 
     public int isAllowed(Packet packet, String dname) {
+        if (matchesAddr(packet.daddr))
+            return this.allowed;
+        return -1;
+    }
+
+    public boolean matchesAddr(String dname) {
         // TODO: allow IP address block allowing
         // TODO: better way to match?
         // TODO: IPV6?
-        if (packet.daddr.equals(this.ip))
-            return this.allowed;
-        return -1;
+        if (dname.equals(this.ip))
+            return true;
+        return false;
     }
 }
 
 // HeartGuard code - decide based on existing rules whether to allow a site
 public class WhitelistManager {
+    private static final String TAG = "NetGuard.WhitelistManager";
 
     private Map<Integer, List<RuleForApp>> app_specific_rules;
     private List<RuleForApp> global_rules;
+
+    private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     private static WhitelistManager global_wm = null;
 
@@ -84,41 +106,60 @@ public class WhitelistManager {
     }
 
     public WhitelistManager(Context context) {
-        this.app_specific_rules = new HashMap<>();
-        this.global_rules = new LinkedList<>();
+        updateRulesFromRulesManager(context);
+    }
 
-        RulesManager rm = RulesManager.getInstance(context);
-        List<RuleAndUid> ruleslist = rm.getCurrentRules(context);
+    public void updateRulesFromRulesManager(Context context) {
+        lock.writeLock().lock();
 
-        for (RuleAndUid ruleanduid : ruleslist) {
-            if (ruleanduid.uid == RuleAndUid.UID_GLOBAL) {
-                addGlobalRule(ruleanduid.rule);
-            } else {
-                addAppRule(ruleanduid.uid, ruleanduid.rule);
+        try {
+            this.app_specific_rules = new HashMap<>();
+            this.global_rules = new LinkedList<>();
+
+            RulesManager rm = RulesManager.getInstance(context);
+            List<RuleAndUid> ruleslist = rm.getCurrentRules(context);
+
+            for (RuleAndUid ruleanduid : ruleslist) {
+                if (ruleanduid.uid == RuleAndUid.UID_GLOBAL) {
+                    addGlobalRule(ruleanduid.rule);
+                } else {
+                    addAppRule(ruleanduid.uid, ruleanduid.rule);
+                }
             }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
     public boolean isAllowed(Packet packet, String dname) {
-        // TODO: common code for both loops
-        // TODO: make sure domain is a whole word
-        List<RuleForApp> rules = this.app_specific_rules.get(packet.uid);
-        if (rules != null) {
+        lock.readLock().lock();
+
+        try {
+            // TODO: common code for both loops
+            // TODO: make sure domain is a whole word
+            if (dname.contains("pluckeye")) {
+                Log.w(TAG, "here");
+            }
+            List<RuleForApp> rules = this.app_specific_rules.get(packet.uid);
+            if (rules != null) {
+                for (RuleForApp rule : rules) {
+                    int allowed = rule.isAllowed(packet, dname);
+                    if (allowed >= 0)
+                        return allowed == 1;
+                }
+            }
+
+            rules = this.global_rules;
             for (RuleForApp rule : rules) {
                 int allowed = rule.isAllowed(packet, dname);
                 if (allowed >= 0)
                     return allowed == 1;
             }
-        }
 
-        rules = this.global_rules;
-        for (RuleForApp rule : rules) {
-            int allowed = rule.isAllowed(packet, dname);
-            if (allowed >= 0)
-                return allowed == 1;
+            return false;
+        } finally {
+            lock.readLock().unlock();
         }
-
-        return false;
     }
 
     public void addGlobalRule(RuleForApp rule) {
@@ -131,5 +172,34 @@ public class WhitelistManager {
         }
         List<RuleForApp> list = this.app_specific_rules.get(uid);
         list.add(rule);
+    }
+
+    public void clearAccessRulesForAddition(Context context, RuleAndUid addedrule) {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+
+        Cursor cursor = dh.getAllAccess();
+
+        int col_id = cursor.getColumnIndexOrThrow("ID");
+        int col_uid = cursor.getColumnIndexOrThrow("uid");
+        int col_daddr = cursor.getColumnIndexOrThrow("daddr");
+
+        while (cursor.moveToNext()) {
+            int uid = cursor.getInt(col_uid);
+
+            // Check if UID matches or is global
+            if ((addedrule.uid != RuleAndUid.UID_GLOBAL) && (addedrule.uid != uid)) {
+                continue;
+            }
+
+            String daddr = cursor.getString(col_daddr);
+            if (!addedrule.rule.matchesAddr(daddr)) {
+                continue;
+            }
+
+            long id = cursor.getLong(col_id);
+            Log.w(TAG, String.format("Clearing access ID %d because uid %d daddr %s is a match", id, uid, daddr));
+            dh.clearAccessId(id);
+            ServiceSinkhole.reload("access changed", context, false);
+        }
     }
 }

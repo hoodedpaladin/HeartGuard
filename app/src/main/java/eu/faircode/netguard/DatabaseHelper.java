@@ -805,6 +805,41 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    // HeartGuard change - read all access rules
+    public Cursor getAllAccess() {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            // There is a segmented index on uid
+            // There is an index on block
+            return db.query("access", null, null, null, null, null, null);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    // HeartGuard change - delete specific Access
+    public void clearAccessId(long id) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                // There is a segmented index on uid
+                // There is an index on block
+                db.delete("access", "ID = ?", new String[]{Long.toString(id)});
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyAccessChanged();
+    }
+
     public Cursor getAccessUnset(int uid, int limit, long since) {
         lock.readLock().lock();
         try {

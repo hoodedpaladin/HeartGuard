@@ -337,9 +337,11 @@ public class RulesManager {
 
         if (num_enacted > 0) {
             getAllEnactedRulesFromDb(context);
+            WhitelistManager.getInstance(context).updateRulesFromRulesManager(context);
             if (!startup) {
                 LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
             }
+            ServiceSinkhole.reload("rule changed", context, false);
         }
     }
 
@@ -358,6 +360,13 @@ public class RulesManager {
             dh.setRuleEnacted(Long.toString(id), 1);
         } finally {
             lock.writeLock().unlock();
+        }
+
+        UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
+        if (rule.type == RuleAndUid.class) {
+            // Clear access rules for all relevant apps
+            RuleAndUid ruleanduid = (RuleAndUid)rule.rule;
+            WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleanduid);
         }
 
         return true;
