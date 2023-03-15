@@ -398,6 +398,14 @@ public class RulesManager {
         Log.w(TAG, String.format("Removing IDs %d and %d due to deletion rule", id, otherid));
         dh.removeRulesById(new Long[]{id, otherid});
 
+        // Check if access rules should be deleted
+        UniversalRule rule = UniversalRule.getRuleFromText(context, otherruletext);
+        if (rule.type == RuleAndUid.class) {
+            // Clear access rules for all relevant apps
+            RuleAndUid ruleanduid = (RuleAndUid)rule.rule;
+            WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleanduid);
+        }
+
         return was_enacted;
     }
 
