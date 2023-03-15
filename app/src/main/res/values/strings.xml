@@ -359,4 +359,6 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     </string-array>
 
     <string name="fingerprint" translatable="false">ef46f813d2c8a064d72c936b9b96d1cccc989378</string>
+    <string name="allow_new_access" translatable="false">Allow New Access</string>
+    <string name="package_name">Package Name</string>
 </resources>

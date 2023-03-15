@@ -23,6 +23,7 @@ import android.annotation.TargetApi;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -51,6 +52,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CursorAdapter;
+import android.widget.EditText;
 import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.ImageButton;
@@ -721,11 +723,13 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                             boolean result = false;
                             switch (menu) {
                                 case R.id.menu_allow:
-                                    if (IAB.isPurchased(ActivityPro.SKU_FILTER, context)) {
-                                        DatabaseHelper.getInstance(context).setAccess(id, 0);
-                                        ServiceSinkhole.reload("allow host", context, false);
-                                    } else
-                                        context.startActivity(new Intent(context, ActivityPro.class));
+                                    //if (IAB.isPurchased(ActivityPro.SKU_FILTER, context)) {
+                                    //    DatabaseHelper.getInstance(context).setAccess(id, 0);
+                                    //    ServiceSinkhole.reload("allow host", context, false);
+                                    //} else
+                                    //    context.startActivity(new Intent(context, ActivityPro.class));
+                                    // HeartGuard change - launch a window to queue a rule instead of directly allowing access
+                                    launchAllowUrlPage(context, rule.packageName, daddr);
                                     result = true;
                                     break;
 
@@ -969,5 +973,50 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
     @Override
     public int getItemCount() {
         return listFiltered.size();
+    }
+
+    // HeartGuard change - launch a dialog to allow a URL (package specific or not)
+    private void launchAllowUrlPage(final Context context, String packagename, String daddr) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.allowhost, null, false);
+        final EditText etDAddr = view.findViewById(R.id.allow_new_access_daddr);
+        final EditText etPackageName = view.findViewById(R.id.allow_new_access_package_name);
+        etDAddr.setText(daddr);
+        etPackageName.setText(packagename);
+
+        AlertDialog dialog;
+        dialog = new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String newpackagename = etPackageName.getText().toString();
+                        String newdaddr = etDAddr.getText().toString();
+                        Log.w(TAG, String.format("click yes: newpackagename=\"%s\" newdaddr=\"%s\"", newpackagename, newdaddr));
+
+                        // Make sure that the text doesn't have whitespaces.
+                        // The package name can be empty, but the daddr can't (if they want to allow a whole package, they click on the app wifi logo)
+                        if (newdaddr.matches("\\S+")) {
+                            if (newpackagename.matches("\\S+") || newpackagename.length() == 0) {
+                                RulesManager.getInstance(context).queueRuleText(context, String.format("allow package:%s host:%s", newpackagename, newdaddr));
+                            }
+                        }
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialogInterface) {
+                    }
+                })
+                .create();
+        dialog.show();
     }
 }
