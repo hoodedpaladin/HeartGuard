@@ -33,7 +33,7 @@ public class ActivityRulesList extends AppCompatActivity {
                 @Override
                 public void run() {
                     if (adapter != null)
-                        adapter.changeCursor(DatabaseHelper.getInstance(ActivityRulesList.this).getAllRulesForAdapter());
+                        adapter.changeCursor(DatabaseHelper.getInstance(ActivityRulesList.this).getAllRules());
                 }
             });
         }
@@ -60,7 +60,7 @@ public class ActivityRulesList extends AppCompatActivity {
         super.onResume();
         DatabaseHelper.getInstance(this).addRuleChangedListener(listener);
         if (adapter != null) {
-            adapter.changeCursor(DatabaseHelper.getInstance(this).getAllRulesForAdapter());
+            adapter.changeCursor(DatabaseHelper.getInstance(this).getAllRules());
         }
     }
 
@@ -102,7 +102,7 @@ public class ActivityRulesList extends AppCompatActivity {
         public AdapterRulesList(Context context, Cursor cursor) {
             super(context, cursor, 0);
 
-            colId = cursor.getColumnIndexOrThrow("ID");
+            colId = cursor.getColumnIndexOrThrow("_id");
             colRuleText = cursor.getColumnIndexOrThrow("ruletext");
             colEnacted = cursor.getColumnIndexOrThrow("enacted");
         }

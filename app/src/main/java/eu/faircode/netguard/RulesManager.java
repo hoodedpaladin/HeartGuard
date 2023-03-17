@@ -292,7 +292,7 @@ public class RulesManager {
         }
 
         int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-        int col_id = cursor.getColumnIndexOrThrow("ID");
+        int col_id = cursor.getColumnIndexOrThrow("_id");
         int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
 
         String ruletext = cursor.getString(col_ruletext);
@@ -314,7 +314,7 @@ public class RulesManager {
         Cursor cursor = dh.getPendingRules();
 
         int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-        int col_id = cursor.getColumnIndexOrThrow("ID");
+        int col_id = cursor.getColumnIndexOrThrow("_id");
         int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
 
         int num_enacted = 0;
@@ -389,7 +389,7 @@ public class RulesManager {
             dh.removeRulesById(new Long[]{id});
             return false;
         }
-        int col_id = cursor.getColumnIndexOrThrow("ID");
+        int col_id = cursor.getColumnIndexOrThrow("_id");
         int col_enacted = cursor.getColumnIndexOrThrow("enacted");
 
         boolean was_enacted = cursor.getInt(col_enacted) != 0;
@@ -557,7 +557,7 @@ public class RulesManager {
 
     public static String getStringOfRuleDbEntry(Cursor cursor) {
         String message = "DB entry:";
-        message += " ID=" + Long.toString(cursor.getLong(cursor.getColumnIndexOrThrow("ID")));
+        message += " ID=" + Long.toString(cursor.getLong(cursor.getColumnIndexOrThrow("_id")));
         message += " ruletext=\"" + cursor.getString(cursor.getColumnIndexOrThrow("ruletext")) + "\"";
         message += " create_time=" + Long.toString(cursor.getLong(cursor.getColumnIndexOrThrow("create_time")));
         message += " enact_time=" + Long.toString(cursor.getLong(cursor.getColumnIndexOrThrow("enact_time")));

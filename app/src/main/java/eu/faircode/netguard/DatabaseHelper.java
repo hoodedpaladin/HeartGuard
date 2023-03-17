@@ -213,7 +213,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private void createTableRules(SQLiteDatabase db) {
         Log.i(TAG, "Creating rules table");
         db.execSQL("CREATE TABLE rules (" +
-                " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
+                " _id INTEGER PRIMARY KEY AUTOINCREMENT" +
                 ", ruletext TEXT NOT NULL" +
                 ", create_time INTEGER NOT NULL" +
                 ", enact_time INTEGER NOT NULL" +
@@ -1364,20 +1364,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             SQLiteDatabase db = this.getReadableDatabase();
             // There is a segmented index on uid
             // There is an index on block
-            return db.query("rules", null, "", null, null, null, "ID ASC");
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
-    public Cursor getAllRulesForAdapter() {
-        lock.readLock().lock();
-        try {
-            SQLiteDatabase db = this.getReadableDatabase();
-            String query = "SELECT ID AS _id, *";
-            query += " FROM rules";
-            query += " ORDER BY ID ASC";
-            return db.rawQuery(query, new String[]{});
+            return db.query("rules", null, "", null, null, null, "_id ASC");
         } finally {
             lock.readLock().unlock();
         }
@@ -1427,7 +1414,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         try {
             SQLiteDatabase db = this.getReadableDatabase();
 
-            db.update("rules", cv, "ID = ?", new String[]{ID});
+            db.update("rules", cv, "_id = ?", new String[]{ID});
         } finally {
             lock.writeLock().unlock();
         }
@@ -1441,7 +1428,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             SQLiteDatabase db = this.getReadableDatabase();
 
             for (long id : ids) {
-                db.delete("rules", "ID = ?", new String[]{Long.toString(id)});
+                db.delete("rules", "_id = ?", new String[]{Long.toString(id)});
             }
         } finally {
             lock.writeLock().unlock();
