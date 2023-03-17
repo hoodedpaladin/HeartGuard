@@ -37,6 +37,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.StrictMode;
 import android.provider.Settings;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
@@ -132,6 +133,11 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             setContentView(R.layout.xposed);
             return;
         }
+
+        // HeartGuard change - debug the "A resource failed to call close." message
+        StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder(StrictMode.getVmPolicy())
+                .detectLeakedClosableObjects()
+                .build());
 
         Util.setTheme(this);
         super.onCreate(savedInstanceState);
