@@ -125,7 +125,7 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
         PreferenceGroup cat_options = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_options")).findPreference("category_options");
-        PreferenceGroup cat_network = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_network_options")).findPreference("category_network_options");
+        //PreferenceGroup cat_network = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_network_options")).findPreference("category_network_options");
         PreferenceGroup cat_advanced = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_advanced_options")).findPreference("category_advanced_options");
         PreferenceGroup cat_stats = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_stats")).findPreference("category_stats");
         PreferenceGroup cat_backup = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_backup")).findPreference("category_backup");
@@ -151,9 +151,12 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
 
         // Wi-Fi home
         MultiSelectListPreference pref_wifi_homes = (MultiSelectListPreference) screen.findPreference("wifi_homes");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1)
-            cat_network.removePreference(pref_wifi_homes);
-        else {
+
+        // HeartGuard change - no network options screen
+        screen.removePreference(screen.findPreference("screen_network_options"));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            //cat_network.removePreference(pref_wifi_homes);
+        } else {
             Set<String> ssids = prefs.getStringSet("wifi_homes", new HashSet<String>());
             if (ssids.size() > 0)
                 pref_wifi_homes.setTitle(getString(R.string.setting_wifi_home, TextUtils.join(", ", ssids)));
@@ -211,12 +214,13 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             }
         });
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            TwoStatePreference pref_reload_onconnectivity =
-                    (TwoStatePreference) screen.findPreference("reload_onconnectivity");
-            pref_reload_onconnectivity.setChecked(true);
-            pref_reload_onconnectivity.setEnabled(false);
-        }
+        // HeartGuard change - no network options screen
+        //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        //    TwoStatePreference pref_reload_onconnectivity =
+        //            (TwoStatePreference) screen.findPreference("reload_onconnectivity");
+        //    pref_reload_onconnectivity.setChecked(true);
+        //    pref_reload_onconnectivity.setEnabled(false);
+        //}
 
         // Handle port forwarding
         Preference pref_forwarding = screen.findPreference("forwarding");
