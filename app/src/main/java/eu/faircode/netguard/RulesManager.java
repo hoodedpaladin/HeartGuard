@@ -417,6 +417,8 @@ public class RulesManager {
                 Long.toString(curr_time));
 
         activateRulesUpTo(context, curr_time, false);
+
+        setAlarmForPending(context);
     }
 
     public void queueRuleText(Context context, String ruletext) {
