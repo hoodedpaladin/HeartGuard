@@ -588,7 +588,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 } else {
                     last_builder = builder;
 
-                    boolean handover = prefs.getBoolean("handover", false);
+                    boolean handover = prefs.getBoolean(Rule.PREFERENCE_STRING_HANDOVER, false);
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
                         handover = false;
                     Log.i(TAG, "VPN restart handover=" + handover);
