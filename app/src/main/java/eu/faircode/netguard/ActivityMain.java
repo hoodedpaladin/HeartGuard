@@ -200,87 +200,24 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 Log.i(TAG, "Switch=" + isChecked);
                 //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, isChecked).apply();
-                isChecked = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(ActivityMain.this);
-                swEnabled.setChecked(isChecked);
+                final boolean enabled = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(ActivityMain.this);
+                swEnabled.setChecked(enabled);
 
-                if (isChecked) {
-                    try {
-                        String alwaysOn = Settings.Secure.getString(getContentResolver(), "always_on_vpn_app");
-                        Log.i(TAG, "Always-on=" + alwaysOn);
-                        if (!TextUtils.isEmpty(alwaysOn))
-                            if (getPackageName().equals(alwaysOn)) {
-                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-                                        RulesManager.getInstance(ActivityMain.this).getPreferenceFilter(ActivityMain.this.getApplicationContext())) {
-                                    int lockdown = Settings.Secure.getInt(getContentResolver(), "always_on_vpn_lockdown", 0);
-                                    Log.i(TAG, "Lockdown=" + lockdown);
-                                    if (lockdown != 0) {
-                                        swEnabled.setChecked(false);
-                                        //TODO: safety check for this as a user reminder
-                                        //Toast.makeText(ActivityMain.this, R.string.msg_always_on_lockdown, Toast.LENGTH_LONG).show();
-                                        return;
-                                    }
-                                }
+                if (enabled != isChecked) {
+                    // If the switch state doesn't match the set state, then that means the user touched it
+                    Util.areYouSure(ActivityMain.this, R.string.menu_clear, new Util.DoubtListener() {
+                        @Override
+                        public void onSure() {
+                            String ruletext;
+                            if (enabled) {
+                                ruletext = "- feature enabled";
                             } else {
-                                swEnabled.setChecked(false);
-                                //TODO: safety check for this as a user reminder
-                                //Toast.makeText(ActivityMain.this, R.string.msg_always_on, Toast.LENGTH_LONG).show();
-                                return;
+                                ruletext = "feature enabled";
                             }
-                    } catch (Throwable ex) {
-                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                    }
-
-                    boolean filter = RulesManager.getInstance(ActivityMain.this).getPreferenceFilter(ActivityMain.this.getApplicationContext());
-                    if (filter && Util.isPrivateDns(ActivityMain.this)) {
-                        //TODO: safety check for this as a user reminder
-                        //Toast.makeText(ActivityMain.this, R.string.msg_private_dns, Toast.LENGTH_LONG).show();
-                    }
-
-                    try {
-                        final Intent prepare = VpnService.prepare(ActivityMain.this);
-                        if (prepare == null) {
-                            Log.i(TAG, "Prepare done");
-                            onActivityResult(REQUEST_VPN, RESULT_OK, null);
-                        } else {
-                            // Show dialog
-                            LayoutInflater inflater = LayoutInflater.from(ActivityMain.this);
-                            View view = inflater.inflate(R.layout.vpn, null, false);
-                            dialogVpn = new AlertDialog.Builder(ActivityMain.this)
-                                    .setView(view)
-                                    .setCancelable(false)
-                                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            if (running) {
-                                                Log.i(TAG, "Start intent=" + prepare);
-                                                try {
-                                                    // com.android.vpndialogs.ConfirmDialog required
-                                                    startActivityForResult(prepare, REQUEST_VPN);
-                                                } catch (Throwable ex) {
-                                                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                                                    onActivityResult(REQUEST_VPN, RESULT_CANCELED, null);
-                                                    //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
-                                                }
-                                            }
-                                        }
-                                    })
-                                    .setOnDismissListener(new DialogInterface.OnDismissListener() {
-                                        @Override
-                                        public void onDismiss(DialogInterface dialogInterface) {
-                                            dialogVpn = null;
-                                        }
-                                    })
-                                    .create();
-                            dialogVpn.show();
+                            RulesManager.getInstance(ActivityMain.this).queueRuleText(ActivityMain.this, ruletext);
                         }
-                    } catch (Throwable ex) {
-                        // Prepare failed
-                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                        //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, false).apply();
-                    }
-
-                } else
-                    ServiceSinkhole.stop("switch off", ActivityMain.this, false);
+                    });
+                }
             }
         });
         if (enabled)

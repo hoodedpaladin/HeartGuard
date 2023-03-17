@@ -10,6 +10,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.CursorAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -52,8 +53,16 @@ public class ActivityRulesList extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         lvRulesList = findViewById(R.id.lvRulesList);
-        adapter = new AdapterRulesList(this, DatabaseHelper.getInstance(this).getAllRulesForAdapter());
+        adapter = new AdapterRulesList(this, DatabaseHelper.getInstance(this).getAllRules());
         lvRulesList.setAdapter(adapter);
+        lvRulesList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Cursor cursor = (Cursor)adapter.getItem(position);
+                long otherid = cursor.getLong(cursor.getColumnIndexOrThrow("_id"));
+                Log.w(TAG, "clicked id " + Long.toString(id) + " or, from cursor, " + Long.toString(otherid));
+            }
+        });
     }
 
     // Rules changed listener is added only in onResume and not onCreate - is that good?
