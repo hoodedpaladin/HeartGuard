@@ -17,6 +17,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 // Activity to display all current/pending rules in a window
 // Much implementation copied from ActivityForwarding (because why not)
 
@@ -98,6 +101,7 @@ public class ActivityRulesList extends AppCompatActivity {
         private int colId;
         private int colRuleText;
         private int colEnacted;
+        private int colEnactTime;
 
         public AdapterRulesList(Context context, Cursor cursor) {
             super(context, cursor, 0);
@@ -105,6 +109,7 @@ public class ActivityRulesList extends AppCompatActivity {
             colId = cursor.getColumnIndexOrThrow("_id");
             colRuleText = cursor.getColumnIndexOrThrow("ruletext");
             colEnacted = cursor.getColumnIndexOrThrow("enacted");
+            colEnactTime = cursor.getColumnIndexOrThrow("enact_time");
         }
 
         @Override
@@ -117,6 +122,7 @@ public class ActivityRulesList extends AppCompatActivity {
             long id = cursor.getLong(colId);
             String ruletext = cursor.getString(colRuleText);
             int enacted = cursor.getInt(colEnacted);
+            long enact_time = cursor.getLong(colEnactTime);
 
             TextView tvId = view.findViewById(R.id.tvID);
             TextView tvRuleText = view.findViewById(R.id.tvRuleText);
@@ -125,7 +131,9 @@ public class ActivityRulesList extends AppCompatActivity {
             if (enacted != 0) {
                 tvRuleText.setText(ruletext);
             } else {
-                tvRuleText.setText("### " + ruletext);
+                SimpleDateFormat x = new SimpleDateFormat("LLL dd - HH:mm:ss");
+                String timemessage = x.format(new Date(enact_time)).toString();
+                tvRuleText.setText("### " + ruletext + " (enacts at " + timemessage + ")");
             }
         }
     }
