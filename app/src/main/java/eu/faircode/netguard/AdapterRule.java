@@ -805,6 +805,16 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                 updateRule(context, rule, true, listAll);
             }
         });
+
+        // HeartGuard change - no need to show these controls
+        holder.cbOther.setVisibility(View.GONE);
+        holder.cbApply.setVisibility(View.GONE);
+        holder.itemView.findViewById(R.id.llBlockWhenRoaming).setVisibility(View.GONE);
+        holder.itemView.findViewById(R.id.llAllowInLockdown).setVisibility(View.GONE);
+        holder.itemView.findViewById(R.id.tvTitleConditions).setVisibility(View.GONE);
+        holder.btnClear.setVisibility(View.GONE);
+        holder.ivScreenWifi.setVisibility(View.GONE);
+        holder.ivScreenOther.setVisibility(View.GONE);
     }
 
     @Override
