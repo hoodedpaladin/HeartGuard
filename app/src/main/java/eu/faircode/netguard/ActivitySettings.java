@@ -275,7 +275,8 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         pref_stats_samples.setTitle(getString(R.string.setting_stats_samples, prefs.getString("stats_samples", "90")));
 
         // Hosts file settings
-        Preference pref_block_domains = screen.findPreference("use_hosts");
+        // HeartGuard change - remove use_hosts
+        //Preference pref_block_domains = screen.findPreference(Rule.PREFERENCE_STRING_USE_HOSTS);
         EditTextPreference pref_rcode = (EditTextPreference) screen.findPreference("rcode");
         Preference pref_hosts_import = screen.findPreference("hosts_import");
         Preference pref_hosts_import_append = screen.findPreference("hosts_import_append");
@@ -289,7 +290,8 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
 
         if (Util.isPlayStoreInstall(this)) {
             Log.i(TAG, "Play store install");
-            cat_advanced.removePreference(pref_block_domains);
+            // HeartGuard change - remove use_hosts
+            //cat_advanced.removePreference(pref_block_domains);
             cat_advanced.removePreference(pref_rcode);
             cat_advanced.removePreference(pref_forwarding);
             cat_backup.removePreference(pref_hosts_import);
@@ -574,8 +576,8 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         } else if ("notify_access".equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
 
-        else if ("use_hosts".equals(name))
-            ServiceSinkhole.reload("changed " + name, this, false);
+        //else if (Rule.PREFERENCE_STRING_USE_HOSTS.equals(name))
+        //    ServiceSinkhole.reload("changed " + name, this, false);
 
         else if ("vpn4".equals(name)) {
             String vpn4 = prefs.getString(name, null);

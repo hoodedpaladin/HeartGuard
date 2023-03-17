@@ -1202,7 +1202,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         // Remove local DNS servers when not routing LAN
         int count = listDns.size();
         boolean lan = prefs.getBoolean("lan", false);
-        boolean use_hosts = prefs.getBoolean("use_hosts", false);
+        boolean use_hosts = prefs.getBoolean(Rule.PREFERENCE_STRING_USE_HOSTS, false);
         if (lan && use_hosts && filter)
             try {
                 List<Pair<InetAddress, Integer>> subnets = new ArrayList<>();
@@ -1596,7 +1596,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     private void prepareHostsBlocked() {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-        boolean use_hosts = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this) && prefs.getBoolean("use_hosts", false);
+        boolean use_hosts = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this) && prefs.getBoolean(Rule.PREFERENCE_STRING_USE_HOSTS, false);
         File hosts = new File(getFilesDir(), "hosts.txt");
         if (!use_hosts || !hosts.exists() || !hosts.canRead()) {
             Log.i(TAG, "Hosts file use=" + use_hosts + " exists=" + hosts.exists());

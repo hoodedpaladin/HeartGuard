@@ -112,7 +112,7 @@ public class ReceiverAutostart extends BroadcastReceiver {
 
             if (Util.isPlayStoreInstall(context)) {
                 editor.remove("update_check");
-                editor.remove("use_hosts");
+                editor.remove(Rule.PREFERENCE_STRING_USE_HOSTS);
                 editor.remove("hosts_url");
             }
 
