@@ -55,6 +55,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static List<ForwardChangedListener> forwardChangedListeners = new ArrayList<>();
     // HeartGuard change - notify of whitelist changes
     private static List<WhitelistChangedListener> whitelistChangedListeners = new ArrayList<>();
+    private static List<RuleChangedListener> ruleChangedListeners = new ArrayList<>();
 
     private static HandlerThread hthread = null;
     private static Handler handler = null;
@@ -66,6 +67,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private final static int MSG_FORWARD = 3;
     // HeartGuard change - notify of whitelist changes
     private final static int MSG_WHITELIST = 4;
+    // HeartGuard change - notify of rule changes
+    private final static int MSG_RULE = 5;
 
     private SharedPreferences prefs;
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -1210,6 +1213,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         whitelistChangedListeners.remove(listener);
     }
 
+    // HeartGuard change - notify of rule changes
+    public void addRuleChangedListener(RuleChangedListener listener) {
+        ruleChangedListeners.add(listener);
+    }
+
+    public void removeRuleChangedListener(RuleChangedListener listener) {
+        ruleChangedListeners.remove(listener);
+    }
+
     private void notifyLogChanged() {
         Message msg = handler.obtainMessage();
         msg.what = MSG_LOG;
@@ -1232,6 +1244,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private void notifyWhitelistChanged() {
         Message msg = handler.obtainMessage();
         msg.what = MSG_WHITELIST;
+        handler.sendMessage(msg);
+    }
+
+    // HeartGuard change - notify of rule changes
+    private void notifyRuleChanged() {
+        Message msg = handler.obtainMessage();
+        msg.what = MSG_RULE;
         handler.sendMessage(msg);
     }
 
@@ -1280,6 +1299,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 } catch (Throwable ex) {
                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                 }
+        } else if (msg.what == MSG_RULE) {
+            for (RuleChangedListener listener : ruleChangedListeners)
+                try {
+                    listener.onChanged();
+                } catch (Throwable ex) {
+                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                }
         }
     }
 
@@ -1297,6 +1323,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // HeartGuard change - notify of whitelist changes
     public interface WhitelistChangedListener {
+        void onChanged();
+    }
+
+    // HeartGuard change - notify of rule changes
+    public interface RuleChangedListener {
         void onChanged();
     }
 
@@ -1339,6 +1370,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    public Cursor getAllRulesForAdapter() {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            String query = "SELECT ID AS _id, *";
+            query += " FROM rules";
+            query += " ORDER BY ID ASC";
+            return db.rawQuery(query, new String[]{});
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     // HeartGuard change - get rule by ruletext
     public Cursor getRuleMatchingRuletext(String ruletext) {
         lock.readLock().lock();
@@ -1370,6 +1414,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } finally {
             lock.writeLock().unlock();
         }
+
+        notifyRuleChanged();
     }
 
     // HeartGuard change - set exact row to enacted
@@ -1385,6 +1431,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } finally {
             lock.writeLock().unlock();
         }
+
+        notifyRuleChanged();
     }
 
     public void removeRulesById(Long[] ids) {
@@ -1398,5 +1446,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } finally {
             lock.writeLock().unlock();
         }
+
+        notifyRuleChanged();
     }
 }

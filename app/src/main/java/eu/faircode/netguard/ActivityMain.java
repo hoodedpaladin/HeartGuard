@@ -862,6 +862,11 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         // Handle item selection
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         switch (item.getItemId()) {
+            // HeartGuard change - option to show rules list window
+            case R.id.menu_show_rules_list:
+                startActivity(new Intent(this, ActivityRulesList.class));
+                return true;
+
             case R.id.menu_app_user:
                 item.setChecked(!item.isChecked());
                 prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_USER, item.isChecked()).apply();

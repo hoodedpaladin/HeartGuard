@@ -48,6 +48,9 @@
         </menu>
     </item>
     <item
+        android:id="@+id/menu_show_rules_list"
+        android:title="@string/rules_list_pref"/>
+    <item
         android:id="@+id/menu_log"
         android:title="@string/menu_log"/>
     <item

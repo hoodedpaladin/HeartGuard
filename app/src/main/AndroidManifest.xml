@@ -154,6 +154,16 @@
         </activity>
 
         <activity
+            android:name=".ActivityRulesList"
+            android:configChanges="orientation|screenSize"
+            android:label="@string/rules_list"
+            android:parentActivityName=".ActivitySettings">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".ActivitySettings" />
+        </activity>
+
+        <activity
             android:name=".ActivityForwardApproval"
             android:configChanges="orientation|screenSize"
             android:exported="true"

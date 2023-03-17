@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:paddingEnd="8dp"
+    android:paddingLeft="8dp"
+    android:paddingRight="8dp"
+    android:paddingStart="8dp"
+    tools:context=".ActivityRulesList">
+    <TextView
+        android:id="@+id/tvID"
+        android:layout_width="48dp"
+        android:layout_height="wrap_content"
+        android:textAppearance="@style/TextSmall" />
+
+    <TextView
+        android:id="@+id/tvRuleText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginStart="4dp"
+        android:layout_marginLeft="4dp"
+        android:textAlignment="textStart"
+        android:textAppearance="@style/TextMedium" />
+</LinearLayout>
