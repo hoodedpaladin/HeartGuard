@@ -223,15 +223,16 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         //    pref_reload_onconnectivity.setEnabled(false);
         //}
 
-        // Handle port forwarding
-        Preference pref_forwarding = screen.findPreference("forwarding");
-        pref_forwarding.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-            @Override
-            public boolean onPreferenceClick(Preference preference) {
-                startActivity(new Intent(ActivitySettings.this, ActivityForwarding.class));
-                return true;
-            }
-        });
+        // HeartGuard change - remove port forwarding option
+        //// Handle port forwarding
+        //Preference pref_forwarding = screen.findPreference(Rule.PREFERENCE_STRING_FORWARDING);
+        //pref_forwarding.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+        //    @Override
+        //    public boolean onPreferenceClick(Preference preference) {
+        //        startActivity(new Intent(ActivitySettings.this, ActivityForwarding.class));
+        //        return true;
+        //    }
+        //});
 
         // VPN parameters
         screen.findPreference("vpn4").setTitle(getString(R.string.setting_vpn4, prefs.getString("vpn4", "10.1.10.1")));
@@ -298,7 +299,8 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             // HeartGuard change - remove use_hosts
             //cat_advanced.removePreference(pref_block_domains);
             cat_advanced.removePreference(pref_rcode);
-            cat_advanced.removePreference(pref_forwarding);
+            // HeartGuard change - remove port forwarding option
+            //cat_advanced.removePreference(pref_forwarding);
             cat_backup.removePreference(pref_hosts_import);
             cat_backup.removePreference(pref_hosts_import_append);
             cat_backup.removePreference(pref_hosts_url);

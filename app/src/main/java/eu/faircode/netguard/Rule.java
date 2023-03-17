@@ -69,6 +69,7 @@ public class Rule {
     //public static final String PREFERENCE_STRING_FILTER_UDP = "filter_udp";
     public static final String PREFERENCE_STRING_USE_HOSTS = "use_hosts";
     public static final String PREFERENCE_STRING_HANDOVER = "handover";
+    public static final String PREFERENCE_STRING_FORWARDING = "forwarding";
 
     //public static final String PREFERENCE_STRING_PERAPP_WIFI = "wifi";
     //public static final String PREFERENCE_STRING_PERAPP_OTHER = "other";
