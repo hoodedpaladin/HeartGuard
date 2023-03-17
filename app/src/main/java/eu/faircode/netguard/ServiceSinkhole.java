@@ -1947,7 +1947,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         packet.allowed = false;
         if (RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this)) {
             // https://android.googlesource.com/platform/system/core/+/master/include/private/android_filesystem_config.h
-            if (packet.protocol == 17 /* UDP */ && !prefs.getBoolean("filter_udp", false)) {
+            if (packet.protocol == 17 /* UDP */ && !RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilterUdp(ServiceSinkhole.this)) {
                 // Allow unfiltered UDP
                 packet.allowed = true;
                 Log.i(TAG, "Allowing UDP " + packet);

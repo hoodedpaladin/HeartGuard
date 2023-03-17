@@ -249,6 +249,10 @@ public class RulesManager {
         return false;
     }
 
+    public boolean getPreferenceFilterUdp(Context context) {
+        return true;
+    }
+
     public boolean getWifiEnabledForApp(Context context, String packagename, boolean defaultVal) {
         if (m_allowedPackages.containsKey(packagename)) {
             return m_allowedPackages.get(packagename);

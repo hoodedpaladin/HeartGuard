@@ -66,6 +66,7 @@ public class Rule {
     public static final String PREFERENCE_STRING_SHOW_NOINTERNET = "show_nointernet";
     public static final String PREFERENCE_STRING_SHOW_DISABLED = "show_disabled";
     public static final String PREFERENCE_STRING_SORT = "sort";
+    //public static final String PREFERENCE_STRING_FILTER_UDP = "filter_udp";
 
     //public static final String PREFERENCE_STRING_PERAPP_WIFI = "wifi";
     //public static final String PREFERENCE_STRING_PERAPP_OTHER = "other";
