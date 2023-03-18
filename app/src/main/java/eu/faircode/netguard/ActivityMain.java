@@ -205,7 +205,17 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
 
                 if (enabled != isChecked) {
                     // If the switch state doesn't match the set state, then that means the user touched it
-                    Util.areYouSure(ActivityMain.this, R.string.menu_clear, new Util.DoubtListener() {
+
+                    String enable_disable;
+                    if (isChecked) {
+                        enable_disable = "enable";
+                    } else {
+                        enable_disable = "disable";
+                    }
+
+                    String message = ActivityMain.this.getString(R.string.change_enabled, enable_disable);
+
+                    Util.areYouSure(ActivityMain.this, message, new Util.DoubtListener() {
                         @Override
                         public void onSure() {
                             String ruletext;
