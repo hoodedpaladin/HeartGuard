@@ -259,7 +259,7 @@ public class Rule {
             boolean screen_on = RulesManager.getInstance(context).getPreferenceScreenOn(context);
             boolean show_user = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true);
             boolean show_system = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, false);
-            boolean show_nointernet = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_NOINTERNET, true);
+            boolean show_nointernet = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_NOINTERNET, false);
             boolean show_disabled = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_DISABLED, true);
 
             default_screen_wifi = default_screen_wifi && screen_on;

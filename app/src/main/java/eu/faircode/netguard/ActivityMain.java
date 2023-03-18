@@ -778,7 +778,8 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             submenu.removeItem(R.id.menu_app_system);
         }
 
-        menu.findItem(R.id.menu_app_nointernet).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_NOINTERNET, true));
+        // HeartGuard change - don't show no internet by default
+        menu.findItem(R.id.menu_app_nointernet).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_NOINTERNET, false));
         menu.findItem(R.id.menu_app_disabled).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_DISABLED, true));
 
         String sort = prefs.getString(Rule.PREFERENCE_STRING_SORT, "name");
