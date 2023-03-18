@@ -50,6 +50,7 @@ public class RulesManager {
     private boolean m_enabled = true;
     private int m_delay = 0;
     private Map<String, Boolean> m_allowedPackages;
+    private boolean m_manage_system = false;
 
     private long next_pending_time = 0;
 
@@ -78,6 +79,9 @@ public class RulesManager {
         // Activate rules that took effect while we were asleep
         // But don't send change notifications, because we are just starting up
         activateRulesUpTo(context, curr_time, true);
+
+        // Set the display fields, at this point, to reflect whether we are showing system apps or not
+        updateManageSystem(context);
 
         // We want an alarm for any pending rules
         setAlarmForPending(context);
@@ -270,6 +274,10 @@ public class RulesManager {
     public boolean getScreenOtherEnabledForApp(Context context, String packagename, boolean defaultVal) {
         // Identical settings to above
         return getWifiEnabledForApp(context, packagename, defaultVal);
+    }
+
+    public boolean getPreferenceManageSystem(Context context) {
+        return m_manage_system;
     }
 
     private void setAlarmForTime(Context context, long time) {
@@ -527,6 +535,7 @@ public class RulesManager {
         // If there are no delay rules, delay will be 0
         int newDelay = 0;
         boolean newEnabled = false;
+        boolean newManageSystem = false;
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
 
         logAllRuleDbEntries(context, "updateFieldsFromCurrentRules");
@@ -539,6 +548,9 @@ public class RulesManager {
 
                 if ("enabled".equals(featureName)) {
                     newEnabled = true;
+                }
+                if ("manage_system".equals(featureName)) {
+                    newManageSystem = true;
                 }
             } else if (rule.type == AllowedPackageRule.class) {
                 String packageName = ((AllowedPackageRule)rule.rule).getPackageName();
@@ -555,6 +567,12 @@ public class RulesManager {
         if (m_enabled != newEnabled) {
             Log.w(TAG, "Enabled changed from " + Boolean.toString(m_enabled) + " to " + Boolean.toString(newEnabled));
             m_enabled = newEnabled;
+        }
+        if (m_manage_system != newManageSystem) {
+            Log.w(TAG, "Manage_system changed from " + Boolean.toString(m_manage_system) + " to " + Boolean.toString(newManageSystem));
+            m_manage_system = newManageSystem;
+
+            updateManageSystem(context);
         }
         m_allowedPackages = newAllowedPackages;
     }
@@ -584,6 +602,20 @@ public class RulesManager {
             i += 1;
         }
         Log.w(TAG, Integer.toString(i) + " total entries");
+    }
+
+    // At the moment of manage_system toggle, or at app startup, the display settings should reflect it
+    public void updateManageSystem(Context context) {
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+
+        // Set the internal setting the same
+        if (prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false) != m_manage_system) {
+            Log.w(TAG, "Had to update the preference system to set manage_system = " + Boolean.toString(m_manage_system));
+            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, m_manage_system).apply();
+        }
+
+        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true).apply();
+        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, m_manage_system).apply();
     }
 }
 
@@ -638,10 +670,13 @@ class FeatureRule implements RuleWithDelayClassification {
     private String m_featurename;
     private enum FeatureType {feature_restrictive, feature_permissive};
     private FeatureType m_featuretype;
+    private static final String[] restrictive_features = {"enabled", "manage_system"};
 
     private static FeatureType getClassificationForName(String featurename) {
-        if ("enabled".equals(featurename)) {
-            return FeatureType.feature_restrictive;
+        for (String restrictive_feature : restrictive_features) {
+            if (restrictive_feature.equals(featurename)) {
+                return FeatureType.feature_restrictive;
+            }
         }
 
         throw new AssertionError("feature name \"" + featurename + "\" not present");

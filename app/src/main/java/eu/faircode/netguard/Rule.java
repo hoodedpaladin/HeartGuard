@@ -255,7 +255,7 @@ public class Rule {
             boolean default_screen_other = RulesManager.getInstance(context).getPreferenceScreenOnOther(context);
             boolean default_roaming = RulesManager.getInstance(context).getPreferenceWhitelistRoaming(context);
 
-            boolean manage_system = prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false);
+            boolean manage_system = RulesManager.getInstance(context).getPreferenceManageSystem(context);
             boolean screen_on = RulesManager.getInstance(context).getPreferenceScreenOn(context);
             boolean show_user = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true);
             boolean show_system = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, false);

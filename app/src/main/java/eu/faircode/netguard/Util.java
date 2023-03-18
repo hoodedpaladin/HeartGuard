@@ -606,11 +606,19 @@ public class Util {
         void onSure();
     }
 
+    // HeartGuard change - add a string option to this function for finer-grain control
     public static void areYouSure(Context context, int explanation, final DoubtListener listener) {
+        String message = context.getString(explanation);
+
+        areYouSure(context, message, listener);
+        return;
+    }
+
+    public static void areYouSure(Context context, String message, final DoubtListener listener) {
         LayoutInflater inflater = LayoutInflater.from(context);
         View view = inflater.inflate(R.layout.sure, null, false);
         TextView tvExplanation = view.findViewById(R.id.tvExplanation);
-        tvExplanation.setText(explanation);
+        tvExplanation.setText(message);
         new AlertDialog.Builder(context)
                 .setView(view)
                 .setCancelable(true)

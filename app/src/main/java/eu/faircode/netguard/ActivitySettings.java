@@ -124,6 +124,9 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         final PreferenceScreen screen = getPreferenceScreen();
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
+        // HeartGuard change - sync with RulesMaster
+        updateMainUi();
+
         PreferenceGroup cat_options = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_options")).findPreference("category_options");
         //PreferenceGroup cat_network = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_network_options")).findPreference("category_network_options");
         PreferenceGroup cat_advanced = (PreferenceGroup) ((PreferenceGroup) screen.findPreference("screen_advanced_options")).findPreference("category_advanced_options");
@@ -289,6 +292,49 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         EditTextPreference pref_hosts_url = (EditTextPreference) screen.findPreference("hosts_url");
         final Preference pref_hosts_download = screen.findPreference("hosts_download");
 
+        // HeartGuard change -
+        // Click listener for this preference so that we can hook it up to the rules system
+        final SwitchPreference pref_manage_system = (SwitchPreference)screen.findPreference(Rule.PREFERENCE_STRING_MANAGE_SYSTEM);
+        pref_manage_system.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                boolean isChecked = pref_manage_system.isChecked();
+                final boolean manage_system = RulesManager.getInstance(ActivitySettings.this).getPreferenceManageSystem(ActivitySettings.this);
+                Log.w(TAG, String.format("pref_manage_system checked = %s", isChecked));
+
+                // Set the prefererence, for the time being, back to the master setting
+                // RulesManager will change it later when it approves the change
+                pref_manage_system.setChecked(manage_system);
+
+                if (isChecked != manage_system) {
+                    // If the switch state doesn't match the set state, then that means the user touched it
+
+                    String enable_disable;
+                    if (isChecked) {
+                        enable_disable = "enable";
+                    } else {
+                        enable_disable = "disable";
+                    }
+
+                    String message = ActivitySettings.this.getString(R.string.change_manage_system, enable_disable);
+
+                    Util.areYouSure(ActivitySettings.this, message, new Util.DoubtListener() {
+                        @Override
+                        public void onSure() {
+                            String ruletext;
+                            if (manage_system) {
+                                ruletext = "- feature manage_system";
+                            } else {
+                                ruletext = "feature manage_system";
+                            }
+                            RulesManager.getInstance(ActivitySettings.this).queueRuleText(ActivitySettings.this, ruletext);
+                        }
+                    });
+                }
+                return true;
+            }
+        });
+
         pref_rcode.setTitle(getString(R.string.setting_rcode, prefs.getString("rcode", "3")));
 
         if (Util.isPlayStoreInstall(this) || !Util.hasValidFingerprint(this))
@@ -435,6 +481,10 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         IntentFilter ifConnectivity = new IntentFilter();
         ifConnectivity.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
         registerReceiver(connectivityChangedReceiver, ifConnectivity);
+
+        // HeartGuard change - Listen for rule set changes
+        IntentFilter ifr = new IntentFilter(ActivityMain.ACTION_RULES_CHANGED);
+        LocalBroadcastManager.getInstance(this).registerReceiver(onRulesChanged, ifr);
     }
 
     @Override
@@ -446,6 +496,9 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
 
         unregisterReceiver(interactiveStateReceiver);
         unregisterReceiver(connectivityChangedReceiver);
+
+        // HeartGuard change - listen to rules changes
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(onRulesChanged);
     }
 
     @Override
@@ -568,19 +621,22 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         }// else if (Rule.PREFERENCE_STRING_LOCKDOWN_WIFI.equals(name) || Rule.PREFERENCE_STRING_LOCKDOWN_OTHER.equals(name))
         //    ServiceSinkhole.reload("changed " + name, this, false);
 
-        else if (Rule.PREFERENCE_STRING_MANAGE_SYSTEM.equals(name)) {
-            boolean manage = prefs.getBoolean(name, false);
-            if (!manage)
-                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true).apply();
-            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, manage).apply();
-            ServiceSinkhole.reload("changed " + name, this, false);
+        // HeartGuard change - manage these in ActivityMain (where they have effect)
+        // so that RulesManager can control the manage_system setting, and ActivityMain
+        // updates these rule settings in response to rules change events
+        //else if (Rule.PREFERENCE_STRING_MANAGE_SYSTEM.equals(name)) {
+        //    boolean manage = prefs.getBoolean(name, false);
+        //    if (!manage)
+        //        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true).apply();
+        //    prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, manage).apply();
+        //    ServiceSinkhole.reload("changed " + name, this, false);
 
         //} else if (Rule.PREFERENCE_STRING_LOG_APP.equals(name)) {
         //    Intent ruleset = new Intent(ActivityMain.ACTION_RULES_CHANGED);
         //    LocalBroadcastManager.getInstance(this).sendBroadcast(ruleset);
         //    ServiceSinkhole.reload("changed " + Rule.PREFERENCE_STRING_LOG_APP, this, false);
 
-        } else if ("notify_access".equals(name))
+        else if ("notify_access".equals(name))
             ServiceSinkhole.reload("changed " + name, this, false);
 
         //else if (Rule.PREFERENCE_STRING_USE_HOSTS.equals(name))
@@ -910,4 +966,22 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             }
         }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
+
+    // HeartGuard change - update UI to keep in sync with rules changes
+    private void updateMainUi() {
+        // Update the preferences that are actually controlled by RulesManager
+
+        // Manage system
+        final SwitchPreference pref_manage_system = (SwitchPreference)getPreferenceScreen().findPreference(Rule.PREFERENCE_STRING_MANAGE_SYSTEM);
+        boolean manage_system = RulesManager.getInstance(ActivitySettings.this).getPreferenceManageSystem(ActivitySettings.this);
+        pref_manage_system.setChecked(manage_system);
+    }
+
+    // HeartGuard change - receive rules updates while we are active
+    private BroadcastReceiver onRulesChanged = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            updateMainUi();
+        }
+    };
 }

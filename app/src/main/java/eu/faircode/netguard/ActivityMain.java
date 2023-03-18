@@ -611,7 +611,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             updateApplicationList(null);
 
             LinearLayout llSystem = findViewById(R.id.llSystem);
-            boolean system = prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false);
+            boolean system = RulesManager.getInstance(ActivityMain.this).getPreferenceManageSystem(ActivityMain.this);
             boolean hint = prefs.getBoolean("hint_system", true);
             llSystem.setVisibility(!system && hint ? View.VISIBLE : View.GONE);
 
@@ -769,7 +769,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
     public boolean onPrepareOptionsMenu(Menu menu) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
-        if (prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false)) {
+        if (RulesManager.getInstance(ActivityMain.this).getPreferenceManageSystem(ActivityMain.this)) {
             menu.findItem(R.id.menu_app_user).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true));
             menu.findItem(R.id.menu_app_system).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, false));
         } else {
@@ -916,7 +916,7 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         // Hint system applications
         final LinearLayout llSystem = findViewById(R.id.llSystem);
         Button btnSystem = findViewById(R.id.btnSystem);
-        boolean system = prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false);
+        boolean system = RulesManager.getInstance(ActivityMain.this).getPreferenceManageSystem(ActivityMain.this);
         boolean hintSystem = prefs.getBoolean("hint_system", true);
         llSystem.setVisibility(!system && hintSystem ? View.VISIBLE : View.GONE);
         btnSystem.setOnClickListener(new View.OnClickListener() {
@@ -1275,5 +1275,16 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         SwitchCompat swEnabled = getSupportActionBar().getCustomView().findViewById(R.id.swEnabled);
         if (swEnabled.isChecked() != enabled)
             swEnabled.setChecked(enabled);
+
+        invalidateOptionsMenu();
+        updateApplicationList(null);
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+        // Update with the manage_system state
+        LinearLayout llSystem = findViewById(R.id.llSystem);
+        boolean system = RulesManager.getInstance(ActivityMain.this).getPreferenceManageSystem(ActivityMain.this);
+        boolean hint = prefs.getBoolean("hint_system", true);
+        llSystem.setVisibility(!system && hint ? View.VISIBLE : View.GONE);
     }
 }

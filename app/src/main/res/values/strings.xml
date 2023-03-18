@@ -363,4 +363,5 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="package_name">Package Name</string>
     <string name="rules_list_pref">See all rules...</string>
     <string name="rules_list">Rules List</string>
+    <string name="change_manage_system">Are you sure you want to %s manage_system?</string>
 </resources>
