@@ -419,10 +419,18 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                 //rule.wifi_blocked = isChecked;
                 //updateRule(context, rule, true, listAll);
                 compoundButton.setChecked(rule.wifi_blocked);
-                Util.areYouSure(context, R.string.menu_clear, new Util.DoubtListener() {
+
+                String enable_disable;
+                if (isChecked) {
+                    enable_disable = "unallow";
+                } else {
+                    enable_disable = "allow";
+                }
+
+                String message = context.getString(R.string.change_allow_package, enable_disable, rule.name);
+                Util.areYouSure(context, message, new Util.DoubtListener() {
                     @Override
                     public void onSure() {
-                        Log.w(TAG, "Hey cool");
                         RulesManager.getInstance(compoundButton.getContext()).setPackageAllowed(compoundButton.getContext(), rule.packageName);
                     }
                 });
