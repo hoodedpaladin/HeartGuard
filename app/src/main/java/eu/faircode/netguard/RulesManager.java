@@ -380,6 +380,24 @@ public class RulesManager {
             RuleAndUid ruleanduid = (RuleAndUid)rule.rule;
             WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleanduid);
         }
+        if (rule.type == DelayRule.class) {
+            Cursor cursor = dh.getEnactedRules();
+
+            int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+            int col_id = cursor.getColumnIndexOrThrow("_id");
+
+            while (cursor.moveToNext()) {
+                Long otherid = cursor.getLong(col_id);
+
+                if (otherid != id) {
+                    String otherruletext = cursor.getString(col_ruletext);
+                    if (otherruletext.matches("delay \\d+")) {
+                        Log.w(TAG, String.format("Removing rule %d because it's also a delay rule", otherid));
+                        dh.removeRulesById(new Long[]{otherid});
+                    }
+                }
+            }
+        }
 
         return true;
     }
