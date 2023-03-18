@@ -33,7 +33,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/allow_new_access"
+        android:text="@string/add_new_rule"
         android:textAppearance="@style/TextTitle" />
 
     <ScrollView
@@ -51,29 +51,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="@string/title_raddr"
-                android:textAppearance="@style/TextSmall" />
-
-            <EditText
-                android:id="@+id/allow_new_access_daddr"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="127.0.0.1"
-                android:inputType="text"
+                android:text="@string/rule_text"
                 android:textAppearance="@style/TextMedium" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/package_name"
-                android:textAppearance="@style/TextSmall" />
-
             <EditText
-                android:id="@+id/allow_new_access_package_name"
+                android:id="@+id/etRuleText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="something"
+                android:hint=""
                 android:inputType="text"
                 android:textAppearance="@style/TextMedium" />
         </LinearLayout>

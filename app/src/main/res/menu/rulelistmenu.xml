@@ -2,8 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:netguard="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/menu_add"
+        android:id="@+id/menu_rules_list_add"
         android:icon="@drawable/ic_add_circle_outline_white_24dp"
         android:title="@string/menu_add"
         netguard:showAsAction="always|collapseActionView" />
+    <item
+        android:id="@+id/copy_all_to_clipboard"
+        android:title="@string/copy_all_to_clipboard"/>
 </menu>

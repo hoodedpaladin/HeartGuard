@@ -1,6 +1,7 @@
 package eu.faircode.netguard;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.util.Log;
@@ -12,10 +13,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.CursorAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.text.SimpleDateFormat;
@@ -91,19 +94,63 @@ public class ActivityRulesList extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.forwarding, menu);
+        inflater.inflate(R.menu.rulelistmenu, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch(item.getItemId()) {
-            case R.id.menu_add:
-                Log.w(TAG, "add item, cool");
+            case R.id.menu_rules_list_add:
+                launchAddRulePage(ActivityRulesList.this);
+                return true;
+            case R.id.copy_all_to_clipboard:
+                // TODO - implement
+                Log.w(TAG, "copy all to clipboard here");
                 return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    // Launch a dialog to add an arbitrary rule
+    private void launchAddRulePage(final Context context) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.addrule, null, false);
+        final EditText etRuleText = view.findViewById(R.id.etRuleText);
+
+        AlertDialog dialog;
+        dialog = new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String newruletext = etRuleText.getText().toString();
+                        Log.w(TAG, String.format("click yes: newruletext=\"%s\"", newruletext));
+
+                        try {
+                            RulesManager.getInstance(context).queueRuleText(context, newruletext);
+                        } catch (Throwable t) {
+                            Log.w(TAG, String.format("New rule \"%s\" got exception %s", newruletext, t.toString()));
+                        }
+
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialogInterface) {
+                    }
+                })
+                .create();
+        dialog.show();
     }
 
     private class AdapterRulesList extends CursorAdapter {
