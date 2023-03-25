@@ -365,6 +365,9 @@ public class RulesManager {
             // This is a negative rule
             return enactNegativeRule(context, ruletext, id);
         }
+        if (ruletext.matches("abandon .*")) {
+            return enactAbandonRule(context, ruletext, id);
+        }
 
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
         lock.writeLock().lock();
@@ -439,6 +442,48 @@ public class RulesManager {
         return was_enacted;
     }
 
+    // Sets a row to enacted. Returns true if this makes a runtime change.
+    private boolean enactAbandonRule(Context context, String ruletext, long id) {
+        Matcher m = Pattern.compile("abandon (.*)").matcher(ruletext);
+
+        if (!m.matches()) {
+            throw new AssertionError("Thought this string was abandon: " + ruletext);
+        }
+
+        String otherruletext = m.group(1);
+
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        lock.writeLock().lock();
+        try {
+            Cursor cursor = dh.getRuleMatchingRuletext(otherruletext);
+
+            if (!cursor.moveToFirst()) {
+                Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", ruletext));
+                dh.removeRulesById(new Long[]{id});
+                return false;
+            }
+            int col_id = cursor.getColumnIndexOrThrow("_id");
+            int col_enacted = cursor.getColumnIndexOrThrow("enacted");
+
+            boolean was_enacted = cursor.getInt(col_enacted) != 0;
+            long otherid = cursor.getLong(col_id);
+
+            if (was_enacted) {
+                // Can't abandon an enacted rule
+                Log.w(TAG, String.format("Not removing ID %d because you can't abandon an enacted rule", otherid));
+                dh.removeRulesById(new Long[]{id});
+                return false;
+            }
+            Log.w(TAG, String.format("Removing IDs %d and %d due to abandon rule", id, otherid));
+            dh.removeRulesById(new Long[]{id, otherid});
+
+            // Never makes runtime changes, since we can only abandon pending rules
+            return false;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
     public void rulesChanged(Context context) {
         Long curr_time = System.currentTimeMillis();
 
@@ -483,7 +528,10 @@ public class RulesManager {
             } else if (remove_classification == RuleWithDelayClassification.Classification.delay_depends) {
                 throw new AssertionError(String.format("Don't know how to deal with this deletion \"%s\"", ruletext));
             }
-        } else {
+        } else if (ruletext.matches("abandon .*")) {
+            // Abandon rule
+            delay = 0;
+        }else {
             // Parse to UniversalRule to get stats on it
             UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
 

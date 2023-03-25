@@ -372,4 +372,5 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="menu_abandon">Abandon</string>
     <string name="menu_clipboard">Copy to clipboard</string>
     <string name="confirm_delete_rule">Are you sure you want to remove the rule \"%s\"?</string>
+    <string name="confirm_abandon_rule">Are you sure you want to abandon the rule \"%s\"?</string>
 </resources>

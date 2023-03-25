@@ -84,30 +84,41 @@ public class ActivityRulesList extends AppCompatActivity {
                 popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem menuItem) {
-                        int menu = menuItem.getItemId();
-                        boolean result = false;
-                        switch (menu) {
-                            case R.id.menu_ruleslist_popup_delete:
-                                String message = ActivityRulesList.this.getString(R.string.confirm_delete_rule, ruletext);
-                                Util.areYouSure(ActivityRulesList.this, message, new Util.DoubtListener() {
-                                    @Override
-                                    public void onSure() {
+                        int menuitem = menuItem.getItemId();
+                        if (menuitem == R.id.menu_ruleslist_popup_delete) {
+                            String message = ActivityRulesList.this.getString(R.string.confirm_delete_rule, ruletext);
+                            Util.areYouSure(ActivityRulesList.this, message, new Util.DoubtListener() {
+                                @Override
+                                public void onSure() {
+                                    try {
                                         RulesManager.getInstance(ActivityRulesList.this).queueRuleText(ActivityRulesList.this, "- " + ruletext);
+                                    } catch (Throwable e) {
+                                        Log.e(TAG, "Got exception: " + e);
                                     }
-                                });
-                                return true;
-
-                            case R.id.menu_ruleslist_popup_abandon:
-                                return true;
-
-                            case R.id.menu_ruleslist_popup_clipboard:
-                                ClipboardManager clipboard = (ClipboardManager) ActivityRulesList.this.getSystemService(Context.CLIPBOARD_SERVICE);
-                                ClipData clip = ClipData.newPlainText("netguard", ruletext);
-                                clipboard.setPrimaryClip(clip);
-                                return true;
+                                }
+                            });
+                            return true;
+                        } else if (menuitem == R.id.menu_ruleslist_popup_abandon) {
+                            String message = ActivityRulesList.this.getString(R.string.confirm_abandon_rule, ruletext);
+                            Util.areYouSure(ActivityRulesList.this, message, new Util.DoubtListener() {
+                                @Override
+                                public void onSure() {
+                                    try {
+                                        RulesManager.getInstance(ActivityRulesList.this).queueRuleText(ActivityRulesList.this, "abandon " + ruletext);
+                                    } catch (Throwable e) {
+                                        Log.e(TAG, "Got exception: " + e);
+                                    }
+                                }
+                            });
+                            return true;
+                        } else if (menuitem == R.id.menu_ruleslist_popup_clipboard) {
+                            ClipboardManager clipboard = (ClipboardManager) ActivityRulesList.this.getSystemService(Context.CLIPBOARD_SERVICE);
+                            ClipData clip = ClipData.newPlainText("netguard", ruletext);
+                            clipboard.setPrimaryClip(clip);
+                            return true;
                         }
 
-                        return result;
+                        return false;
                     }
                 });
                 popup.show();
