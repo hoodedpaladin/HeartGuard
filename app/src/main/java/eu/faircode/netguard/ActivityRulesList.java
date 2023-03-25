@@ -1,5 +1,7 @@
 package eu.faircode.netguard;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.database.Cursor;
@@ -15,6 +17,7 @@ import android.widget.AdapterView;
 import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -62,8 +65,52 @@ public class ActivityRulesList extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Cursor cursor = (Cursor)adapter.getItem(position);
-                long otherid = cursor.getLong(cursor.getColumnIndexOrThrow("_id"));
-                Log.w(TAG, "clicked id " + Long.toString(id) + " or, from cursor, " + Long.toString(otherid));
+
+                int colRuleText = cursor.getColumnIndexOrThrow("ruletext");
+                int colEnacted = cursor.getColumnIndexOrThrow("enacted");
+
+                final String ruletext = cursor.getString(colRuleText);
+                boolean enacted = cursor.getInt(colEnacted) != 0;
+                //Log.w(TAG, "clicked id " + Long.toString(id) + " or, from cursor, " + Long.toString(otherid));
+                PopupMenu popup = new PopupMenu(ActivityRulesList.this, view);
+                popup.inflate(R.menu.rules_list_popup);
+                if (!enacted) {
+                    popup.getMenu().removeItem(R.id.menu_ruleslist_popup_delete);
+                }
+                if (enacted) {
+                    popup.getMenu().removeItem(R.id.menu_ruleslist_popup_abandon);
+                }
+                popup.getMenu().findItem(R.id.menu_ruleslist_popup_title).setTitle(ruletext);
+                popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem menuItem) {
+                        int menu = menuItem.getItemId();
+                        boolean result = false;
+                        switch (menu) {
+                            case R.id.menu_ruleslist_popup_delete:
+                                String message = ActivityRulesList.this.getString(R.string.confirm_delete_rule, ruletext);
+                                Util.areYouSure(ActivityRulesList.this, message, new Util.DoubtListener() {
+                                    @Override
+                                    public void onSure() {
+                                        RulesManager.getInstance(ActivityRulesList.this).queueRuleText(ActivityRulesList.this, "- " + ruletext);
+                                    }
+                                });
+                                return true;
+
+                            case R.id.menu_ruleslist_popup_abandon:
+                                return true;
+
+                            case R.id.menu_ruleslist_popup_clipboard:
+                                ClipboardManager clipboard = (ClipboardManager) ActivityRulesList.this.getSystemService(Context.CLIPBOARD_SERVICE);
+                                ClipData clip = ClipData.newPlainText("netguard", ruletext);
+                                clipboard.setPrimaryClip(clip);
+                                return true;
+                        }
+
+                        return result;
+                    }
+                });
+                popup.show();
             }
         });
     }

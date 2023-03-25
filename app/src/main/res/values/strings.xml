@@ -369,4 +369,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="change_manage_system">Are you sure you want to %s manage_system?</string>
     <string name="change_enabled">Are you sure you want to %s HeartGuard?</string>
     <string name="change_allow_package">Are you sure you want to %s %s?</string>
+    <string name="menu_abandon">Abandon</string>
+    <string name="menu_clipboard">Copy to clipboard</string>
+    <string name="confirm_delete_rule">Are you sure you want to remove the rule \"%s\"?</string>
 </resources>
