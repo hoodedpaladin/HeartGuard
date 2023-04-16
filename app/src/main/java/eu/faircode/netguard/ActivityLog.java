@@ -200,13 +200,15 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
                 // Destination IP
                 popup.getMenu().findItem(R.id.menu_protocol).setTitle(Util.getProtocolName(protocol, version, false));
 
-                if (RulesManager.getInstance(ActivityLog.this).getPreferenceFilter(view.getContext())) {
-                    if (uid <= 0) {
-                        popup.getMenu().removeItem(R.id.menu_allow);
-                    }
-                } else {
-                    popup.getMenu().removeItem(R.id.menu_allow);
-                }
+                //HeartGuard change - don't allow access changes from the log
+                popup.getMenu().removeItem(R.id.menu_allow);
+                //if (RulesManager.getInstance(ActivityLog.this).getPreferenceFilter(view.getContext())) {
+                //    if (uid <= 0) {
+                //        popup.getMenu().removeItem(R.id.menu_allow);
+                //    }
+                //} else {
+                //    popup.getMenu().removeItem(R.id.menu_allow);
+                //}
 
                 final Packet packet = new Packet();
                 packet.version = version;
