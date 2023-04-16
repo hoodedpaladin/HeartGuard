@@ -1249,10 +1249,25 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         return listDns;
     }
 
+    private static final int REQUEST_VPN = 1;
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private ParcelFileDescriptor startVPN(Builder builder) throws SecurityException {
+        Intent prepare = null;
+        try {
+            prepare = VpnService.prepare(this);
+            if (prepare != null) {
+                Log.e(TAG, "VpnService.prepare returned null ... VPN permission was revoked?");
+            }
+        } catch (Throwable ex) {
+            // Prepare failed
+            Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+        }
         try {
             ParcelFileDescriptor pfd = builder.establish();
+
+            if (pfd == null) {
+                Log.e(TAG, "pfd is null when trying to start VPN");
+            }
 
             // Set underlying network
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
