@@ -1025,7 +1025,13 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                         // The package name can be empty, but the daddr can't (if they want to allow a whole package, they click on the app wifi logo)
                         if (newdaddr.matches("\\S+")) {
                             if (newpackagename.matches("\\S+") || newpackagename.length() == 0) {
-                                RulesManager.getInstance(context).queueRuleText(context, String.format("allow package:%s host:%s", newpackagename, newdaddr));
+                                String newruletext;
+                                if (newpackagename.length() == 0) {
+                                    newruletext = String.format("allow host:%s", newdaddr);
+                                } else {
+                                    newruletext = String.format("allow package:%s host:%s", newpackagename, newdaddr);
+                                }
+                                RulesManager.getInstance(context).queueRuleText(context, newruletext);
                             }
                         }
                         dialog.dismiss();
