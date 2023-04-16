@@ -200,33 +200,13 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 Log.i(TAG, "Switch=" + isChecked);
                 //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, isChecked).apply();
+                // Reset the UI to the current status of RulesManager
                 final boolean enabled = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(ActivityMain.this);
                 swEnabled.setChecked(enabled);
 
+                // If the state has changed, then the user pressed it.
                 if (enabled != isChecked) {
-                    // If the switch state doesn't match the set state, then that means the user touched it
-
-                    String enable_disable;
-                    if (isChecked) {
-                        enable_disable = "enable";
-                    } else {
-                        enable_disable = "disable";
-                    }
-
-                    String message = ActivityMain.this.getString(R.string.change_enabled, enable_disable);
-
-                    Util.areYouSure(ActivityMain.this, message, new Util.DoubtListener() {
-                        @Override
-                        public void onSure() {
-                            String ruletext;
-                            if (enabled) {
-                                ruletext = "- feature enabled";
-                            } else {
-                                ruletext = "feature enabled";
-                            }
-                            RulesManager.getInstance(ActivityMain.this).queueRuleText(ActivityMain.this, ruletext);
-                        }
-                    });
+                    userToggledEnabled();
                 }
             }
         });
@@ -422,6 +402,51 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         checkExtras(getIntent());
     }
 
+    // HeartGuard function
+    // Asks for VPN permission, if necessary, and calls itself again
+    private void userToggledEnabled() {
+        Intent prepare = null;
+        // If the switch state doesn't match the set state, then that means the user touched it
+
+        // Take this user interaction moment to take the chance to prepare the VPN capability
+        try {
+            prepare = VpnService.prepare(ActivityMain.this);
+            if (prepare != null) {
+                startActivityForResult(prepare, REQUEST_VPN);
+            }
+        } catch (Throwable ex) {
+            // Prepare failed
+            Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+        }
+
+        final boolean enabled = RulesManager.getInstance(ActivityMain.this).getPreferenceEnabled(ActivityMain.this);
+
+        if (prepare == null) {
+            String enable_disable;
+            if (enabled == false) {
+                enable_disable = "enable";
+            } else {
+                enable_disable = "disable";
+            }
+
+            String message = ActivityMain.this.getString(R.string.change_enabled, enable_disable);
+
+            Util.areYouSure(ActivityMain.this, message, new Util.DoubtListener() {
+                @Override
+                public void onSure() {
+                    String ruletext;
+                    if (enabled) {
+                        ruletext = "- feature enabled";
+                    } else {
+                        ruletext = "feature enabled";
+                    }
+                    RulesManager.getInstance(ActivityMain.this).queueRuleText(ActivityMain.this, ruletext);
+                }
+            });
+        }
+
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         Log.i(TAG, "New intent");
@@ -541,16 +566,17 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
             //prefs.edit().putBoolean(Rule.PREFERENCE_STRING_ENABLED, resultCode == RESULT_OK).apply();
             if (resultCode == RESULT_OK) {
-                ServiceSinkhole.start("prepared", this);
+                //ServiceSinkhole.start("prepared", this);
 
                 //Toast on = Toast.makeText(ActivityMain.this, R.string.msg_on, Toast.LENGTH_LONG);
                 //on.setGravity(Gravity.CENTER, 0, 0);
                 //on.show();
 
+                userToggledEnabled();
                 checkDoze();
             } else if (resultCode == RESULT_CANCELED) {
                 //TODO: safety check for this as a user reminder
-                //Toast.makeText(this, R.string.msg_vpn_cancelled, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.msg_vpn_cancelled, Toast.LENGTH_LONG).show();
             }
 
         } else if (requestCode == REQUEST_INVITE) {
