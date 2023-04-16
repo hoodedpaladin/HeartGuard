@@ -163,8 +163,7 @@ public class ActivityRulesList extends AppCompatActivity {
                 launchAddRulePage(ActivityRulesList.this);
                 return true;
             case R.id.copy_all_to_clipboard:
-                // TODO - implement
-                Log.w(TAG, "copy all to clipboard here");
+                allRulesToClipboard();
                 return true;
         }
 
@@ -211,6 +210,43 @@ public class ActivityRulesList extends AppCompatActivity {
         dialog.show();
     }
 
+    private void allRulesToClipboard() {
+        int num = 0;
+        String message = "";
+        Cursor cursor = DatabaseHelper.getInstance(this).getAllRules();
+
+        while (cursor.moveToNext()) {
+            if (num > 0) {
+                message += "\n";
+            }
+            num += 1;
+
+            message += getDisplayTextFromRuleCursor(cursor);
+        }
+
+        ClipboardManager clipboard = (ClipboardManager) ActivityRulesList.this.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("netguard", message);
+        clipboard.setPrimaryClip(clip);
+    }
+
+    public static String getDisplayTextFromRuleCursor(Cursor cursor) {
+        int colRuleText = cursor.getColumnIndexOrThrow("ruletext");
+        int colEnacted = cursor.getColumnIndexOrThrow("enacted");
+        int colEnactTime = cursor.getColumnIndexOrThrow("enact_time");
+
+        String ruletext = cursor.getString(colRuleText);
+        int enacted = cursor.getInt(colEnacted);
+
+        if (enacted != 0) {
+            return ruletext;
+        } else {
+            long enact_time = cursor.getLong(colEnactTime);
+            SimpleDateFormat x = new SimpleDateFormat("LLL dd - HH:mm:ss");
+            String timemessage = x.format(new Date(enact_time));
+            return "### " + ruletext + " (enacts at " + timemessage + ")";
+        }
+    }
+
     private class AdapterRulesList extends CursorAdapter {
         private int colId;
         private int colRuleText;
@@ -242,13 +278,7 @@ public class ActivityRulesList extends AppCompatActivity {
             TextView tvRuleText = view.findViewById(R.id.tvRuleText);
 
             tvId.setText(Long.toString(id));
-            if (enacted != 0) {
-                tvRuleText.setText(ruletext);
-            } else {
-                SimpleDateFormat x = new SimpleDateFormat("LLL dd - HH:mm:ss");
-                String timemessage = x.format(new Date(enact_time)).toString();
-                tvRuleText.setText("### " + ruletext + " (enacts at " + timemessage + ")");
-            }
+            tvRuleText.setText(ActivityRulesList.getDisplayTextFromRuleCursor(cursor));
         }
     }
 }
