@@ -679,7 +679,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         }
 
         private void watchdog(Intent intent) {
-            if (vpn == null) {
+            if (vpn == null && RulesManager.getInstance(ServiceSinkhole.this).getPreferenceEnabled(ServiceSinkhole.this)) {
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
                 if (RulesManager.getInstance(ServiceSinkhole.this).getPreferenceEnabled(ServiceSinkhole.this)) {
                     Log.e(TAG, "Service was killed");

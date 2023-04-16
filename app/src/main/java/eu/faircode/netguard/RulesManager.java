@@ -353,7 +353,11 @@ public class RulesManager {
             if (!startup) {
                 LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
             }
-            ServiceSinkhole.reload("rule changed", context, false);
+            if (this.getPreferenceEnabled(context)) {
+                ServiceSinkhole.reload("rule changed", context, false);
+            } else {
+                ServiceSinkhole.stop("rule changed", context, false);
+            }
         }
     }
 
