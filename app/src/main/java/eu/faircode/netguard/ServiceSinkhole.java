@@ -101,6 +101,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -186,7 +187,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     private enum State {none, waiting, enforcing, stats}
 
-    public enum Command {run, start, reload, stop, stats, set, householding, watchdog, rules_update}
+    public enum Command {run, start, reload, stop, stats, set, householding, watchdog, rules_update, uid_update}
 
     private static volatile PowerManager.WakeLock wlInstance = null;
 
@@ -449,6 +450,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         rules_update(intent);
                         break;
 
+                    case uid_update:
+                        uid_update(intent);
+                        break;
+
                     default:
                         Log.e(TAG, "Unknown command=" + cmd);
                 }
@@ -688,6 +693,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             }
         }
 
+        // HeartGuard change - use this to make the VPN running or not, based on the rule
         private void rules_update(Intent intent) {
             RulesManager rm = RulesManager.getInstance(ServiceSinkhole.this);
             rm.rulesChanged(ServiceSinkhole.this);
@@ -700,6 +706,20 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             } else if (!running && enabled) {
                 start();
             }
+        }
+
+        // HeartGuard change - update the UidIPFilters for one UID only
+        private void uid_update(Intent intent) throws Exception {
+            // No need to do this while the VPN is stopped
+            if (vpn == null)
+                return;
+
+            int uid = intent.getIntExtra(EXTRA_UID, -1);
+            if (uid == -1) {
+                throw new Exception("No UID found in intent");
+            }
+
+            prepareUidIPFiltersForUid(uid);
         }
 
         private void checkUpdate() {
@@ -1736,6 +1756,84 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                             } else {
                                 if (dname != null)
                                     Log.i(TAG, "Ignored " + key + " " + daddr + "/" + dresource + "=" + block);
+                            }
+                        } else
+                            Log.w(TAG, "Address not numeric " + name);
+                    } catch (UnknownHostException ex) {
+                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                    }
+                }
+            }
+        }
+
+        lock.writeLock().unlock();
+    }
+
+    // HeartGuard code - update UidIPFilters only for a specific UID
+    private void prepareUidIPFiltersForUid(int uid) {
+        SharedPreferences lockdown = getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE);
+
+        lock.writeLock().lock();
+
+        // Remove rules matching UID
+        synchronized (mapUidIPFilters) {
+            for (Iterator<IPKey> iter = mapUidIPFilters.keySet().iterator(); iter.hasNext(); ) {
+                IPKey key = iter.next();
+                if (key.uid == uid) {
+                    iter.remove();
+                }
+            }
+        }
+
+        try (Cursor cursor = DatabaseHelper.getInstance(ServiceSinkhole.this).getAccessDnsForUid(uid)) {
+            int colVersion = cursor.getColumnIndex("version");
+            int colProtocol = cursor.getColumnIndex("protocol");
+            int colDAddr = cursor.getColumnIndex("daddr");
+            int colResource = cursor.getColumnIndex("resource");
+            int colDPort = cursor.getColumnIndex("dport");
+            int colBlock = cursor.getColumnIndex("block");
+            int colTime = cursor.getColumnIndex("time");
+            int colTTL = cursor.getColumnIndex("ttl");
+            while (cursor.moveToNext()) {
+                int version = cursor.getInt(colVersion);
+                int protocol = cursor.getInt(colProtocol);
+                String daddr = cursor.getString(colDAddr);
+                String dresource = (cursor.isNull(colResource) ? null : cursor.getString(colResource));
+                int dport = cursor.getInt(colDPort);
+                boolean block = (cursor.getInt(colBlock) > 0);
+                long time = (cursor.isNull(colTime) ? new Date().getTime() : cursor.getLong(colTime));
+                long ttl = (cursor.isNull(colTTL) ? 7 * 24 * 3600 * 1000L : cursor.getLong(colTTL));
+
+                if (isLockedDown(last_metered)) {
+                    String[] pkg = getPackageManager().getPackagesForUid(uid);
+                    if (pkg != null && pkg.length > 0) {
+                        if (!lockdown.getBoolean(pkg[0], false))
+                            continue;
+                    }
+                }
+
+                IPKey key = new IPKey(version, protocol, dport, uid);
+                synchronized (mapUidIPFilters) {
+                    if (!mapUidIPFilters.containsKey(key))
+                        mapUidIPFilters.put(key, new HashMap());
+
+                    try {
+                        String name = (dresource == null ? daddr : dresource);
+                        if (Util.isNumericAddress(name)) {
+                            InetAddress iname = InetAddress.getByName(name);
+                            if (version == 4 && !(iname instanceof Inet4Address))
+                                continue;
+                            if (version == 6 && !(iname instanceof Inet6Address))
+                                continue;
+
+                            boolean exists = mapUidIPFilters.get(key).containsKey(iname);
+                            if (!exists || !mapUidIPFilters.get(key).get(iname).isBlocked()) {
+                                IPRule rule = new IPRule(key, name + "/" + iname, block, time, ttl);
+                                mapUidIPFilters.get(key).put(iname, rule);
+                                if (exists)
+                                    Log.w(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
+                            } else if (exists) {
+                                mapUidIPFilters.get(key).get(iname).updateExpires(time, ttl);
                             }
                         } else
                             Log.w(TAG, "Address not numeric " + name);
@@ -3375,6 +3473,13 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         Intent intent = new Intent(context, ServiceSinkhole.class);
         intent.putExtra(EXTRA_COMMAND, Command.stats);
         intent.putExtra(EXTRA_REASON, reason);
+        ContextCompat.startForegroundService(context, intent);
+    }
+
+    public static void pleaseUpdateUid(int uid, Context context) {
+        Intent intent = new Intent(context, ServiceSinkhole.class);
+        intent.putExtra(EXTRA_COMMAND, Command.uid_update);
+        intent.putExtra(EXTRA_UID, uid);
         ContextCompat.startForegroundService(context, intent);
     }
 

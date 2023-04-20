@@ -630,7 +630,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         notifyAccessChanged();
         // HeartGuard change - notify of whitelist changes
         if (changed_whitelist) {
-            notifyWhitelistChanged();
+            //notifyWhitelistChanged();
+            ServiceSinkhole.pleaseUpdateUid(packet.uid, context);
         }
         return (rows == 0);
     }
@@ -1036,6 +1037,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 query += " AND a.daddr = ?";
 
             return db.rawQuery(query, dname == null ? new String[]{} : new String[]{dname});
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public Cursor getAccessDnsForUid(int uid) {
+        long now = new Date().getTime();
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+
+            // There is a segmented index on dns.qname
+            // There is an index on access.daddr and access.block
+            String query = "SELECT a.uid, a.version, a.protocol, a.daddr, d.resource, a.dport, a.block, d.time, d.ttl";
+            query += " FROM access AS a";
+            query += " LEFT JOIN dns AS d";
+            query += "   ON d.qname = a.daddr";
+            query += " WHERE a.block >= 0";
+            query += " AND (d.time IS NULL OR d.time + d.ttl >= " + now + ")";
+            query += " AND a.uid = " + uid;
+
+            return db.rawQuery(query, new String[]{});
         } finally {
             lock.readLock().unlock();
         }
