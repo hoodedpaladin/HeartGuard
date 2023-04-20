@@ -344,7 +344,6 @@ public class RulesManager {
             if (changed) {
                 num_enacted += 1;
             }
-            logAllRuleDbEntries(context, "just enacted a rule");
         }
 
         if (num_enacted > 0) {
@@ -560,7 +559,6 @@ public class RulesManager {
         long enact_time = curr_time + (delay * 1000L);
         Log.w(TAG, String.format("Queueing new rule \"%s\" with %d delay (enact_time %d)", ruletext, delay, enact_time));
         dh.addNewRule(ruletext, enact_time, 0);
-        logAllRuleDbEntries(context, "just queued new rule");
 
         // Activate rules up to now, in case that was instantaneous
         activateRulesUpTo(context, curr_time, false);
@@ -608,7 +606,6 @@ public class RulesManager {
         boolean newManageSystem = false;
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
 
-        logAllRuleDbEntries(context, "updateFieldsFromCurrentRules");
 
         for (UniversalRule rule : m_allCurrentRules) {
             if (rule.type == DelayRule.class) {
