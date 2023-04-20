@@ -238,6 +238,7 @@ public class Rule {
 
     public static List<Rule> getRules(final boolean all, Context context) {
         synchronized (context.getApplicationContext()) {
+            RulesManager rm = RulesManager.getInstance(context);
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
             //SharedPreferences wifi = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_WIFI, Context.MODE_PRIVATE);
             //SharedPreferences other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_OTHER, Context.MODE_PRIVATE);
@@ -249,14 +250,14 @@ public class Rule {
             SharedPreferences notify = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
 
             // Get settings
-            boolean default_wifi = RulesManager.getInstance(context).getPreferenceWhitelistWifi(context);
-            boolean default_other = RulesManager.getInstance(context).getPreferenceWhitelistOther(context);
-            boolean default_screen_wifi = RulesManager.getInstance(context).getPreferenceScreenOnWifi(context);
-            boolean default_screen_other = RulesManager.getInstance(context).getPreferenceScreenOnOther(context);
-            boolean default_roaming = RulesManager.getInstance(context).getPreferenceWhitelistRoaming(context);
+            boolean default_wifi = rm.getPreferenceWhitelistWifi(context);
+            boolean default_other = rm.getPreferenceWhitelistOther(context);
+            boolean default_screen_wifi = rm.getPreferenceScreenOnWifi(context);
+            boolean default_screen_other = rm.getPreferenceScreenOnOther(context);
+            boolean default_roaming = rm.getPreferenceWhitelistRoaming(context);
 
-            boolean manage_system = RulesManager.getInstance(context).getPreferenceManageSystem(context);
-            boolean screen_on = RulesManager.getInstance(context).getPreferenceScreenOn(context);
+            boolean manage_system = rm.getPreferenceManageSystem(context);
+            boolean screen_on = rm.getPreferenceScreenOn(context);
             boolean show_user = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true);
             boolean show_system = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, false);
             boolean show_nointernet = prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_NOINTERNET, false);
@@ -397,10 +398,10 @@ public class Rule {
                         rule.screen_other_default = default_screen_other;
                         rule.roaming_default = (pre_roaming.containsKey(info.packageName) ? pre_roaming.get(info.packageName) : default_roaming);
 
-                        rule.wifi_blocked = (!(rule.system && !manage_system) && RulesManager.getInstance(context).getWifiEnabledForApp(context, info.packageName, rule.wifi_default));
-                        rule.other_blocked = (!(rule.system && !manage_system) && RulesManager.getInstance(context).getOtherEnabledForApp(context, info.packageName, rule.other_default));
-                        rule.screen_wifi = RulesManager.getInstance(context).getScreenWifiEnabledForApp(context, info.packageName, rule.screen_wifi_default) && screen_on;
-                        rule.screen_other = RulesManager.getInstance(context).getScreenOtherEnabledForApp(context, info.packageName, rule.screen_other_default) && screen_on;
+                        rule.wifi_blocked = (!(rule.system && !manage_system) && rm.getWifiEnabledForApp(context, info.packageName, rule.wifi_default));
+                        rule.other_blocked = (!(rule.system && !manage_system) && rm.getOtherEnabledForApp(context, info.packageName, rule.other_default));
+                        rule.screen_wifi = rm.getScreenWifiEnabledForApp(context, info.packageName, rule.screen_wifi_default) && screen_on;
+                        rule.screen_other = rm.getScreenOtherEnabledForApp(context, info.packageName, rule.screen_other_default) && screen_on;
                         rule.roaming = roaming.getBoolean(info.packageName, rule.roaming_default);
                         rule.lockdown = lockdown.getBoolean(info.packageName, false);
 
