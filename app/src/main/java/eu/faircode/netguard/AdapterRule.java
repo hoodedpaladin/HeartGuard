@@ -800,7 +800,8 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                 Util.areYouSure(view.getContext(), R.string.msg_reset_access, new Util.DoubtListener() {
                     @Override
                     public void onSure() {
-                        DatabaseHelper.getInstance(context).clearAccess(rule.uid, true);
+                        //DatabaseHelper.getInstance(context).clearAccess(rule.uid, true);
+                        DatabaseHelper.getInstance(context).clearAccess(rule.uid, false);
                         if (!live)
                             notifyDataSetChanged();
                         if (rv != null)
