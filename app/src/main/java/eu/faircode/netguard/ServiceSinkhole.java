@@ -868,7 +868,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 if (dh.updateAccess(ServiceSinkhole.this, packet, dname, -1)) {
                     lock.readLock().lock();
                     if (!mapNotify.containsKey(packet.uid) || mapNotify.get(packet.uid))
-                        showAccessNotification(packet.uid);
+                        if (!packet.allowed)
+                            showAccessNotification(packet.uid);
                     lock.readLock().unlock();
                 }
             }
