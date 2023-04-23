@@ -14,6 +14,7 @@ import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.GuardedBy;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -38,6 +39,8 @@ public class RulesManager {
     private static final String TAG = "NetGuard.RulesManager";
 
     public static final String ACTION_RULES_UPDATE = "eu.faircode.netguard.RULES_UPDATE";
+
+    public static final int MAX_DELAY = 3600*12;
 
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
@@ -537,6 +540,15 @@ public class RulesManager {
         }else {
             // Parse to UniversalRule to get stats on it
             UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
+
+            if (newrule.type == DelayRule.class) {
+                if ( ((DelayRule)newrule.rule).getDelay() > MAX_DELAY) {
+                    Log.e(TAG, "Max delay is " + MAX_DELAY);
+                    String message = context.getString(R.string.maximum_delay, MAX_DELAY);
+                    Toast.makeText(context, message, Toast.LENGTH_LONG).show();
+                    return;
+                }
+            }
 
             // Choose delay based on stats
             if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_free) {
