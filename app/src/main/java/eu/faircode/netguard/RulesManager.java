@@ -723,6 +723,23 @@ class DelayRule implements RuleWithDelayClassification {
     public Classification getClassificationToRemove() {
         return Classification.delay_depends;
     }
+
+    public static UniversalRule parseRule(String ruletext) {
+        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+
+        if (!m.matches()) {
+            throw new AssertionError("no category");
+        }
+
+        String rest = m.group(2);
+        int delay;
+        try {
+            delay = Integer.parseInt(rest);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        return new UniversalRule(new DelayRule(delay), ruletext);
+    }
 }
 
 class AllowedPackageRule implements RuleWithDelayClassification {
@@ -742,6 +759,24 @@ class AllowedPackageRule implements RuleWithDelayClassification {
     public Classification getClassificationToRemove() {
         // TODO: sticky keyword will affect this
         return Classification.delay_free;
+    }
+
+    public static UniversalRule parseRule(Context context, String ruletext) {
+        Bundle bundle = RulesManager.parseAllowTextToBundle(context, ruletext);
+        if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
+            // This is an allowed package
+            String packagename = bundle.getString("package");
+
+            return new UniversalRule(new AllowedPackageRule(packagename), ruletext);
+        } else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
+            // This is a whitelisted URL
+            RuleAndUid newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
+            if (newrule == null)
+                return null;
+            return new UniversalRule(newrule, ruletext);
+        }
+
+        return null;
     }
 }
 
@@ -789,6 +824,17 @@ class FeatureRule implements RuleWithDelayClassification {
             throw new AssertionError("Problem here");
         }
     }
+
+    public static UniversalRule parseRule(String ruletext) {
+        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+
+        if (!m.matches()) {
+            throw new AssertionError("no category");
+        }
+
+        String rest = m.group(2);
+        return new UniversalRule(new FeatureRule(rest), ruletext);
+    }
 }
 
 class UniversalRule {
@@ -798,25 +844,41 @@ class UniversalRule {
     public Class type;
     private String m_ruletext;
 
+    private static final Map<String, Class> classList;
+    static {
+        classList = new HashMap<>();
+        classList.put("delay", DelayRule.class);
+        classList.put("allow", AllowedPackageRule.class);
+        classList.put("feature", FeatureRule.class);
+    }
+
     public UniversalRule(RuleAndUid ruleanduid, String ruletext) {
+        if (ruleanduid == null)
+            throw new AssertionError("Got a null ruleanduid for \"" + ruletext + "\"");
         rule = ruleanduid;
         type = RuleAndUid.class;
         m_ruletext = ruletext;
     }
 
     public UniversalRule(DelayRule delayrule, String ruletext) {
+        if (delayrule == null)
+            throw new AssertionError("Got a null delayrule for \"" + ruletext + "\"");
         rule = delayrule;
         type = DelayRule.class;
         m_ruletext = ruletext;
     }
 
     public UniversalRule(AllowedPackageRule allowedpackagerule, String ruletext) {
+        if (allowedpackagerule == null)
+            throw new AssertionError("Got a null allowedpackagerule for \"" + ruletext + "\"");
         rule = allowedpackagerule;
         type = AllowedPackageRule.class;
         m_ruletext = ruletext;
     }
 
     public UniversalRule(FeatureRule featurerule, String ruletext) {
+        if (featurerule == null)
+            throw new AssertionError("Got a null featurerule for \"" + ruletext + "\"");
         rule = featurerule;
         type = FeatureRule.class;
         m_ruletext = ruletext;
@@ -830,36 +892,19 @@ class UniversalRule {
         }
 
         String category = m.group(1);
-        String rest = m.group(2);
 
+        UniversalRule therule = null;
         if (category.equals("delay")) {
-            int delay;
-            try {
-                delay = Integer.parseInt(rest);
-            } catch (NumberFormatException e) {
-                Log.w(TAG, "Delay rule \"" + ruletext + "\" didn't work");
-                return null;
-            }
-            return new UniversalRule(new DelayRule(delay), ruletext);
+            therule = DelayRule.parseRule(ruletext);
         } else if (category.equals("allow")) {
-            Bundle bundle = RulesManager.parseAllowTextToBundle(context, ruletext);
-            if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
-                // This is an allowed package
-                String packagename = bundle.getString("package");
-
-                return new UniversalRule(new AllowedPackageRule(packagename), ruletext);
-            } else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
-                // This is a whitelisted URL
-                RuleAndUid newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
-                if (newrule == null) {
-                    throw new AssertionError("Didn't parse into a RuleAndUid");
-                }
-                return new UniversalRule(newrule, ruletext);
-            }
+            therule = AllowedPackageRule.parseRule(context, ruletext);
         } else if (category.equals("feature")) {
-            return new UniversalRule(new FeatureRule(rest), ruletext);
+            therule = FeatureRule.parseRule(ruletext);
         }
 
-        return null;
+        if (therule == null) {
+            Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't get a rule");
+        }
+        return therule;
     }
 }
