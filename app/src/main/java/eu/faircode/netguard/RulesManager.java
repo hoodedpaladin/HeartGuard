@@ -852,35 +852,25 @@ class UniversalRule {
         classList.put("feature", FeatureRule.class);
     }
 
-    public UniversalRule(RuleAndUid ruleanduid, String ruletext) {
-        if (ruleanduid == null)
-            throw new AssertionError("Got a null ruleanduid for \"" + ruletext + "\"");
-        rule = ruleanduid;
-        type = RuleAndUid.class;
-        m_ruletext = ruletext;
-    }
+    public UniversalRule(RuleWithDelayClassification newrule, String ruletext) {
+        if (newrule == null)
+            throw new AssertionError("Got a null rule for \"" + ruletext + "\"");
+        rule = newrule;
 
-    public UniversalRule(DelayRule delayrule, String ruletext) {
-        if (delayrule == null)
-            throw new AssertionError("Got a null delayrule for \"" + ruletext + "\"");
-        rule = delayrule;
-        type = DelayRule.class;
-        m_ruletext = ruletext;
-    }
+        type = null;
+        if (rule instanceof RuleAndUid) {
+            type = RuleAndUid.class;
+        } else if (rule instanceof DelayRule) {
+            type = DelayRule.class;
+        } else if (rule instanceof AllowedPackageRule) {
+            type = AllowedPackageRule.class;
+        } else if (rule instanceof FeatureRule) {
+            type = FeatureRule.class;
+        }
 
-    public UniversalRule(AllowedPackageRule allowedpackagerule, String ruletext) {
-        if (allowedpackagerule == null)
-            throw new AssertionError("Got a null allowedpackagerule for \"" + ruletext + "\"");
-        rule = allowedpackagerule;
-        type = AllowedPackageRule.class;
-        m_ruletext = ruletext;
-    }
+        if (type == null)
+            throw new AssertionError("Unknown type for \"" + ruletext + "\"");
 
-    public UniversalRule(FeatureRule featurerule, String ruletext) {
-        if (featurerule == null)
-            throw new AssertionError("Got a null featurerule for \"" + ruletext + "\"");
-        rule = featurerule;
-        type = FeatureRule.class;
         m_ruletext = ruletext;
     }
 
