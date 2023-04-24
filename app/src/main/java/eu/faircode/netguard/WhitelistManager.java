@@ -49,7 +49,9 @@ class DomainRule implements RuleForApp {
         if (dname == null) {
             return false;
         }
-        if (dname.endsWith(this.domain))
+        if (dname.equals(this.domain))
+            return true;
+        if (dname.endsWith("." + this.domain))
             return true;
         return false;
     }
