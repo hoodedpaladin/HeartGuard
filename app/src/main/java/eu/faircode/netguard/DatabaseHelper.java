@@ -1410,6 +1410,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    // HeartGuard change - get cursor of all rules, sorted for the RulesList view
+    public Cursor getAllRulesSorted() {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+
+            String query = "SELECT * FROM ( SELECT * FROM rules WHERE enacted = 1 ORDER BY major_category, minor_category, ruletext, _id )";
+            query += " UNION ALL";
+            query += " SELECT * FROM ( SELECT * FROM rules WHERE enacted = 0 ORDER BY enact_time, major_category, minor_category, ruletext, _id )";
+            return db.rawQuery(query, new String[]{});
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     // HeartGuard change - get rule by ruletext
     public Cursor getRuleMatchingRuletext(String ruletext) {
         lock.readLock().lock();
@@ -1424,18 +1439,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     // HeartGuard change - add new rule, enacted or not
-    public void addNewRule(String ruletext, long enact_time, int enacted) {
+    public void addNewRule(String ruletext, long enact_time, int enacted, int major_category, int minor_category) {
         ContentValues cv = new ContentValues();
         cv.put("ruletext", ruletext);
         cv.put("create_time", System.currentTimeMillis());
         cv.put("enact_time", enact_time);
         cv.put("enacted", enacted);
-        cv.put("major_category", 0);
-        cv.put("minor_category", 0);
+        cv.put("major_category", major_category);
+        cv.put("minor_category", minor_category);
 
         lock.writeLock().lock();
         try {
-            SQLiteDatabase db = this.getReadableDatabase();
+            SQLiteDatabase db = this.getWritableDatabase();
 
             db.insertOrThrow("rules", null, cv);
         } finally {
@@ -1452,7 +1467,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         lock.writeLock().lock();
         try {
-            SQLiteDatabase db = this.getReadableDatabase();
+            SQLiteDatabase db = this.getWritableDatabase();
 
             db.update("rules", cv, "_id = ?", new String[]{ID});
         } finally {
@@ -1477,7 +1492,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void removeRulesById(Long[] ids) {
         lock.writeLock().lock();
         try {
-            SQLiteDatabase db = this.getReadableDatabase();
+            SQLiteDatabase db = this.getWritableDatabase();
 
             for (long id : ids) {
                 db.delete("rules", "_id = ?", new String[]{Long.toString(id)});

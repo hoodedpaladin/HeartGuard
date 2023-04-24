@@ -538,6 +538,9 @@ public class RulesManager {
 
         Matcher m = Pattern.compile("- (.*)").matcher(ruletext);
 
+        int major_category;
+        int minor_category;
+
         if (m.matches()) {
             // This is a negative rule
             String ruletext_to_remove = m.group(1);
@@ -557,9 +560,16 @@ public class RulesManager {
             } else if (remove_classification != RuleWithDelayClassification.Classification.delay_normal) {
                 throw new AssertionError(String.format("Don't know how to deal with this deletion \"%s\"", ruletext));
             }
+
+            // Category numbers don't matter for this
+            major_category = 0;
+            minor_category = 0;
         } else if (ruletext.matches("abandon .*")) {
             // Abandon rule
             delay = 0;
+            // Category numbers don't matter for this
+            major_category = 0;
+            minor_category = 0;
         }else {
             // Parse to UniversalRule to get stats on it
             UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
@@ -588,12 +598,15 @@ public class RulesManager {
                     }
                 }
             }
+
+            major_category = newrule.getMajorCategory();
+            minor_category = newrule.getMinorCategory();
         }
 
         long curr_time = System.currentTimeMillis();
         long enact_time = curr_time + (delay * 1000L);
         Log.w(TAG, String.format("Queueing new rule \"%s\" with %d delay (enact_time %d)", ruletext, delay, enact_time));
-        dh.addNewRule(ruletext, enact_time, 0);
+        dh.addNewRule(ruletext, enact_time, 0, major_category, minor_category);
 
         // Activate rules up to now, in case that was instantaneous
         activateRulesUpTo(context, curr_time, false);
@@ -761,6 +774,8 @@ interface RuleWithDelayClassification {
 
     public Classification getClassification();
     public Classification getClassificationToRemove();
+    public int getMajorCategory();
+    public int getMinorCategory();
 }
 
 class DelayRule implements RuleWithDelayClassification {
@@ -797,6 +812,14 @@ class DelayRule implements RuleWithDelayClassification {
             return null;
         }
         return new UniversalRule(new DelayRule(delay), ruletext);
+    }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_DELAY;
+    }
+
+    public int getMinorCategory() {
+        return 0;
     }
 }
 
@@ -846,6 +869,14 @@ class AllowedPackageRule implements RuleWithDelayClassification {
         }
 
         return null;
+    }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_ALLOW;
+    }
+
+    public int getMinorCategory() {
+        return 0;
     }
 }
 
@@ -903,6 +934,14 @@ class FeatureRule implements RuleWithDelayClassification {
 
         String rest = m.group(2);
         return new UniversalRule(new FeatureRule(rest), ruletext);
+    }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_FEATURE;
+    }
+
+    public int getMinorCategory() {
+        return 0;
     }
 }
 
@@ -992,10 +1031,23 @@ class PartnerRule implements RuleWithDelayClassification {
 
         return false;
     }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_PARTNER;
+    }
+
+    public int getMinorCategory() {
+        return 0;
+    }
 }
 
 class UniversalRule {
     private static final String TAG = "NetGuard.UniversalRule";
+
+    public static final int MAJOR_CATEGORY_DELAY = 100;
+    public static final int MAJOR_CATEGORY_FEATURE = 200;
+    public static final int MAJOR_CATEGORY_PARTNER = 300;
+    public static final int MAJOR_CATEGORY_ALLOW = 400;
 
     public RuleWithDelayClassification rule;
     public Class type;
@@ -1057,5 +1109,13 @@ class UniversalRule {
             Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't get a rule");
         }
         return therule;
+    }
+
+    public int getMajorCategory() {
+        return rule.getMajorCategory();
+    }
+
+    public int getMinorCategory() {
+        return rule.getMinorCategory();
     }
 }

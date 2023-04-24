@@ -43,7 +43,7 @@ public class ActivityRulesList extends AppCompatActivity {
                 @Override
                 public void run() {
                     if (adapter != null)
-                        adapter.changeCursor(DatabaseHelper.getInstance(ActivityRulesList.this).getAllRules());
+                        adapter.changeCursor(DatabaseHelper.getInstance(ActivityRulesList.this).getAllRulesSorted());
                 }
             });
         }
@@ -59,7 +59,7 @@ public class ActivityRulesList extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         lvRulesList = findViewById(R.id.lvRulesList);
-        adapter = new AdapterRulesList(this, DatabaseHelper.getInstance(this).getAllRules());
+        adapter = new AdapterRulesList(this, DatabaseHelper.getInstance(this).getAllRulesSorted());
         lvRulesList.setAdapter(adapter);
         lvRulesList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -134,7 +134,7 @@ public class ActivityRulesList extends AppCompatActivity {
         super.onResume();
         DatabaseHelper.getInstance(this).addRuleChangedListener(listener);
         if (adapter != null) {
-            adapter.changeCursor(DatabaseHelper.getInstance(this).getAllRules());
+            adapter.changeCursor(DatabaseHelper.getInstance(this).getAllRulesSorted());
         }
     }
 
@@ -252,7 +252,7 @@ public class ActivityRulesList extends AppCompatActivity {
     private void allRulesToClipboard() {
         int num = 0;
         String message = "";
-        Cursor cursor = DatabaseHelper.getInstance(this).getAllRules();
+        Cursor cursor = DatabaseHelper.getInstance(this).getAllRulesSorted();
 
         while (cursor.moveToNext()) {
             if (num > 0) {

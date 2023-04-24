@@ -39,6 +39,14 @@ class RuleAndUid implements RuleWithDelayClassification {
             return Classification.delay_free;
         }
     }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_ALLOW;
+    }
+
+    public int getMinorCategory() {
+        return 0;
+    }
 }
 
 class DomainRule implements RuleForApp {
