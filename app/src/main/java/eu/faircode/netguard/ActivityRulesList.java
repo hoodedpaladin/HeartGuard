@@ -166,6 +166,9 @@ public class ActivityRulesList extends AppCompatActivity {
             case R.id.copy_all_to_clipboard:
                 allRulesToClipboard();
                 return true;
+            case R.id.enter_expedite_password:
+                launchExpeditePage(this);
+                return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -192,6 +195,41 @@ public class ActivityRulesList extends AppCompatActivity {
                         } catch (Throwable t) {
                             Log.w(TAG, String.format("New rule \"%s\" got exception %s", newruletext, t.toString()));
                         }
+
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialogInterface) {
+                    }
+                })
+                .create();
+        dialog.show();
+    }
+
+    // Launch a dialog to expedite
+    private void launchExpeditePage(final Context context) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.expedite, null, false);
+        final EditText etPasscode = view.findViewById(R.id.etPasscode);
+
+        AlertDialog dialog;
+        dialog = new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String passcode = etPasscode.getText().toString();
+
+                        RulesManager.getInstance(context).enterExpeditePassword(context, passcode);
 
                         dialog.dismiss();
                     }

@@ -374,4 +374,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="confirm_delete_rule">Are you sure you want to remove the rule \"%s\"?</string>
     <string name="confirm_abandon_rule">Are you sure you want to abandon the rule \"%s\"?</string>
     <string name="maximum_delay">The maximum delay is %d seconds</string>
+    <string name="expedite">Expedite</string>
+    <string name="enter_passcode">Enter Passcode:</string>
+    <string name="enter_expedite_password">Enter expedite password...</string>
 </resources>

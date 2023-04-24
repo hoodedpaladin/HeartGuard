@@ -9,4 +9,7 @@
     <item
         android:id="@+id/copy_all_to_clipboard"
         android:title="@string/copy_all_to_clipboard"/>
+    <item
+        android:id="@+id/enter_expedite_password"
+        android:title="@string/enter_expedite_password"/>
 </menu>
