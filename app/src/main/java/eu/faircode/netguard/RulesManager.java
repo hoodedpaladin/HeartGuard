@@ -554,7 +554,7 @@ public class RulesManager {
                             .rule.getClassificationToRemove();
             if (remove_classification == RuleWithDelayClassification.Classification.delay_free) {
                 delay = 0;
-            } else if (remove_classification == RuleWithDelayClassification.Classification.delay_depends) {
+            } else if (remove_classification != RuleWithDelayClassification.Classification.delay_normal) {
                 throw new AssertionError(String.format("Don't know how to deal with this deletion \"%s\"", ruletext));
             }
         } else if (ruletext.matches("abandon .*")) {
@@ -779,7 +779,7 @@ class DelayRule implements RuleWithDelayClassification {
     }
 
     public Classification getClassificationToRemove() {
-        return Classification.delay_depends;
+        return Classification.delay_normal;
     }
 
     public static UniversalRule parseRule(String ruletext) {
