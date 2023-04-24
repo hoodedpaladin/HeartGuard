@@ -21,18 +21,23 @@ class RuleAndUid implements RuleWithDelayClassification {
 
     public int uid;
     public RuleForApp rule;
+    private boolean m_sticky;
 
-    RuleAndUid(int uid, RuleForApp rule) {
+    RuleAndUid(int uid, RuleForApp rule, boolean sticky) {
         this.uid = uid;
         this.rule = rule;
+        m_sticky = sticky;
     }
 
     public Classification getClassification() {
         return Classification.delay_normal;
     }
     public Classification getClassificationToRemove() {
-        // TODO: sticky keyword will change this
-        return Classification.delay_free;
+        if (m_sticky) {
+            return Classification.delay_normal;
+        } else {
+            return Classification.delay_free;
+        }
     }
 }
 

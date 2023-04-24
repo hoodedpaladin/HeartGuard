@@ -100,11 +100,19 @@ public class RulesManager {
         }
         bundle.putInt(key, value);
     }
+
     public static void putNewString(Bundle bundle, String key, String value) {
         if (bundle.containsKey(key)) {
             throw new AssertionError("Already contains key " + key);
         }
         bundle.putString(key, value);
+    }
+
+    public static void putNewBoolean(Bundle bundle, String key, boolean value) {
+        if (bundle.containsKey(key)) {
+            throw new AssertionError("Already contains key " + key);
+        }
+        bundle.putBoolean(key, value);
     }
 
     // Somewhat general function to parse an allow rule into a bundle of all phrases
@@ -152,6 +160,14 @@ public class RulesManager {
                 continue;
             }
 
+            m = Pattern.compile("sticky").matcher(phrase);
+            if (m.matches()) {
+                putNewBoolean(data_bundle, "sticky", true);
+
+                // Done parsing this phrase
+                continue;
+            }
+
             throw new AssertionError("\"" + phrase + "\" didn't contain any recognized phrases");
         }
 
@@ -171,6 +187,10 @@ public class RulesManager {
         if (data_bundle.containsKey("uid")) {
             uid = data_bundle.getInt("uid");
         }
+        boolean sticky = false;
+        if (data_bundle.containsKey("sticky")) {
+            sticky = data_bundle.getBoolean("sticky");
+        }
 
         if (data_bundle.containsKey("host"))
         {
@@ -178,7 +198,7 @@ public class RulesManager {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndUid(uid, new DomainRule(data_bundle.getString("host"), 1));
+            return new RuleAndUid(uid, new DomainRule(data_bundle.getString("host"), 1), sticky);
         }
 
         if (data_bundle.containsKey("ipv4"))
@@ -187,7 +207,7 @@ public class RulesManager {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndUid(uid, new IPRule(data_bundle.getString("ipv4"), 1));
+            return new RuleAndUid(uid, new IPRule(data_bundle.getString("ipv4"), 1), sticky);
         }
 
         // No rule found
@@ -782,9 +802,11 @@ class DelayRule implements RuleWithDelayClassification {
 
 class AllowedPackageRule implements RuleWithDelayClassification {
     private String m_packagename;
+    private boolean m_sticky;
 
-    public AllowedPackageRule(String packagename) {
+    public AllowedPackageRule(String packagename, boolean sticky) {
         m_packagename = packagename;
+        m_sticky = sticky;
     }
 
     public String getPackageName() {
@@ -795,17 +817,26 @@ class AllowedPackageRule implements RuleWithDelayClassification {
         return Classification.delay_normal;
     }
     public Classification getClassificationToRemove() {
-        // TODO: sticky keyword will affect this
-        return Classification.delay_free;
+        if (m_sticky) {
+            return Classification.delay_normal;
+        } else {
+            return Classification.delay_free;
+        }
     }
 
     public static UniversalRule parseRule(Context context, String ruletext) {
         Bundle bundle = RulesManager.parseAllowTextToBundle(context, ruletext);
+
         if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
             // This is an allowed package
             String packagename = bundle.getString("package");
+            boolean sticky = false;
 
-            return new UniversalRule(new AllowedPackageRule(packagename), ruletext);
+            if (bundle.containsKey("sticky")) {
+                sticky = bundle.getBoolean("sticky");
+            }
+
+            return new UniversalRule(new AllowedPackageRule(packagename, sticky), ruletext);
         } else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
             // This is a whitelisted URL
             RuleAndUid newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
