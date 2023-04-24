@@ -319,15 +319,7 @@ public class ActivityRulesList extends AppCompatActivity {
 
         @Override
         public void bindView(View view, Context context, Cursor cursor) {
-            long id = cursor.getLong(colId);
-            String ruletext = cursor.getString(colRuleText);
-            int enacted = cursor.getInt(colEnacted);
-            long enact_time = cursor.getLong(colEnactTime);
-
-            TextView tvId = view.findViewById(R.id.tvID);
             TextView tvRuleText = view.findViewById(R.id.tvRuleText);
-
-            tvId.setText(Long.toString(id));
             tvRuleText.setText(ActivityRulesList.getDisplayTextFromRuleCursor(cursor));
         }
     }

@@ -9,11 +9,6 @@
     android:paddingRight="8dp"
     android:paddingStart="8dp"
     tools:context=".ActivityRulesList">
-    <TextView
-        android:id="@+id/tvID"
-        android:layout_width="48dp"
-        android:layout_height="wrap_content"
-        android:textAppearance="@style/TextSmall" />
 
     <TextView
         android:id="@+id/tvRuleText"
