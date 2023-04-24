@@ -643,8 +643,8 @@ public class RulesManager {
         }
 
         if (m_delay != newDelay) {
-            m_delay = newDelay;
             Log.w(TAG, "Delay changed from " + Integer.toString(m_delay) + " to " + Integer.toString(newDelay));
+            m_delay = newDelay;
         }
         if (m_enabled != newEnabled) {
             Log.w(TAG, "Enabled changed from " + Boolean.toString(m_enabled) + " to " + Boolean.toString(newEnabled));
