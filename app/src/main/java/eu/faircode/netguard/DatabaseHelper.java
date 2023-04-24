@@ -1445,6 +1445,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         notifyRuleChanged();
     }
 
+    // HeartGuard change - update exact row with new CV
+    public void updateRuleWithCV(String ID, ContentValues cv) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+
+            db.update("rules", cv, "_id = ?", new String[]{ID});
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
     public void removeRulesById(Long[] ids) {
         lock.writeLock().lock();
         try {

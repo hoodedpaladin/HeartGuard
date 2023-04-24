@@ -70,6 +70,7 @@ public class ActivityRulesList extends AppCompatActivity {
                 int colEnacted = cursor.getColumnIndexOrThrow("enacted");
 
                 final String ruletext = cursor.getString(colRuleText);
+                final String displayableRuletext = getDisplayTextFromRuletext(ruletext, 1, 0);
                 boolean enacted = cursor.getInt(colEnacted) != 0;
                 //Log.w(TAG, "clicked id " + Long.toString(id) + " or, from cursor, " + Long.toString(otherid));
                 PopupMenu popup = new PopupMenu(ActivityRulesList.this, view);
@@ -80,13 +81,13 @@ public class ActivityRulesList extends AppCompatActivity {
                 if (enacted) {
                     popup.getMenu().removeItem(R.id.menu_ruleslist_popup_abandon);
                 }
-                popup.getMenu().findItem(R.id.menu_ruleslist_popup_title).setTitle(ruletext);
+                popup.getMenu().findItem(R.id.menu_ruleslist_popup_title).setTitle(displayableRuletext);
                 popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem menuItem) {
                         int menuitem = menuItem.getItemId();
                         if (menuitem == R.id.menu_ruleslist_popup_delete) {
-                            String message = ActivityRulesList.this.getString(R.string.confirm_delete_rule, ruletext);
+                            String message = ActivityRulesList.this.getString(R.string.confirm_delete_rule, displayableRuletext);
                             Util.areYouSure(ActivityRulesList.this, message, new Util.DoubtListener() {
                                 @Override
                                 public void onSure() {
@@ -99,7 +100,7 @@ public class ActivityRulesList extends AppCompatActivity {
                             });
                             return true;
                         } else if (menuitem == R.id.menu_ruleslist_popup_abandon) {
-                            String message = ActivityRulesList.this.getString(R.string.confirm_abandon_rule, ruletext);
+                            String message = ActivityRulesList.this.getString(R.string.confirm_abandon_rule, displayableRuletext);
                             Util.areYouSure(ActivityRulesList.this, message, new Util.DoubtListener() {
                                 @Override
                                 public void onSure() {
@@ -113,7 +114,7 @@ public class ActivityRulesList extends AppCompatActivity {
                             return true;
                         } else if (menuitem == R.id.menu_ruleslist_popup_clipboard) {
                             ClipboardManager clipboard = (ClipboardManager) ActivityRulesList.this.getSystemService(Context.CLIPBOARD_SERVICE);
-                            ClipData clip = ClipData.newPlainText("netguard", ruletext);
+                            ClipData clip = ClipData.newPlainText("netguard", displayableRuletext);
                             clipboard.setPrimaryClip(clip);
                             return true;
                         }
@@ -229,6 +230,23 @@ public class ActivityRulesList extends AppCompatActivity {
         clipboard.setPrimaryClip(clip);
     }
 
+    // Translate stored ruletext into displayable ruletext
+    // i.e. hide passwords, and label pending rules as pending
+    // If you don't want rules to be labeled as pending, set enacted=1 and enactTime=0
+    public static String getDisplayTextFromRuletext(String ruletext, int enacted, long enactTime) {
+        // Don't show the user the secret information contained in expedite partners!
+        ruletext = ruletext.replaceAll("totp:\\S+", "totp:******");
+        ruletext = ruletext.replaceAll("password:\\S+", "password:******");
+
+        if (enacted != 0) {
+            return ruletext;
+        } else {
+            SimpleDateFormat x = new SimpleDateFormat("LLL dd - HH:mm:ss");
+            String timemessage = x.format(new Date(enactTime));
+            return "### " + ruletext + " (enacts at " + timemessage + ")";
+        }
+    }
+
     public static String getDisplayTextFromRuleCursor(Cursor cursor) {
         int colRuleText = cursor.getColumnIndexOrThrow("ruletext");
         int colEnacted = cursor.getColumnIndexOrThrow("enacted");
@@ -236,15 +254,9 @@ public class ActivityRulesList extends AppCompatActivity {
 
         String ruletext = cursor.getString(colRuleText);
         int enacted = cursor.getInt(colEnacted);
+        long enactTime = cursor.getLong(colEnactTime);
 
-        if (enacted != 0) {
-            return ruletext;
-        } else {
-            long enact_time = cursor.getLong(colEnactTime);
-            SimpleDateFormat x = new SimpleDateFormat("LLL dd - HH:mm:ss");
-            String timemessage = x.format(new Date(enact_time));
-            return "### " + ruletext + " (enacts at " + timemessage + ")";
-        }
+        return getDisplayTextFromRuletext(ruletext, enacted, enactTime);
     }
 
     private class AdapterRulesList extends CursorAdapter {

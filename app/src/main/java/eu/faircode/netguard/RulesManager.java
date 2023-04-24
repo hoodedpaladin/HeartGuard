@@ -5,6 +5,7 @@ import static java.lang.Math.max;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -19,6 +20,8 @@ import android.widget.Toast;
 import androidx.annotation.GuardedBy;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
+
+import org.apache.commons.codec.binary.Base32;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -696,6 +699,41 @@ public class RulesManager {
         prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true).apply();
         prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, m_manage_system).apply();
     }
+
+    public void enterExpeditePassword(Context context, String password) {
+        lock.writeLock().lock();
+        for (UniversalRule rule : m_allCurrentRules) {
+            if (rule.type != PartnerRule.class)
+                continue;
+            PartnerRule partnerRule = (PartnerRule)rule.rule;
+            if (partnerRule.tryToUnlock(password)) {
+                expediteRules(context);
+                return;
+            }
+        }
+    }
+
+    private void expediteRules(Context context) {
+        Log.w(TAG, "Expediting rules");
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        long curr_time = System.currentTimeMillis();
+        Cursor cursor = dh.getPendingRules();
+        int col_id = cursor.getColumnIndexOrThrow("_id");
+        ContentValues cv = new ContentValues();
+        cv.put("enact_time", curr_time);
+
+        while (cursor.moveToNext()) {
+            long id = cursor.getLong(col_id);
+            lock.writeLock().lock();
+            try {
+                dh.updateRuleWithCV(Long.toString(id), cv);
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        activateRulesUpTo(context, curr_time, false);
+    }
 }
 
 interface RuleWithDelayClassification {
@@ -837,6 +875,94 @@ class FeatureRule implements RuleWithDelayClassification {
     }
 }
 
+// Rule class for partners who can expedite your rules
+class PartnerRule implements RuleWithDelayClassification {
+    public static int TYPE_TOTP = 1;
+    public static int TYPE_PASSWORD = 2;
+
+    private int m_type;
+    private String m_key;
+    private String m_name;
+
+    public PartnerRule(int type, String key, String name) {
+        m_type = type;
+        m_key = key;
+        m_name = name;
+    }
+
+    public Classification getClassification() {
+        return Classification.delay_normal;
+    }
+    public Classification getClassificationToRemove() {
+        return Classification.delay_free;
+    }
+
+    public static UniversalRule parseRule(String ruletext) {
+        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+
+        if (!m.matches()) {
+            throw new AssertionError("no category");
+        }
+
+        String rest = m.group(2);
+
+        PartnerRule partnerRule = null;
+
+        m = Pattern.compile("name:(\\S+) totp:([a-zA-Z0-9]+)").matcher(rest);
+        if (m.matches()) {
+            String name = m.group(1);
+            String key = m.group(2);
+            partnerRule = new PartnerRule(TYPE_TOTP, key, name);
+        }
+        m = Pattern.compile("name:(\\S+) password:(\\S+)").matcher(rest);
+        if (m.matches()) {
+            String name = m.group(1);
+            String password = m.group(2);
+            partnerRule = new PartnerRule(TYPE_PASSWORD, password, name);
+        }
+
+        if (partnerRule == null) {
+            return null;
+        }
+
+        return new UniversalRule(partnerRule, ruletext);
+    }
+
+    // Check an incoming passcode to see if it matches (password or TOTP)
+    public boolean tryToUnlock(String passcode) {
+
+        if (m_type == TYPE_TOTP) {
+            byte[] key = new Base32().decode(m_key);
+            int codenum;
+            try {
+                codenum = Integer.parseInt(passcode);
+            } catch (NumberFormatException e) {
+                return false;
+            }
+
+            long current_time = System.currentTimeMillis() / 1000;
+
+            // Compare with the current time period and 4 previous time periods
+            // (2 minutes into the past is OK)
+            for (int offset = 0; offset > -5; offset--) {
+                int totp = TokenCalculator.TOTP_RFC6238(key,
+                                                        TokenCalculator.TOTP_DEFAULT_PERIOD,
+                                                        current_time,
+                                                        TokenCalculator.TOTP_DEFAULT_DIGITS,
+                                                        TokenCalculator.DEFAULT_ALGORITHM,
+                                                        offset);
+                if (totp == codenum) {
+                    return true;
+                }
+            }
+        } else if (m_type == TYPE_PASSWORD) {
+            return passcode.equals(m_key);
+        }
+
+        return false;
+    }
+}
+
 class UniversalRule {
     private static final String TAG = "NetGuard.UniversalRule";
 
@@ -866,6 +992,8 @@ class UniversalRule {
             type = AllowedPackageRule.class;
         } else if (rule instanceof FeatureRule) {
             type = FeatureRule.class;
+        } else if (rule instanceof PartnerRule) {
+            type = PartnerRule.class;
         }
 
         if (type == null)
@@ -890,6 +1018,8 @@ class UniversalRule {
             therule = AllowedPackageRule.parseRule(context, ruletext);
         } else if (category.equals("feature")) {
             therule = FeatureRule.parseRule(ruletext);
+        } else if (category.equals("partner")) {
+            therule = PartnerRule.parseRule(ruletext);
         }
 
         if (therule == null) {
