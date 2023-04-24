@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 interface RuleForApp {
-    int isAllowed(Packet packet, String dname);
+    int isAllowed(Packet packet, List<String> dnames);
     boolean matchesAddr(String dname);
 }
 
@@ -54,9 +54,11 @@ class DomainRule implements RuleForApp {
         return false;
     }
 
-    public int isAllowed(Packet packet, String dname) {
-        if (matchesAddr(dname)) {
-            return this.allowed;
+    public int isAllowed(Packet packet, List<String> dnames) {
+        for (String dname : dnames) {
+            if (matchesAddr(dname)) {
+                return this.allowed;
+            }
         }
         return -1;
     }
@@ -71,7 +73,7 @@ class IPRule implements RuleForApp {
         this.allowed = allowed;
     }
 
-    public int isAllowed(Packet packet, String dname) {
+    public int isAllowed(Packet packet, List<String> dnames) {
         if (matchesAddr(packet.daddr))
             return this.allowed;
         return -1;
@@ -89,7 +91,7 @@ class IPRule implements RuleForApp {
 
 // HeartGuard code - decide based on existing rules whether to allow a site
 public class WhitelistManager {
-    private static final String TAG = "NetGuard.WhitelistManager";
+    private static final String TAG = "NetGuard.WM";
 
     private Map<Integer, List<RuleForApp>> app_specific_rules;
     private List<RuleForApp> global_rules;
@@ -131,16 +133,21 @@ public class WhitelistManager {
         }
     }
 
-    public boolean isAllowed(Packet packet, String dname) {
+    public boolean isAllowed(Context context, Packet packet, String dname) {
         lock.readLock().lock();
 
+        List<String> alldnames = new LinkedList<>();
+        Cursor cursor = DatabaseHelper.getInstance(context).getAllQNames(packet.daddr);
+        while (cursor.moveToNext()) {
+            alldnames.add(cursor.getString(0));
+        }
         try {
             // TODO: common code for both loops
             // TODO: make sure domain is a whole word
             List<RuleForApp> rules = this.app_specific_rules.get(packet.uid);
             if (rules != null) {
                 for (RuleForApp rule : rules) {
-                    int allowed = rule.isAllowed(packet, dname);
+                    int allowed = rule.isAllowed(packet, alldnames);
                     if (allowed >= 0)
                         return allowed == 1;
                 }
@@ -148,7 +155,7 @@ public class WhitelistManager {
 
             rules = this.global_rules;
             for (RuleForApp rule : rules) {
-                int allowed = rule.isAllowed(packet, dname);
+                int allowed = rule.isAllowed(packet, alldnames);
                 if (allowed >= 0)
                     return allowed == 1;
             }
@@ -180,6 +187,7 @@ public class WhitelistManager {
         int col_uid = cursor.getColumnIndexOrThrow("uid");
         int col_daddr = cursor.getColumnIndexOrThrow("daddr");
 
+        boolean reload = false;
         while (cursor.moveToNext()) {
             int uid = cursor.getInt(col_uid);
 
@@ -189,13 +197,30 @@ public class WhitelistManager {
             }
 
             String daddr = cursor.getString(col_daddr);
-            if (!addedrule.rule.matchesAddr(daddr)) {
-                continue;
+            List<String> alldnames = new LinkedList<>();
+            alldnames.add(daddr);
+            Cursor alternates_cursor = dh.getAlternateQNames(daddr);
+            while (alternates_cursor.moveToNext()) {
+                alldnames.add(alternates_cursor.getString(0));
             }
 
-            long id = cursor.getLong(col_id);
-            Log.w(TAG, String.format("Clearing access ID %d because uid %d daddr %s is a match", id, uid, daddr));
-            dh.clearAccessId(id);
+            String match = null;
+            for (String thisdname : alldnames) {
+                if (addedrule.rule.matchesAddr(thisdname)) {
+                    match = thisdname;
+                    break;
+                }
+            }
+
+            if (match != null) {
+                long id = cursor.getLong(col_id);
+                Log.w(TAG, String.format("Clearing access ID %d because uid %d daddr %s is a match", id, uid, match));
+                dh.clearAccessId(id);
+                reload = true;
+            }
+        }
+
+        if (reload) {
             ServiceSinkhole.reload("access changed", context, false);
         }
     }

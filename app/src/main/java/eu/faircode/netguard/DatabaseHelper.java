@@ -605,7 +605,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     if (block < 0) {
                         // HeartGuard change - simple whitelist feature
                         WhitelistManager wm = WhitelistManager.getInstance(context);
-                        if (wm.isAllowed(packet, dname))
+                        if (wm.isAllowed(context, packet, dname))
                         {
                             Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
                             block = 0;
@@ -999,6 +999,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             query += " WHERE d1.qname = ?";
             query += " ORDER BY d2.qname";
             return db.rawQuery(query, new String[]{qname});
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    // HeartGuard addition to get all QNames in case there is more than one and one of them is allowed
+    public Cursor getAllQNames(String ip) {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            // There is a segmented index on resource
+            String query = "SELECT DISTINCT d.qname";
+            query += " FROM dns AS d";
+            query += " WHERE d.resource = '" + ip.replace("'", "''") + "'";
+            query += " ORDER BY d.qname";
+            // There is no way to known for sure which domain name an app used, so just pick the first one
+            return db.rawQuery(query, new String[]{});
         } finally {
             lock.readLock().unlock();
         }
