@@ -22,21 +22,31 @@ class RuleAndUid implements RuleWithDelayClassification {
     public int uid;
     public RuleForApp rule;
     private boolean m_sticky;
+    private String m_packagename;
 
-    RuleAndUid(int uid, RuleForApp rule, boolean sticky) {
+    RuleAndUid(int uid, RuleForApp rule, boolean sticky, String packagename) {
         this.uid = uid;
         this.rule = rule;
         m_sticky = sticky;
+        m_packagename = packagename;
     }
 
-    public Classification getClassification() {
-        return Classification.delay_normal;
+    public int getDelayToAdd(Context context, int main_delay) {
+        // The RulesManager may have a shortened delay for this package
+        if (uid != UID_GLOBAL) {
+            RulesManager rm = RulesManager.getInstance(context);
+            int specific_delay = rm.getSpecificDelayForPackage(m_packagename);
+            if (specific_delay < main_delay) {
+                return specific_delay;
+            }
+        }
+        return main_delay;
     }
-    public Classification getClassificationToRemove() {
+    public int getDelayToRemove(Context context, int main_delay) {
         if (m_sticky) {
-            return Classification.delay_normal;
+            return main_delay;
         } else {
-            return Classification.delay_free;
+            return 0;
         }
     }
 

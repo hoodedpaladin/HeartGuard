@@ -183,10 +183,21 @@ public class RulesManager {
         if (data_bundle == null)
             return null;
 
-        int uid = 0;
+        int uid;
+        String packagename;
         if (data_bundle.containsKey("uid")) {
             uid = data_bundle.getInt("uid");
+
+            if (!data_bundle.containsKey("package")) {
+                Log.e(TAG, "expected a package name from rule \"" + text + "\"");
+                return null;
+            }
+            packagename = data_bundle.getString("package");
+        } else {
+            packagename = null;
+            uid = 0;
         }
+
         boolean sticky = false;
         if (data_bundle.containsKey("sticky")) {
             sticky = data_bundle.getBoolean("sticky");
@@ -198,7 +209,8 @@ public class RulesManager {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndUid(uid, new DomainRule(data_bundle.getString("host"), 1), sticky);
+
+            return new RuleAndUid(uid, new DomainRule(data_bundle.getString("host"), 1), sticky, packagename);
         }
 
         if (data_bundle.containsKey("ipv4"))
@@ -207,7 +219,7 @@ public class RulesManager {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndUid(uid, new IPRule(data_bundle.getString("ipv4"), 1), sticky);
+            return new RuleAndUid(uid, new IPRule(data_bundle.getString("ipv4"), 1), sticky, packagename);
         }
 
         // No rule found
@@ -283,6 +295,8 @@ public class RulesManager {
         return true;
     }
 
+    // Note: by NetGuard terminology, this boolean value is wifiBlocked, not wifiEnabled
+    // False = package is whitelisted!
     public boolean getWifiEnabledForApp(Context context, String packagename, boolean defaultVal) {
         if (m_allowedPackages.containsKey(packagename)) {
             return m_allowedPackages.get(packagename);
@@ -552,14 +566,7 @@ public class RulesManager {
                 Log.w(TAG, String.format("Rule \"%s\" has nothing to delete", ruletext));
                 return;
             }
-            RuleWithDelayClassification.Classification remove_classification =
-                    UniversalRule.getRuleFromText(context, ruletext_to_remove)
-                            .rule.getClassificationToRemove();
-            if (remove_classification == RuleWithDelayClassification.Classification.delay_free) {
-                delay = 0;
-            } else if (remove_classification != RuleWithDelayClassification.Classification.delay_normal) {
-                throw new AssertionError(String.format("Don't know how to deal with this deletion \"%s\"", ruletext));
-            }
+            delay = UniversalRule.getRuleFromText(context, ruletext_to_remove).rule.getDelayToRemove(context, m_delay);
 
             // Category numbers don't matter for this
             major_category = 0;
@@ -584,20 +591,7 @@ public class RulesManager {
             }
 
             // Choose delay based on stats
-            if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_free) {
-                delay = 0;
-            }
-            if (newrule.rule.getClassification() == RuleWithDelayClassification.Classification.delay_depends) {
-                if (newrule.type == DelayRule.class) {
-                    int other_delay = ((DelayRule) newrule.rule).getDelay();
-
-                    if (other_delay > m_delay) {
-                        delay = 0;
-                    } else {
-                        delay = m_delay - other_delay;
-                    }
-                }
-            }
+            delay = newrule.rule.getDelayToAdd(context, m_delay);
 
             major_category = newrule.getMajorCategory();
             minor_category = newrule.getMinorCategory();
@@ -767,13 +761,21 @@ public class RulesManager {
 
         activateRulesUpTo(context, curr_time, false);
     }
+
+    // Some apps may have lowered delays so that they can be in trial mode
+    public int getSpecificDelayForPackage(String m_packagename) {
+        // Whitelisted packages have 0 delay
+        if (m_allowedPackages.containsKey(m_packagename)) {
+            return 0;
+        }
+
+        return m_delay;
+    }
 }
 
 interface RuleWithDelayClassification {
-    public enum Classification {delay_free, delay_normal, delay_depends};
-
-    public Classification getClassification();
-    public Classification getClassificationToRemove();
+    public int getDelayToAdd(Context context, int main_delay);
+    public int getDelayToRemove(Context context, int main_delay);
     public int getMajorCategory();
     public int getMinorCategory();
 }
@@ -789,12 +791,16 @@ class DelayRule implements RuleWithDelayClassification {
         return m_delay;
     }
 
-    public Classification getClassification() {
-        return Classification.delay_depends;
+    public int getDelayToAdd(Context context, int main_delay) {
+        if (m_delay > main_delay) {
+            return 0;
+        } else {
+            return main_delay - m_delay;
+        }
     }
 
-    public Classification getClassificationToRemove() {
-        return Classification.delay_normal;
+    public int getDelayToRemove(Context context, int main_delay) {
+        return main_delay;
     }
 
     public static UniversalRule parseRule(String ruletext) {
@@ -836,14 +842,14 @@ class AllowedPackageRule implements RuleWithDelayClassification {
         return m_packagename;
     }
 
-    public Classification getClassification() {
-        return Classification.delay_normal;
+    public int getDelayToAdd(Context context, int main_delay) {
+        return main_delay;
     }
-    public Classification getClassificationToRemove() {
+    public int getDelayToRemove(Context context, int main_delay) {
         if (m_sticky) {
-            return Classification.delay_normal;
+            return main_delay;
         } else {
-            return Classification.delay_free;
+            return 0;
         }
     }
 
@@ -905,21 +911,21 @@ class FeatureRule implements RuleWithDelayClassification {
         return m_featurename;
     }
 
-    public Classification getClassification() {
+    public int getDelayToAdd(Context context, int main_delay) {
         if (m_featuretype == FeatureType.feature_restrictive) {
-            return Classification.delay_free;
+            return 0;
         } else if (m_featuretype == FeatureType.feature_permissive) {
-            return Classification.delay_normal;
+            return main_delay;
         } else {
             throw new AssertionError("Problem here");
         }
     }
 
-    public Classification getClassificationToRemove() {
+    public int getDelayToRemove(Context context, int main_delay) {
         if (m_featuretype == FeatureType.feature_restrictive) {
-            return Classification.delay_normal;
+            return main_delay;
         } else if (m_featuretype == FeatureType.feature_permissive) {
-            return Classification.delay_free;
+            return 0;
         } else {
             throw new AssertionError("Problem here");
         }
@@ -960,11 +966,11 @@ class PartnerRule implements RuleWithDelayClassification {
         m_name = name;
     }
 
-    public Classification getClassification() {
-        return Classification.delay_normal;
+    public int getDelayToAdd(Context context, int main_delay) {
+        return main_delay;
     }
-    public Classification getClassificationToRemove() {
-        return Classification.delay_free;
+    public int getDelayToRemove(Context context, int main_delay) {
+        return 0;
     }
 
     public static UniversalRule parseRule(String ruletext) {
