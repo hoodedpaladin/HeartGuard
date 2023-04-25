@@ -749,11 +749,12 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                                     result = true;
                                     break;
 
-                                case R.id.menu_reset:
-                                    DatabaseHelper.getInstance(context).setAccess(id, -1);
-                                    ServiceSinkhole.reload("reset host", context, false);
-                                    result = true;
-                                    break;
+                                // HeartGuard change - no reason to reset access rules
+                                //case R.id.menu_reset:
+                                //    DatabaseHelper.getInstance(context).setAccess(id, -1);
+                                //    ServiceSinkhole.reload("reset host", context, false);
+                                //    result = true;
+                                //    break;
 
                                 case R.id.menu_copy:
                                     ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
@@ -762,7 +763,8 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                                     return true;
                             }
 
-                            if (menu == R.id.menu_allow || menu == R.id.menu_reset)
+                            // HeartGuard change - R.id.menu_reset removed
+                            if (menu == R.id.menu_allow/* || menu == R.id.menu_reset*/)
                                 new AsyncTask<Object, Object, Long>() {
                                     @Override
                                     protected Long doInBackground(Object... objects) {
