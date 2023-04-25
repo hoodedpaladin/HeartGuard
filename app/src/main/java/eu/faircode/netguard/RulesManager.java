@@ -131,15 +131,7 @@ public class RulesManager {
         for (String phrase : separated) {
             m = Pattern.compile("package:(.*)").matcher(phrase);
             if (m.matches()) {
-                String packagename = m.group(1);
-                try {
-                    int uid = context.getPackageManager().getApplicationInfo(packagename, 0).uid;
-                    putNewInt(data_bundle, "uid", uid);
-                    putNewString(data_bundle, "package", packagename);
-                } catch (PackageManager.NameNotFoundException e) {
-                    Log.w(TAG, "package " + packagename + " not found");
-                    return null;
-                }
+                putNewString(data_bundle, "package", m.group(1));
 
                 // Done parsing this phrase
                 continue;
@@ -178,25 +170,17 @@ public class RulesManager {
     // Returns a RuleAndUid for whitelist rules
     // (Only applies to a rule which allows a hostname/IP and optionally a package name.
     // Does not apply to rules which enable a package unconditionally.)
-    public static RuleAndUid parseTextToWhitelistRule(Context context, String text) {
+    public static RuleAndPackage parseTextToWhitelistRule(Context context, String text) {
         Bundle data_bundle = parseAllowTextToBundle(context, text);
 
         if (data_bundle == null)
             return null;
 
-        int uid;
         String packagename;
-        if (data_bundle.containsKey("uid")) {
-            uid = data_bundle.getInt("uid");
-
-            if (!data_bundle.containsKey("package")) {
-                Log.e(TAG, "expected a package name from rule \"" + text + "\"");
-                return null;
-            }
+        if (data_bundle.containsKey("package")) {
             packagename = data_bundle.getString("package");
         } else {
             packagename = null;
-            uid = 0;
         }
 
         boolean sticky = false;
@@ -211,7 +195,7 @@ public class RulesManager {
                 return null;
             }
 
-            return new RuleAndUid(uid, new DomainRule(data_bundle.getString("host"), 1), sticky, packagename);
+            return new RuleAndPackage(new DomainRule(data_bundle.getString("host"), 1), sticky, packagename);
         }
 
         if (data_bundle.containsKey("ipv4"))
@@ -220,7 +204,7 @@ public class RulesManager {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndUid(uid, new IPRule(data_bundle.getString("ipv4"), 1), sticky, packagename);
+            return new RuleAndPackage(new IPRule(data_bundle.getString("ipv4"), 1), sticky, packagename);
         }
 
         // No rule found
@@ -228,13 +212,13 @@ public class RulesManager {
     }
 
     // Give a copy of the current whitelist rules
-    public List<RuleAndUid> getCurrentRules(Context context) {
+    public List<RuleAndPackage> getCurrentRules(Context context) {
         lock.readLock().lock();
-        List<RuleAndUid> results = new ArrayList<RuleAndUid>();
+        List<RuleAndPackage> results = new ArrayList<>();
 
         for (UniversalRule rule : m_allCurrentRules) {
-            if (rule.type == RuleAndUid.class) {
-                results.add((RuleAndUid)rule.rule);
+            if (rule.type == RuleAndPackage.class) {
+                results.add((RuleAndPackage)rule.rule);
             }
         }
         lock.readLock().unlock();
@@ -422,10 +406,10 @@ public class RulesManager {
         }
 
         UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
-        if (rule.type == RuleAndUid.class) {
+        if (rule.type == RuleAndPackage.class) {
             // Clear access rules for all relevant apps
-            RuleAndUid ruleanduid = (RuleAndUid)rule.rule;
-            WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleanduid);
+            RuleAndPackage ruleandpackage = (RuleAndPackage)rule.rule;
+            WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleandpackage);
         }
         if (rule.type == DelayRule.class) {
             Cursor cursor = dh.getEnactedRules();
@@ -481,10 +465,10 @@ public class RulesManager {
 
         // Check if access rules should be deleted
         UniversalRule rule = UniversalRule.getRuleFromText(context, otherruletext);
-        if (rule.type == RuleAndUid.class) {
+        if (rule.type == RuleAndPackage.class) {
             // Clear access rules for all relevant apps
-            RuleAndUid ruleanduid = (RuleAndUid)rule.rule;
-            WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleanduid);
+            RuleAndPackage ruleandpackage = (RuleAndPackage)rule.rule;
+            WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleandpackage);
         }
 
         return was_enacted;
@@ -944,7 +928,7 @@ class AllowedPackageRule implements RuleWithDelayClassification {
             return new UniversalRule(new AllowedPackageRule(packagename, sticky), ruletext);
         } else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
             // This is a whitelisted URL
-            RuleAndUid newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
+            RuleAndPackage newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
             if (newrule == null)
                 return null;
             return new UniversalRule(newrule, ruletext);
@@ -1149,8 +1133,8 @@ class UniversalRule {
         rule = newrule;
 
         type = null;
-        if (rule instanceof RuleAndUid) {
-            type = RuleAndUid.class;
+        if (rule instanceof RuleAndPackage) {
+            type = RuleAndPackage.class;
         } else if (rule instanceof DelayRule) {
             type = DelayRule.class;
         } else if (rule instanceof AllowedPackageRule) {

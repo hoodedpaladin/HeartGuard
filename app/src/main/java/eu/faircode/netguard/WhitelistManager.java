@@ -1,7 +1,7 @@
 package eu.faircode.netguard;
 
-import android.app.Service;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.util.Log;
 
@@ -16,16 +16,19 @@ interface RuleForApp {
     boolean matchesAddr(String dname);
 }
 
-class RuleAndUid implements RuleWithDelayClassification {
-    public final static int UID_GLOBAL = 0;
+// AKA an Allow rule that specifies a host or ipv4, and may or may not specify a package
+// The package may be unspecified (UID_GLOBAL) or may not exist (UID_NOT_FOUND)
+// Contains a RuleForApp which either matches domain names or IP addresses
+class RuleAndPackage implements RuleWithDelayClassification {
+    public final static int UID_GLOBAL = -1;
+    public final static int UID_NOT_FOUND = -2;
 
-    public int uid;
     public RuleForApp rule;
     private boolean m_sticky;
     private String m_packagename;
 
-    RuleAndUid(int uid, RuleForApp rule, boolean sticky, String packagename) {
-        this.uid = uid;
+    RuleAndPackage(RuleForApp rule, boolean sticky, String packagename) {
+        //m_uid = uid;
         this.rule = rule;
         m_sticky = sticky;
         m_packagename = packagename;
@@ -33,7 +36,7 @@ class RuleAndUid implements RuleWithDelayClassification {
 
     public int getDelayToAdd(Context context, int main_delay) {
         // The RulesManager may have a shortened delay for this package
-        if (uid != UID_GLOBAL) {
+        if (m_packagename != null) {
             RulesManager rm = RulesManager.getInstance(context);
             int specific_delay = rm.getSpecificDelayForPackage(m_packagename);
             if (specific_delay < main_delay) {
@@ -56,6 +59,27 @@ class RuleAndUid implements RuleWithDelayClassification {
 
     public int getMinorCategory() {
         return 0;
+    }
+
+    public String getPackageName() {
+        return m_packagename;
+    }
+
+    public int getUid(Context context) {
+        return getUidForPackageName(context, m_packagename);
+    }
+
+    // Static helper function to look up a UID
+    // Can return UID_GLOBAL for non-package specific or UID_NOT_FOUND for UID not found
+    public static int getUidForPackageName(Context context, String packageName) {
+        if ((packageName == null) || (packageName == "")) {
+            return UID_GLOBAL;
+        }
+        try {
+            return context.getPackageManager().getApplicationInfo(packageName, 0).uid;
+        } catch (PackageManager.NameNotFoundException e) {
+            return UID_NOT_FOUND;
+        }
     }
 }
 
@@ -144,13 +168,16 @@ public class WhitelistManager {
             this.global_rules = new LinkedList<>();
 
             RulesManager rm = RulesManager.getInstance(context);
-            List<RuleAndUid> ruleslist = rm.getCurrentRules(context);
+            List<RuleAndPackage> ruleslist = rm.getCurrentRules(context);
 
-            for (RuleAndUid ruleanduid : ruleslist) {
-                if (ruleanduid.uid == RuleAndUid.UID_GLOBAL) {
-                    addGlobalRule(ruleanduid.rule);
-                } else {
-                    addAppRule(ruleanduid.uid, ruleanduid.rule);
+            for (RuleAndPackage ruleandpackage : ruleslist) {
+                int uid = ruleandpackage.getUid(context);
+                if (uid == RuleAndPackage.UID_GLOBAL) {
+                    addGlobalRule(ruleandpackage.rule);
+                } else if (uid == RuleAndPackage.UID_NOT_FOUND) {
+                    // No package found, so no whitelisting right now
+                }else {
+                    addAppRule(uid, ruleandpackage.rule);
                 }
             }
         } finally {
@@ -203,7 +230,7 @@ public class WhitelistManager {
         list.add(rule);
     }
 
-    public void clearAccessRulesForAddition(Context context, RuleAndUid addedrule) {
+    public void clearAccessRulesForAddition(Context context, RuleAndPackage addedrule) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
 
         Cursor cursor = dh.getAllAccess();
@@ -217,7 +244,12 @@ public class WhitelistManager {
             int uid = cursor.getInt(col_uid);
 
             // Check if UID matches or is global
-            if ((addedrule.uid != RuleAndUid.UID_GLOBAL) && (addedrule.uid != uid)) {
+            int rule_uid = addedrule.getUid(context);
+            if (rule_uid == RuleAndPackage.UID_NOT_FOUND) {
+                // The package doesn't exist, so, no access rules must match
+                continue;
+            }
+            if ((rule_uid != RuleAndPackage.UID_GLOBAL) && (uid != uid)) {
                 continue;
             }
 
