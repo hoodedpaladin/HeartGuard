@@ -57,6 +57,7 @@ public class RulesManager {
     private int m_delay = 0;
     private Map<String, Boolean> m_allowedPackages;
     private boolean m_manage_system = false;
+    private Map<String, Integer> m_packageDelays;
 
     private long next_pending_time = 0;
 
@@ -428,6 +429,7 @@ public class RulesManager {
         }
         if (rule.type == DelayRule.class) {
             Cursor cursor = dh.getEnactedRules();
+            DelayRule delayRule = (DelayRule)rule.rule;
 
             int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
             int col_id = cursor.getColumnIndexOrThrow("_id");
@@ -437,9 +439,12 @@ public class RulesManager {
 
                 if (otherid != id) {
                     String otherruletext = cursor.getString(col_ruletext);
-                    if (otherruletext.matches("delay \\d+")) {
-                        Log.w(TAG, String.format("Removing rule %d because it's also a delay rule", otherid));
-                        dh.removeRulesById(new Long[]{otherid});
+                    if (otherruletext.matches("delay .+")) {
+                        DelayRule otherRule = (DelayRule)(DelayRule.parseRule(otherruletext).rule);
+                        if (delayRule.sameAs(otherRule)) {
+                            Log.w(TAG, String.format("Removing rule %d because it's also a delay rule", otherid));
+                            dh.removeRulesById(new Long[]{otherid});
+                        }
                     }
                 }
             }
@@ -647,11 +652,25 @@ public class RulesManager {
         boolean newEnabled = false;
         boolean newManageSystem = false;
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
-
+        Map<String, Integer> newPackageDelays = new HashMap<>();
 
         for (UniversalRule rule : m_allCurrentRules) {
             if (rule.type == DelayRule.class) {
-                newDelay = max(newDelay, ((DelayRule)rule.rule).getDelay());
+                DelayRule delayRule = (DelayRule)rule.rule;
+                String packageName = delayRule.getPackageName();
+                int delay = delayRule.getDelay();
+
+                if (packageName == null) {
+                    // Global delay rule
+                    newDelay = max(newDelay, ((DelayRule)rule.rule).getDelay());
+                } else {
+                    // Package-specific delay rule
+                    if (!newPackageDelays.containsKey(packageName)) {
+                        newPackageDelays.put(packageName, delay);
+                    } else {
+                        newPackageDelays.put(packageName, max(delay, newPackageDelays.get(packageName)));
+                    }
+                }
             } else if (rule.type == FeatureRule.class) {
                 String featureName = ((FeatureRule)rule.rule).getFeatureName();
 
@@ -684,6 +703,7 @@ public class RulesManager {
             updateManageSystem(context);
         }
         m_allowedPackages = newAllowedPackages;
+        m_packageDelays = newPackageDelays;
     }
 
     public static String getStringOfRuleDbEntry(Cursor cursor) {
@@ -763,10 +783,16 @@ public class RulesManager {
     }
 
     // Some apps may have lowered delays so that they can be in trial mode
-    public int getSpecificDelayForPackage(String m_packagename) {
+    public int getSpecificDelayForPackage(String packageName) {
         // Whitelisted packages have 0 delay
-        if (m_allowedPackages.containsKey(m_packagename)) {
+        if (m_allowedPackages.containsKey(packageName)) {
             return 0;
+        }
+        if (m_packageDelays.containsKey(packageName)) {
+            int packageDelay = m_packageDelays.get(packageName);
+            if (packageDelay < m_delay) {
+                return packageDelay;
+            }
         }
 
         return m_delay;
@@ -782,42 +808,75 @@ interface RuleWithDelayClassification {
 
 class DelayRule implements RuleWithDelayClassification {
     private int m_delay;
+    private String m_packageName;
+    private static final int MINOR_CATEGORY_GLOBAL_DELAY = 100;
+    private static final int MINOR_CATEGORY_PACKAGE_DELAY = 200;
 
-    public DelayRule(int delay) {
+    public DelayRule(int delay, String packageName) {
         m_delay = delay;
+        m_packageName = packageName;
     }
 
     public int getDelay() {
         return m_delay;
     }
 
+    // Lengthening a delay is instant, and shortening a delay takes time based on the difference
+    // Make sure you are comparing against either the global delay or the specific package delay
     public int getDelayToAdd(Context context, int main_delay) {
-        if (m_delay > main_delay) {
+        int current_delay;
+
+        if (m_packageName == null) {
+            current_delay = main_delay;
+        } else {
+            current_delay = RulesManager.getInstance(context).getSpecificDelayForPackage(m_packageName);
+        }
+        if (m_delay > current_delay) {
             return 0;
         } else {
-            return main_delay - m_delay;
+            return current_delay - m_delay;
         }
     }
 
     public int getDelayToRemove(Context context, int main_delay) {
-        return main_delay;
+        if (m_packageName == null) {
+            // Removing the main delay = turning to delay 0
+            return main_delay;
+        } else {
+            // Removing a package delay = reverting to normal delay, so this is free
+            return 0;
+        }
     }
 
     public static UniversalRule parseRule(String ruletext) {
-        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+        // Ruletext match for a global delay rule
+        Matcher m = Pattern.compile("delay (\\d+)").matcher(ruletext);
+        if (m.matches()) {
+            String rest = m.group(1);
 
-        if (!m.matches()) {
-            throw new AssertionError("no category");
+            int delay;
+            try {
+                delay = Integer.parseInt(rest);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+            return new UniversalRule(new DelayRule(delay, null), ruletext);
         }
 
-        String rest = m.group(2);
-        int delay;
-        try {
-            delay = Integer.parseInt(rest);
-        } catch (NumberFormatException e) {
-            return null;
+        // Ruletext match for a package delay rule
+        m = Pattern.compile("delay package:(\\S+) (\\d+)").matcher(ruletext);
+        if (m.matches()) {
+            String packageName = m.group(1);
+            int delay;
+            try {
+                delay = Integer.parseInt(m.group(2));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+            return new UniversalRule(new DelayRule(delay, packageName), ruletext);
         }
-        return new UniversalRule(new DelayRule(delay), ruletext);
+
+        return null;
     }
 
     public int getMajorCategory() {
@@ -825,7 +884,24 @@ class DelayRule implements RuleWithDelayClassification {
     }
 
     public int getMinorCategory() {
-        return 0;
+        if (m_packageName == null) {
+            return MINOR_CATEGORY_GLOBAL_DELAY;
+        } else {
+            return MINOR_CATEGORY_PACKAGE_DELAY;
+        }
+    }
+
+    public String getPackageName() {
+        return m_packageName;
+    }
+
+    public boolean sameAs(DelayRule otherRule) {
+        String otherPackage = otherRule.getPackageName();
+        if (otherPackage == null) {
+            return m_packageName == null;
+        } else {
+            return m_packageName.equals(otherPackage);
+        }
     }
 }
 
