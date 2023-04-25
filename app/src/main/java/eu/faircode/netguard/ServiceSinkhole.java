@@ -1749,7 +1749,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                                 IPRule rule = new IPRule(key, name + "/" + iname, block, time, ttl);
                                 mapUidIPFilters.get(key).put(iname, rule);
                                 if (exists)
-                                    Log.w(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
+                                    Log.i(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
                             } else if (exists) {
                                 mapUidIPFilters.get(key).get(iname).updateExpires(time, ttl);
                                 if (dname != null && ttl > 60 * 1000L)
@@ -1832,7 +1832,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                                 IPRule rule = new IPRule(key, name + "/" + iname, block, time, ttl);
                                 mapUidIPFilters.get(key).put(iname, rule);
                                 if (exists)
-                                    Log.w(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
+                                    Log.i(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
                             } else if (exists) {
                                 mapUidIPFilters.get(key).get(iname).updateExpires(time, ttl);
                             }
