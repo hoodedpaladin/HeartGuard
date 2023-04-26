@@ -142,6 +142,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     private ServiceSinkhole.Builder last_builder = null;
     private ParcelFileDescriptor vpn = null;
     private boolean temporarilyStopped = false;
+    private long time_of_last_state_change = System.currentTimeMillis();
+    private long current_watchdog_setting = 0;
 
     private long last_hosts_modified = 0;
     private Map<String, Boolean> mapHostsBlocked = new HashMap<>();
@@ -395,25 +397,11 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             }
 
             // Watchdog
-            if (cmd == Command.start || cmd == Command.reload || cmd == Command.stop) {
-                Intent watchdogIntent = new Intent(ServiceSinkhole.this, ServiceSinkhole.class);
-                watchdogIntent.setAction(ACTION_WATCHDOG);
-                PendingIntent pi;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    pi = PendingIntent.getForegroundService(ServiceSinkhole.this, 1, watchdogIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-                else
-                    pi = PendingIntent.getService(ServiceSinkhole.this, 1, watchdogIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-
-                AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-                am.cancel(pi);
-
-                if (cmd != Command.stop) {
-                    int watchdog = Integer.parseInt(prefs.getString("watchdog", "0"));
-                    if (watchdog > 0) {
-                        Log.i(TAG, "Watchdog " + watchdog + " minutes");
-                        am.setInexactRepeating(AlarmManager.RTC, SystemClock.elapsedRealtime() + watchdog * 60 * 1000, watchdog * 60 * 1000, pi);
-                    }
-                }
+            if (cmd == Command.start || cmd == Command.reload) {
+                time_of_last_state_change = System.currentTimeMillis();
+                setWatchdog(true);
+            } else if (cmd == Command.stop) {
+                setWatchdog(false);
             }
 
             try {
@@ -684,13 +672,16 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         }
 
         private void watchdog(Intent intent) {
-            if (vpn == null && RulesManager.getInstance(ServiceSinkhole.this).getPreferenceEnabled(ServiceSinkhole.this)) {
-                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-                if (RulesManager.getInstance(ServiceSinkhole.this).getPreferenceEnabled(ServiceSinkhole.this)) {
-                    Log.e(TAG, "Service was killed");
-                    start();
-                }
+            boolean enabled = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceEnabled(ServiceSinkhole.this);
+
+            if (vpn == null && enabled) {
+                Log.e(TAG, "Service was killed");
+                start();
             }
+
+            // If not enabled, you probably shouldn't be here, but remove the watchdog anyway
+            // If enabled, set the watchdog here so that the interval can change when we want it to become slow
+            setWatchdog(enabled);
         }
 
         // HeartGuard change - use this to make the VPN running or not, based on the rule
@@ -3491,4 +3482,48 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             reload("whitelist changed", ServiceSinkhole.this, false);
         }
     };
+
+    // The underlying code that sets up an alarm to use as a watchdog.
+    // If interval_in_ms is 0, cancel it.
+    private void enactWatchdog(long interval_in_ms) {
+        Intent watchdogIntent = new Intent(ServiceSinkhole.this, ServiceSinkhole.class);
+        watchdogIntent.setAction(ACTION_WATCHDOG);
+        PendingIntent pi;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            pi = PendingIntent.getForegroundService(ServiceSinkhole.this, 1, watchdogIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+        else
+            pi = PendingIntent.getService(ServiceSinkhole.this, 1, watchdogIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+
+        AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        am.cancel(pi);
+
+        if (interval_in_ms > 0) {
+            am.setInexactRepeating(AlarmManager.RTC, SystemClock.elapsedRealtime() + interval_in_ms, interval_in_ms, pi);
+        }
+    }
+
+    // Handles the state machine for setting the watchdog
+    // If we are just booting up, set with a short interval.
+    // If we have been steady for a while, set with a longer interval.
+    private void setWatchdog(boolean enabled) {
+        long interval_in_ms;
+
+        if (enabled) {
+            // Set a quick watchdog if we are just booting up, or slow if we have been steady for a while
+            long time_since = System.currentTimeMillis() - time_of_last_state_change;
+
+            if (time_since > 2 * 60 * 1000) {
+                interval_in_ms = 2 * 60 * 1000;
+            } else {
+                interval_in_ms = 10 * 1000;
+            }
+        } else {
+            interval_in_ms = 0;
+        }
+
+        if (interval_in_ms != current_watchdog_setting) {
+            enactWatchdog(interval_in_ms);
+            current_watchdog_setting = interval_in_ms;
+        }
+    }
 }
