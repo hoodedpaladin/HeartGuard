@@ -903,6 +903,12 @@ class AllowedPackageRule implements RuleWithDelayClassification {
     }
 
     public int getDelayToAdd(Context context, int main_delay) {
+        // The RulesManager may have a shortened delay for this package
+        RulesManager rm = RulesManager.getInstance(context);
+        int specific_delay = rm.getSpecificDelayForPackage(m_packagename);
+        if (specific_delay < main_delay) {
+            return specific_delay;
+        }
         return main_delay;
     }
     public int getDelayToRemove(Context context, int main_delay) {
