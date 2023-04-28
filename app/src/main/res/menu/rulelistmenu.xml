@@ -7,6 +7,9 @@
         android:title="@string/menu_add"
         netguard:showAsAction="always|collapseActionView" />
     <item
+        android:id="@+id/enter_multiple_rules"
+        android:title="@string/enter_multiple_rules"/>
+    <item
         android:id="@+id/copy_all_to_clipboard"
         android:title="@string/copy_all_to_clipboard"/>
     <item

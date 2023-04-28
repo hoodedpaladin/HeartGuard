@@ -4,6 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.util.Log;
@@ -168,6 +169,9 @@ public class ActivityRulesList extends AppCompatActivity {
                 return true;
             case R.id.enter_expedite_password:
                 launchExpeditePage(this);
+                return true;
+            case R.id.enter_multiple_rules:
+                startActivity(new Intent(this, ActivityRulesEntry.class));
                 return true;
         }
 
