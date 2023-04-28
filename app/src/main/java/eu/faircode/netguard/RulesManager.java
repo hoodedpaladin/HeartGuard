@@ -406,6 +406,11 @@ public class RulesManager {
         }
 
         UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
+        if (rule == null) {
+            Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't make a rule");
+            return false;
+        }
+
         if (rule.type == RuleAndPackage.class) {
             // Clear access rules for all relevant apps
             RuleAndPackage ruleandpackage = (RuleAndPackage)rule.rule;
@@ -465,10 +470,12 @@ public class RulesManager {
 
         // Check if access rules should be deleted
         UniversalRule rule = UniversalRule.getRuleFromText(context, otherruletext);
-        if (rule.type == RuleAndPackage.class) {
-            // Clear access rules for all relevant apps
-            RuleAndPackage ruleandpackage = (RuleAndPackage)rule.rule;
-            WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleandpackage);
+        if (rule != null) {
+            if (rule.type == RuleAndPackage.class) {
+                // Clear access rules for all relevant apps
+                RuleAndPackage ruleandpackage = (RuleAndPackage) rule.rule;
+                WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleandpackage);
+            }
         }
 
         return was_enacted;
@@ -555,7 +562,13 @@ public class RulesManager {
                 Log.w(TAG, String.format("Rule \"%s\" has nothing to delete", ruletext));
                 return;
             }
-            delay = UniversalRule.getRuleFromText(context, ruletext_to_remove).rule.getDelayToRemove(context, m_delay);
+            UniversalRule ruleToDelete = UniversalRule.getRuleFromText(context, ruletext_to_remove);
+            if (ruleToDelete == null) {
+                Log.e(TAG, "Rule to delete, \"" + ruletext_to_remove + "\" isn't a rule?? Guess we can delete it instantly");
+                delay = 0;
+            } else {
+                delay = ruleToDelete.rule.getDelayToRemove(context, m_delay);
+            }
 
             // Category numbers don't matter for this
             major_category = 0;
@@ -569,6 +582,11 @@ public class RulesManager {
         }else {
             // Parse to UniversalRule to get stats on it
             UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
+
+            if (newrule == null) {
+                Log.e(TAG, "Tried to queue rule \"" + ruletext + "\" but it isn't a rule");
+                return;
+            }
 
             if (newrule.type == DelayRule.class) {
                 if ( ((DelayRule)newrule.rule).getDelay() > MAX_DELAY) {
@@ -619,7 +637,12 @@ public class RulesManager {
         List<UniversalRule> allrules = new ArrayList<UniversalRule>();
         while (cursor.moveToNext()) {
             String ruletext = cursor.getString(col_ruletext);
-            allrules.add(UniversalRule.getRuleFromText(context, ruletext));
+            UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
+            if (rule == null) {
+                Log.e(TAG, "Rule \"" + ruletext + "\" isn't a rule");
+            } else {
+                allrules.add(rule);
+            }
         }
 
         m_allCurrentRules = allrules;
@@ -1161,7 +1184,7 @@ class UniversalRule {
         Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
 
         if (!m.matches()) {
-            throw new AssertionError("no category");
+            return null;
         }
 
         String category = m.group(1);
