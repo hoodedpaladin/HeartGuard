@@ -10,6 +10,9 @@
         android:id="@+id/enter_multiple_rules"
         android:title="@string/enter_multiple_rules"/>
     <item
+        android:id="@+id/raw_edit"
+        android:title="@string/raw_edit"/>
+    <item
         android:id="@+id/copy_all_to_clipboard"
         android:title="@string/copy_all_to_clipboard"/>
     <item

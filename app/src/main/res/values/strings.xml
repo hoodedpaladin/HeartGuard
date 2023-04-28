@@ -381,4 +381,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="submit_button">Submit</string>
     <string name="rules_entry">Rules Entry</string>
     <string name="enter_multiple_rules">Enter multiple rules...</string>
+    <string name="edit_rules">Edit rules</string>
+    <string name="submit_these_changes">You will submit these changes, press submit to continue...</string>
+    <string name="raw_edit">Raw edit...</string>
 </resources>

@@ -173,6 +173,11 @@ public class ActivityRulesList extends AppCompatActivity {
             case R.id.enter_multiple_rules:
                 startActivity(new Intent(this, ActivityRulesEntry.class));
                 return true;
+            case R.id.raw_edit:
+                Intent i = new Intent(this, ActivityRulesEntry.class);
+                i.putExtra(ActivityRulesEntry.SPECIFY_MODE, ActivityRulesEntry.MODE_EDIT_RULES);
+                startActivity(i);
+                return true;
         }
 
         return super.onOptionsItemSelected(item);
