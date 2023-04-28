@@ -58,6 +58,7 @@ public class RulesManager {
     private Map<String, Boolean> m_allowedPackages;
     private boolean m_manage_system = false;
     private Map<String, Integer> m_packageDelays;
+    private Map<Integer, Boolean> m_allowedUids;
 
     private long next_pending_time = 0;
 
@@ -156,6 +157,14 @@ public class RulesManager {
             m = Pattern.compile("sticky").matcher(phrase);
             if (m.matches()) {
                 putNewBoolean(data_bundle, "sticky", true);
+
+                // Done parsing this phrase
+                continue;
+            }
+
+            m = Pattern.compile("uid:(.+)").matcher(phrase);
+            if (m.matches()) {
+                putNewString(data_bundle, "uid", m.group(1));
 
                 // Done parsing this phrase
                 continue;
@@ -282,23 +291,26 @@ public class RulesManager {
 
     // Note: by NetGuard terminology, this boolean value is wifiBlocked, not wifiEnabled
     // False = package is whitelisted!
-    public boolean getWifiEnabledForApp(Context context, String packagename, boolean defaultVal) {
+    public boolean getWifiEnabledForApp(Context context, String packagename, int uid, boolean defaultVal) {
+        if (m_allowedUids.containsKey(uid)) {
+            return m_allowedUids.get(uid);
+        }
         if (m_allowedPackages.containsKey(packagename)) {
             return m_allowedPackages.get(packagename);
         }
         return defaultVal;
     }
-    public boolean getOtherEnabledForApp(Context context, String packagename, boolean defaultVal) {
+    public boolean getOtherEnabledForApp(Context context, String packagename, int uid, boolean defaultVal) {
         // Identical settings to above
-        return getWifiEnabledForApp(context, packagename, defaultVal);
+        return getWifiEnabledForApp(context, packagename, uid, defaultVal);
     }
-    public boolean getScreenWifiEnabledForApp(Context context, String packagename, boolean defaultVal) {
+    public boolean getScreenWifiEnabledForApp(Context context, String packagename, int uid, boolean defaultVal) {
         // Identical settings to above
-        return getWifiEnabledForApp(context, packagename, defaultVal);
+        return getWifiEnabledForApp(context, packagename, uid, defaultVal);
     }
-    public boolean getScreenOtherEnabledForApp(Context context, String packagename, boolean defaultVal) {
+    public boolean getScreenOtherEnabledForApp(Context context, String packagename, int uid, boolean defaultVal) {
         // Identical settings to above
-        return getWifiEnabledForApp(context, packagename, defaultVal);
+        return getWifiEnabledForApp(context, packagename, uid, defaultVal);
     }
 
     public boolean getPreferenceManageSystem(Context context) {
@@ -660,6 +672,7 @@ public class RulesManager {
         boolean newManageSystem = false;
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
         Map<String, Integer> newPackageDelays = new HashMap<>();
+        Map<Integer, Boolean> newAllowedUids = new HashMap<>();
 
         for (UniversalRule rule : m_allCurrentRules) {
             if (rule.type == DelayRule.class) {
@@ -692,6 +705,10 @@ public class RulesManager {
 
                 // False = not filtered i.e. allowed
                 newAllowedPackages.put(packageName, false);
+            } else if (rule.type == AllowedUidRule.class) {
+                int uid = ((AllowedUidRule)rule.rule).getUid();
+
+                newAllowedUids.put(uid, false);
             }
         }
 
@@ -711,6 +728,7 @@ public class RulesManager {
         }
         m_allowedPackages = newAllowedPackages;
         m_packageDelays = newPackageDelays;
+        m_allowedUids = newAllowedUids;
     }
 
     public static String getStringOfRuleDbEntry(Cursor cursor) {
@@ -955,7 +973,21 @@ class AllowedPackageRule implements RuleWithDelayClassification {
             }
 
             return new UniversalRule(new AllowedPackageRule(packagename, sticky), ruletext);
-        } else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
+        } else if (bundle.containsKey("uid") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
+            int uid;
+            try {
+                uid = Integer.parseInt(bundle.getString("uid"));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+
+            boolean sticky = false;
+
+            if (bundle.containsKey("sticky")) {
+                sticky = bundle.getBoolean("sticky");
+            }
+            return new UniversalRule(new AllowedUidRule(uid, sticky), ruletext);
+        }else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
             // This is a whitelisted URL
             RuleAndPackage newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
             if (newrule == null)
@@ -964,6 +996,39 @@ class AllowedPackageRule implements RuleWithDelayClassification {
         }
 
         return null;
+    }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_ALLOW;
+    }
+
+    public int getMinorCategory() {
+        return 0;
+    }
+}
+
+class AllowedUidRule implements RuleWithDelayClassification {
+    private int m_uid;
+    private boolean m_sticky;
+
+    public AllowedUidRule(int uid, boolean sticky) {
+        m_uid = uid;
+        m_sticky = sticky;
+    }
+
+    public int getUid() {
+        return m_uid;
+    }
+
+    public int getDelayToAdd(Context context, int main_delay) {
+        return main_delay;
+    }
+    public int getDelayToRemove(Context context, int main_delay) {
+        if (m_sticky) {
+            return main_delay;
+        } else {
+            return 0;
+        }
     }
 
     public int getMajorCategory() {
@@ -1148,14 +1213,6 @@ class UniversalRule {
     public Class type;
     private String m_ruletext;
 
-    private static final Map<String, Class> classList;
-    static {
-        classList = new HashMap<>();
-        classList.put("delay", DelayRule.class);
-        classList.put("allow", AllowedPackageRule.class);
-        classList.put("feature", FeatureRule.class);
-    }
-
     public UniversalRule(RuleWithDelayClassification newrule, String ruletext) {
         if (newrule == null)
             throw new AssertionError("Got a null rule for \"" + ruletext + "\"");
@@ -1172,6 +1229,8 @@ class UniversalRule {
             type = FeatureRule.class;
         } else if (rule instanceof PartnerRule) {
             type = PartnerRule.class;
+        } else if (rule instanceof AllowedUidRule) {
+            type = AllowedUidRule.class;
         }
 
         if (type == null)

@@ -398,10 +398,10 @@ public class Rule {
                         rule.screen_other_default = default_screen_other;
                         rule.roaming_default = (pre_roaming.containsKey(info.packageName) ? pre_roaming.get(info.packageName) : default_roaming);
 
-                        rule.wifi_blocked = (!(rule.system && !manage_system) && rm.getWifiEnabledForApp(context, info.packageName, rule.wifi_default));
-                        rule.other_blocked = (!(rule.system && !manage_system) && rm.getOtherEnabledForApp(context, info.packageName, rule.other_default));
-                        rule.screen_wifi = rm.getScreenWifiEnabledForApp(context, info.packageName, rule.screen_wifi_default) && screen_on;
-                        rule.screen_other = rm.getScreenOtherEnabledForApp(context, info.packageName, rule.screen_other_default) && screen_on;
+                        rule.wifi_blocked = (!(rule.system && !manage_system) && rm.getWifiEnabledForApp(context, info.packageName, info.applicationInfo.uid, rule.wifi_default));
+                        rule.other_blocked = (!(rule.system && !manage_system) && rm.getOtherEnabledForApp(context, info.packageName, info.applicationInfo.uid, rule.other_default));
+                        rule.screen_wifi = rm.getScreenWifiEnabledForApp(context, info.packageName, info.applicationInfo.uid, rule.screen_wifi_default) && screen_on;
+                        rule.screen_other = rm.getScreenOtherEnabledForApp(context, info.packageName, info.applicationInfo.uid, rule.screen_other_default) && screen_on;
                         rule.roaming = roaming.getBoolean(info.packageName, rule.roaming_default);
                         rule.lockdown = lockdown.getBoolean(info.packageName, false);
 
