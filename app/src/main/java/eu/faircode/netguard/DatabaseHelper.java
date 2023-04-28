@@ -632,6 +632,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (changed_whitelist) {
             //notifyWhitelistChanged();
             ServiceSinkhole.pleaseUpdateUid(packet.uid, context);
+            // Return false, because we allowed it so the user doesn't need to get notified
+            return false;
         }
         return (rows == 0);
     }
