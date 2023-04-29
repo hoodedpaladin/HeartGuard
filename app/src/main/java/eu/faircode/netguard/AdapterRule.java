@@ -1034,8 +1034,8 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                             if (newpackagename.matches("\\S+") || newpackagename.length() == 0) {
                                 String destinationtext;
 
-                                if (newdaddr.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
-                                    destinationtext = "ipv4:" + newdaddr;
+                                if (newdaddr.matches("\\d+\\.\\d+\\.\\d+\\.\\d+") || newdaddr.matches("[0-9a-fA-F:]+")) {
+                                    destinationtext = "ip:" + newdaddr;
                                 } else {
                                     destinationtext = "host:" + newdaddr;
                                 }

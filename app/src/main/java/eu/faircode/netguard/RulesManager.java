@@ -147,9 +147,9 @@ public class RulesManager {
                 continue;
             }
 
-            m = Pattern.compile("ipv4:(.+)").matcher(phrase);
+            m = Pattern.compile("ip:(.+)").matcher(phrase);
             if (m.matches()) {
-                putNewString(data_bundle, "ipv4", m.group(1));
+                putNewString(data_bundle, "ip", m.group(1));
 
                 // Done parsing this phrase
                 continue;
@@ -200,7 +200,7 @@ public class RulesManager {
 
         if (data_bundle.containsKey("host"))
         {
-            if (data_bundle.containsKey("ipv4")) {
+            if (data_bundle.containsKey("ip")) {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
@@ -208,13 +208,13 @@ public class RulesManager {
             return new RuleAndPackage(context, new DomainRule(data_bundle.getString("host"), 1), sticky, packagename);
         }
 
-        if (data_bundle.containsKey("ipv4"))
+        if (data_bundle.containsKey("ip"))
         {
             if (data_bundle.containsKey("host")) {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndPackage(context, new IPRule(data_bundle.getString("ipv4"), 1), sticky, packagename);
+            return new RuleAndPackage(context, new IPRule(data_bundle.getString("ip"), 1), sticky, packagename);
         }
 
         // No rule found
@@ -959,6 +959,7 @@ class DelayRule implements RuleWithDelayClassification {
 }
 
 class AllowedPackageRule implements RuleWithDelayClassification {
+    private static final String TAG = "Netguard.APRule";
     private String m_packagename;
     private boolean m_sticky;
 
@@ -989,38 +990,43 @@ class AllowedPackageRule implements RuleWithDelayClassification {
     }
 
     public static UniversalRule parseRule(Context context, String ruletext) {
-        Bundle bundle = RulesManager.parseAllowTextToBundle(context, ruletext);
+        try {
+            Bundle bundle = RulesManager.parseAllowTextToBundle(context, ruletext);
 
-        if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
-            // This is an allowed package
-            String packagename = bundle.getString("package");
-            boolean sticky = false;
+            if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ip")) {
+                // This is an allowed package
+                String packagename = bundle.getString("package");
+                boolean sticky = false;
 
-            if (bundle.containsKey("sticky")) {
-                sticky = bundle.getBoolean("sticky");
+                if (bundle.containsKey("sticky")) {
+                    sticky = bundle.getBoolean("sticky");
+                }
+
+                return new UniversalRule(new AllowedPackageRule(packagename, sticky), ruletext);
+            } else if (bundle.containsKey("uid") && !bundle.containsKey("host") && !bundle.containsKey("ip")) {
+                int uid;
+                try {
+                    uid = Integer.parseInt(bundle.getString("uid"));
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+
+                boolean sticky = false;
+
+                if (bundle.containsKey("sticky")) {
+                    sticky = bundle.getBoolean("sticky");
+                }
+                return new UniversalRule(new AllowedUidRule(uid, sticky), ruletext);
+            } else if (bundle.containsKey("host") || bundle.containsKey("ip")) {
+                // This is a whitelisted URL
+                RuleAndPackage newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
+                if (newrule == null)
+                    return null;
+                return new UniversalRule(newrule, ruletext);
             }
-
-            return new UniversalRule(new AllowedPackageRule(packagename, sticky), ruletext);
-        } else if (bundle.containsKey("uid") && !bundle.containsKey("host") && !bundle.containsKey("ipv4")) {
-            int uid;
-            try {
-                uid = Integer.parseInt(bundle.getString("uid"));
-            } catch (NumberFormatException e) {
-                return null;
-            }
-
-            boolean sticky = false;
-
-            if (bundle.containsKey("sticky")) {
-                sticky = bundle.getBoolean("sticky");
-            }
-            return new UniversalRule(new AllowedUidRule(uid, sticky), ruletext);
-        }else if (bundle.containsKey("host") || bundle.containsKey("ipv4")) {
-            // This is a whitelisted URL
-            RuleAndPackage newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
-            if (newrule == null)
-                return null;
-            return new UniversalRule(newrule, ruletext);
+        } catch (AssertionError e) {
+            Log.e(TAG, "Got assertion error " + e);
+            return null;
         }
 
         return null;
