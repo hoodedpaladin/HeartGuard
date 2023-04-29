@@ -62,6 +62,14 @@ public class ActivityRulesEntry extends AppCompatActivity {
                 EditText et = findViewById(R.id.etAddMultipleRules);
                 et.setText(text);
             }
+            Button cancelButton = findViewById(R.id.cancel_button);
+            cancelButton.setVisibility(View.VISIBLE);
+            cancelButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    ActivityRulesEntry.super.finish();
+                }
+            });
         } else {
             Log.e(TAG, "Mode " + m_mode + " is invalid");
             super.finish();
