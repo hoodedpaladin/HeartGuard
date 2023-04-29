@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -204,7 +205,7 @@ public class RulesManager {
                 return null;
             }
 
-            return new RuleAndPackage(new DomainRule(data_bundle.getString("host"), 1), sticky, packagename);
+            return new RuleAndPackage(context, new DomainRule(data_bundle.getString("host"), 1), sticky, packagename);
         }
 
         if (data_bundle.containsKey("ipv4"))
@@ -213,7 +214,7 @@ public class RulesManager {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndPackage(new IPRule(data_bundle.getString("ipv4"), 1), sticky, packagename);
+            return new RuleAndPackage(context, new IPRule(data_bundle.getString("ipv4"), 1), sticky, packagename);
         }
 
         // No rule found
@@ -822,6 +823,33 @@ public class RulesManager {
 
         return m_delay;
     }
+
+    // The user has clicked to reset an access rule
+    public void resetRulesForAccess(Context context, int uid, String daddr) {
+        List<String> ruletexts = new LinkedList<>();
+
+        List<String> daddrs = DatabaseHelper.getInstance(context).getListAlternateQNames(daddr);
+
+        // Check all current rules to see if they apply
+        lock.readLock().lock();
+        try {
+            for (UniversalRule rule : m_allCurrentRules) {
+                if (rule.type != RuleAndPackage.class) {
+                    continue;
+                }
+                RuleAndPackage rap = (RuleAndPackage)rule.rule;
+                if (rap.appliesToAccess(uid, daddrs)) {
+                    ruletexts.add("- " + rule.getRuletext());
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+
+        if (ruletexts.size() > 0) {
+            ActivityRulesEntry.startActivityToConfirmRules(context, ruletexts);
+        }
+    }
 }
 
 interface RuleWithDelayClassification {
@@ -1271,5 +1299,9 @@ class UniversalRule {
 
     public int getMinorCategory() {
         return rule.getMinorCategory();
+    }
+
+    public String getRuletext() {
+        return m_ruletext;
     }
 }

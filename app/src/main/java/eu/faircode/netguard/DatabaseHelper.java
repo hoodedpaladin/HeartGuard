@@ -38,6 +38,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -1004,6 +1005,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    // HeartGuard code - convenience function to get a list of qname and all alternates
+    public List<String> getListAlternateQNames(String qname) {
+        List<String> alldnames = new LinkedList<>();
+        alldnames.add(qname);
+
+        Cursor alternates_cursor = dh.getAlternateQNames(qname);
+        while (alternates_cursor.moveToNext()) {
+            alldnames.add(alternates_cursor.getString(0));
+        }
+
+        return alldnames;
     }
 
     // HeartGuard addition to get all QNames in case there is more than one and one of them is allowed

@@ -749,12 +749,16 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                                     result = true;
                                     break;
 
-                                // HeartGuard change - no reason to reset access rules
-                                //case R.id.menu_reset:
+                                // HeartGuard change - resetting access means deleting all relevant rules
+                                case R.id.menu_reset:
                                 //    DatabaseHelper.getInstance(context).setAccess(id, -1);
                                 //    ServiceSinkhole.reload("reset host", context, false);
                                 //    result = true;
                                 //    break;
+                                    RulesManager rm = RulesManager.getInstance(context);
+                                    rm.resetRulesForAccess(context, rule.uid, daddr);
+                                    result = true;
+                                    break;
 
                                 case R.id.menu_copy:
                                     ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);

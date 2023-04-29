@@ -1,5 +1,6 @@
 package eu.faircode.netguard;
 
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
@@ -266,10 +267,15 @@ public class ActivityRulesEntry extends AppCompatActivity {
         }
 
         // Put these new changes into a new window for the user to confirm
-        Intent i = new Intent(this, ActivityRulesEntry.class);
-        String message = stringListToNewline(rulesToQueue);
+        startActivityToConfirmRules(this, rulesToQueue);
+    }
+
+    // Pop up a new window with a list of rules for the user to confirm
+    public static void startActivityToConfirmRules(Context context, List<String> newrules) {
+        Intent i = new Intent(context, ActivityRulesEntry.class);
+        String message = stringListToNewline(newrules);
         i.putExtra("edittext", message);
         i.putExtra(SPECIFY_MODE, MODE_SUBMIT_CHANGES);
-        startActivity(i);
+        context.startActivity(i);
     }
 }

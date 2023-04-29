@@ -26,12 +26,13 @@ class RuleAndPackage implements RuleWithDelayClassification {
     public RuleForApp rule;
     private boolean m_sticky;
     private String m_packagename;
+    private int m_uid;
 
-    RuleAndPackage(RuleForApp rule, boolean sticky, String packagename) {
-        //m_uid = uid;
+    RuleAndPackage(Context context, RuleForApp rule, boolean sticky, String packagename) {
         this.rule = rule;
         m_sticky = sticky;
         m_packagename = packagename;
+        m_uid = getUidForPackageName(context, m_packagename);
     }
 
     public int getDelayToAdd(Context context, int main_delay) {
@@ -66,12 +67,12 @@ class RuleAndPackage implements RuleWithDelayClassification {
     }
 
     public int getUid(Context context) {
-        return getUidForPackageName(context, m_packagename);
+        return m_uid;
     }
 
     // Static helper function to look up a UID
     // Can return UID_GLOBAL for non-package specific or UID_NOT_FOUND for UID not found
-    public static int getUidForPackageName(Context context, String packageName) {
+    private static int getUidForPackageName(Context context, String packageName) {
         if ((packageName == null) || (packageName == "")) {
             return UID_GLOBAL;
         }
@@ -80,6 +81,23 @@ class RuleAndPackage implements RuleWithDelayClassification {
         } catch (PackageManager.NameNotFoundException e) {
             return UID_NOT_FOUND;
         }
+    }
+
+    // Handy method to check whether something applies to an access rule
+    public boolean appliesToAccess(int uid, List<String> daddrs) {
+        if (m_uid != UID_GLOBAL) {
+            if (m_uid != uid) {
+                return false;
+            }
+        }
+
+        for (String daddr : daddrs) {
+            if (rule.matchesAddr(daddr)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -253,13 +271,9 @@ public class WhitelistManager {
                 continue;
             }
 
+            // Get a list of all applicable dnames
             String daddr = cursor.getString(col_daddr);
-            List<String> alldnames = new LinkedList<>();
-            alldnames.add(daddr);
-            Cursor alternates_cursor = dh.getAlternateQNames(daddr);
-            while (alternates_cursor.moveToNext()) {
-                alldnames.add(alternates_cursor.getString(0));
-            }
+            List<String> alldnames = dh.getListAlternateQNames(daddr);
 
             String match = null;
             for (String thisdname : alldnames) {
