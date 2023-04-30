@@ -950,8 +950,8 @@ class DelayRule implements RuleWithDelayClassification {
 
     public boolean sameAs(DelayRule otherRule) {
         String otherPackage = otherRule.getPackageName();
-        if (otherPackage == null) {
-            return m_packageName == null;
+        if (m_packageName == null) {
+            return (otherPackage == null) || (otherPackage.length() == 0);
         } else {
             return m_packageName.equals(otherPackage);
         }
