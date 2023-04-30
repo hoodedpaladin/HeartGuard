@@ -248,7 +248,7 @@ public class WhitelistManager {
         list.add(rule);
     }
 
-    public void clearAccessRulesForAddition(Context context, RuleAndPackage addedrule) {
+    public static void writeAccessRulesForAddition(Context context, RuleAndPackage addedrule, boolean delete, int block) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
 
         Cursor cursor = dh.getAllAccess();
@@ -285,8 +285,13 @@ public class WhitelistManager {
 
             if (match != null) {
                 long id = cursor.getLong(col_id);
-                Log.w(TAG, String.format("Clearing access ID %d because uid %d daddr %s is a match", id, uid, match));
-                dh.clearAccessId(id);
+                if (delete) {
+                    Log.w(TAG, String.format("Clearing access ID %d because uid %d daddr %s is a match", id, uid, match));
+                    dh.clearAccessId(id);
+                } else {
+                    Log.w(TAG, String.format("Setting access ID %d to %d because uid %d daddr %s is a match", id, block, uid, match));
+                    dh.setAccess(id, block);
+                }
                 reload = true;
             }
         }

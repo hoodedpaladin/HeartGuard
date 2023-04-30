@@ -427,7 +427,7 @@ public class RulesManager {
         if (rule.type == RuleAndPackage.class) {
             // Clear access rules for all relevant apps
             RuleAndPackage ruleandpackage = (RuleAndPackage)rule.rule;
-            WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleandpackage);
+            WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, ruleandpackage, true, 0);
         }
         if (rule.type == DelayRule.class) {
             Cursor cursor = dh.getEnactedRules();
@@ -487,7 +487,7 @@ public class RulesManager {
             if (rule.type == RuleAndPackage.class) {
                 // Clear access rules for all relevant apps
                 RuleAndPackage ruleandpackage = (RuleAndPackage) rule.rule;
-                WhitelistManager.getInstance(context).clearAccessRulesForAddition(context, ruleandpackage);
+                WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, ruleandpackage, false, -1);
             }
         }
 
