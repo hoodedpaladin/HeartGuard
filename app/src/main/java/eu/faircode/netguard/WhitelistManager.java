@@ -19,7 +19,7 @@ interface RuleForApp {
 // AKA an Allow rule that specifies a host or ipv4, and may or may not specify a package
 // The package may be unspecified (UID_GLOBAL) or may not exist (UID_NOT_FOUND)
 // Contains a RuleForApp which either matches domain names or IP addresses
-class RuleAndPackage implements RuleWithDelayClassification {
+class RuleAndPackage extends RuleWithDelayClassification {
     public final static int UID_GLOBAL = -1;
     public final static int UID_NOT_FOUND = -2;
 
@@ -98,6 +98,23 @@ class RuleAndPackage implements RuleWithDelayClassification {
         }
 
         return false;
+    }
+
+    @Override
+    public List<String> getActionsAfterAdd(Context context) {
+        // After an add, the access rules that this matches will be changed to allowed
+        WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, this, false, 0);
+
+        return null;
+    }
+
+    @Override
+    public List<String> getActionsAfterRemove(Context context) {
+        // After a remove, just delete the access rule. Let it come up again and maybe some other rule will allow it.
+        // We could re-evaluate it now, but removing rules is relatively rare, so let's optimize that later.
+        WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, this, true, 0);
+
+        return null;
     }
 }
 
@@ -294,10 +311,6 @@ public class WhitelistManager {
                 }
                 reload = true;
             }
-        }
-
-        if (reload) {
-            ServiceSinkhole.reload("access changed", context, false);
         }
     }
 }

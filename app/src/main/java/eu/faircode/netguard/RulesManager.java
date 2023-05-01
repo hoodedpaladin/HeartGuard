@@ -368,6 +368,7 @@ public class RulesManager {
         int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
 
         int num_enacted = 0;
+        List<String> enacted_ruletexts = new LinkedList<>();
         while (cursor.moveToNext()) {
             String ruletext = cursor.getString(col_ruletext);
             long id = cursor.getLong(col_id);
@@ -381,20 +382,41 @@ public class RulesManager {
             boolean changed = enactRule(context, ruletext, id);
             if (changed) {
                 num_enacted += 1;
+                enacted_ruletexts.add(ruletext);
             }
         }
 
         if (num_enacted > 0) {
+            // Move all rules from text to RM and WM
             getAllEnactedRulesFromDb(context);
             WhitelistManager.getInstance(context).updateRulesFromRulesManager(context);
             if (!startup) {
                 LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
             }
+            // Now, manipulate all access rules to match how they should be
+            for (String ruletext : enacted_ruletexts) {
+                postAddActionsForRuletext(context, ruletext);
+            }
+
+            // Now, reload the ServiceSinkhole
             if (this.getPreferenceEnabled(context)) {
                 ServiceSinkhole.reload("rule changed", context, false);
             } else {
                 ServiceSinkhole.stop("rule changed", context, false);
             }
+        }
+    }
+
+    // Called for each ruletext string that succeeds, but after the RM and WM have updated.
+    // These actions should generally tend to the access rules
+    private void postAddActionsForRuletext(Context context, String ruletext) {
+        if (ruletext.matches("- .*")) {
+            String neg_ruletext = ruletext.substring(2);
+            UniversalRule rule = UniversalRule.getRuleFromText(context, neg_ruletext);
+            rule.rule.getActionsAfterRemove(context);
+        } else {
+            UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
+            rule.rule.getActionsAfterAdd(context);
         }
     }
 
@@ -424,11 +446,6 @@ public class RulesManager {
             return false;
         }
 
-        if (rule.type == RuleAndPackage.class) {
-            // Clear access rules for all relevant apps
-            RuleAndPackage ruleandpackage = (RuleAndPackage)rule.rule;
-            WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, ruleandpackage, true, 0);
-        }
         if (rule.type == DelayRule.class) {
             Cursor cursor = dh.getEnactedRules();
             DelayRule delayRule = (DelayRule)rule.rule;
@@ -480,16 +497,6 @@ public class RulesManager {
 
         Log.w(TAG, String.format("Removing IDs %d and %d due to deletion rule", id, otherid));
         dh.removeRulesById(new Long[]{id, otherid});
-
-        // Check if access rules should be deleted
-        UniversalRule rule = UniversalRule.getRuleFromText(context, otherruletext);
-        if (rule != null) {
-            if (rule.type == RuleAndPackage.class) {
-                // Clear access rules for all relevant apps
-                RuleAndPackage ruleandpackage = (RuleAndPackage) rule.rule;
-                WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, ruleandpackage, false, -1);
-            }
-        }
 
         return was_enacted;
     }
@@ -852,14 +859,21 @@ public class RulesManager {
     }
 }
 
-interface RuleWithDelayClassification {
-    public int getDelayToAdd(Context context, int main_delay);
-    public int getDelayToRemove(Context context, int main_delay);
-    public int getMajorCategory();
-    public int getMinorCategory();
+abstract class RuleWithDelayClassification {
+    public abstract int getDelayToAdd(Context context, int main_delay);
+    public abstract int getDelayToRemove(Context context, int main_delay);
+    public abstract int getMajorCategory();
+    public abstract int getMinorCategory();
+
+    public List<String> getActionsAfterAdd(Context context) {
+        return null;
+    }
+    public List<String> getActionsAfterRemove(Context context) {
+        return null;
+    }
 }
 
-class DelayRule implements RuleWithDelayClassification {
+class DelayRule extends RuleWithDelayClassification {
     private int m_delay;
     private String m_packageName;
     private static final int MINOR_CATEGORY_GLOBAL_DELAY = 100;
@@ -958,7 +972,7 @@ class DelayRule implements RuleWithDelayClassification {
     }
 }
 
-class AllowedPackageRule implements RuleWithDelayClassification {
+class AllowedPackageRule extends RuleWithDelayClassification {
     private static final String TAG = "Netguard.APRule";
     private String m_packagename;
     private boolean m_sticky;
@@ -1041,7 +1055,7 @@ class AllowedPackageRule implements RuleWithDelayClassification {
     }
 }
 
-class AllowedUidRule implements RuleWithDelayClassification {
+class AllowedUidRule extends RuleWithDelayClassification {
     private int m_uid;
     private boolean m_sticky;
 
@@ -1074,7 +1088,7 @@ class AllowedUidRule implements RuleWithDelayClassification {
     }
 }
 
-class FeatureRule implements RuleWithDelayClassification {
+class FeatureRule extends RuleWithDelayClassification {
     private String m_featurename;
     private enum FeatureType {feature_restrictive, feature_permissive};
     private FeatureType m_featuretype;
@@ -1140,7 +1154,7 @@ class FeatureRule implements RuleWithDelayClassification {
 }
 
 // Rule class for partners who can expedite your rules
-class PartnerRule implements RuleWithDelayClassification {
+class PartnerRule extends RuleWithDelayClassification {
     public static int TYPE_TOTP = 1;
     public static int TYPE_PASSWORD = 2;
 
