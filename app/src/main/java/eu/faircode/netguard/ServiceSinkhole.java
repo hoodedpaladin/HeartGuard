@@ -687,7 +687,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         // HeartGuard change - use this to make the VPN running or not, based on the rule
         private void rules_update(Intent intent) {
             RulesManager rm = RulesManager.getInstance(ServiceSinkhole.this);
-            rm.rulesChanged(ServiceSinkhole.this);
+            rm.startTrueTimeRequest(ServiceSinkhole.this);
             boolean running = (vpn != null);
             boolean enabled = rm.getPreferenceEnabled(ServiceSinkhole.this);
 

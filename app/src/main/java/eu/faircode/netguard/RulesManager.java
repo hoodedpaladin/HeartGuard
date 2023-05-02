@@ -14,15 +14,19 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.widget.Toast;
 
-import androidx.annotation.GuardedBy;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
+import com.instacart.library.truetime.TrueTime;
+
 import org.apache.commons.codec.binary.Base32;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -61,9 +65,12 @@ public class RulesManager {
     private Map<String, Integer> m_packageDelays;
     private Map<Integer, Boolean> m_allowedUids;
 
-    private long next_pending_time = 0;
+    private TrueTime m_trueTime;
 
     private ExecutorService executor = Executors.newCachedThreadPool();
+
+    HandlerThread backgroundThread;
+    Handler handler;
 
     public static RulesManager getInstance(Context context) {
         if (global_rm == null) {
@@ -78,22 +85,22 @@ public class RulesManager {
     }
 
     public RulesManager(Context context) {
-        long curr_time = System.currentTimeMillis();
+        backgroundThread = new HandlerThread("HeartGuard RM bg");
+        backgroundThread.start();
+        handler = new Handler(backgroundThread.getLooper());
+        m_trueTime = TrueTime.build().withSharedPreferencesCache(context).withLoggingEnabled(true);
 
         // Now parse all rules
         // (Do this before any other logical steps, just in case we logically need the
         // current rules for our decisions.)
         getAllEnactedRulesFromDb(context);
 
-        // Activate rules that took effect while we were asleep
-        // But don't send change notifications, because we are just starting up
-        activateRulesUpTo(context, curr_time, true);
-
         // Set the display fields, at this point, to reflect whether we are showing system apps or not
         updateManageSystem(context);
 
-        // We want an alarm for any pending rules
-        setAlarmForPending(context);
+        // Launch a TrueTime request so that, using the true time, we can
+        // activate rules that took effect while we were asleep.
+        startTrueTimeRequest(context);
     }
 
     // Convenience functions to throw exceptions if a rule uses the same phrase twice
@@ -332,7 +339,7 @@ public class RulesManager {
         am.set(AlarmManager.RTC_WAKEUP, time, pi);
     }
 
-    private void setAlarmForPending(Context context) {
+    private void setAlarmForPending(Context context, long realTime, long systemTime) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
         Cursor cursor = dh.getPendingRules();
 
@@ -351,10 +358,11 @@ public class RulesManager {
 
         Log.w(TAG, "Pending rule \"" + ruletext + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
 
-        // For comparison later when we get the alarm
-        next_pending_time = enact_time;
-
-        setAlarmForTime(context, enact_time);
+        // enact_time is in real time, but the alarm is set in system time
+        // So do some math to make it true
+        long offset = systemTime - realTime;
+        long enact_system_time = enact_time + offset;
+        setAlarmForTime(context, enact_system_time);
     }
 
     // Activate all rules up to a certain time.
@@ -543,19 +551,42 @@ public class RulesManager {
         }
     }
 
-    public void rulesChanged(Context context) {
-        Long curr_time = System.currentTimeMillis();
+    List<String> m_rulesToCommit = new LinkedList<>();
+    public void queueRuleText(Context context, String ruletext) {
+        lock.writeLock().lock();
 
-        Log.w(TAG, "Got a rulesChanged update - next pending time was " +
-                Long.toString(next_pending_time) + ", time is now " +
-                Long.toString(curr_time));
+        // Add to the commit waiting list
+        try {
+            m_rulesToCommit.add(ruletext);
+        } finally {
+            lock.writeLock().unlock();
+        }
 
-        activateRulesUpTo(context, curr_time, false);
-
-        setAlarmForPending(context);
+        // Then request the true time so that we can commit it
+        startTrueTimeRequest(context);
     }
 
-    public void queueRuleText(Context context, String ruletext) {
+    private void commitQueuedRules(Context context, long realTime) {
+        List<String> rulesToCommit = new LinkedList<>();
+
+        // Drain entries from the linked list while holding the lock
+        lock.writeLock().lock();
+        try {
+            while (!m_rulesToCommit.isEmpty()) {
+                rulesToCommit.add(m_rulesToCommit.remove(0));
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        // Then queue them
+        for (String ruletext : rulesToCommit) {
+            commitRuleText(context, ruletext, realTime);
+        }
+    }
+
+    // Commits a rule to the database, but uses realTime to be sure
+    public void commitRuleText(Context context, String ruletext, long realTime) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
         int delay = m_delay;
 
@@ -624,16 +655,9 @@ public class RulesManager {
             minor_category = newrule.getMinorCategory();
         }
 
-        long curr_time = System.currentTimeMillis();
-        long enact_time = curr_time + (delay * 1000L);
+        long enact_time = realTime + (delay * 1000L);
         Log.w(TAG, String.format("Queueing new rule \"%s\" with %d delay (enact_time %d)", ruletext, delay, enact_time));
-        dh.addNewRule(ruletext, enact_time, 0, major_category, minor_category);
-
-        // Activate rules up to now, in case that was instantaneous
-        activateRulesUpTo(context, curr_time, false);
-
-        // Set a new alarm, in case it wasn't instantaneous
-        setAlarmForPending(context);
+        dh.addNewRule(ruletext, realTime, enact_time, 0, major_category, minor_category);
     }
 
     public void setPackageAllowed(Context context, String packagename) {
@@ -780,27 +804,42 @@ public class RulesManager {
         prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, m_manage_system).apply();
     }
 
+    boolean m_pleaseExpedite = false;
     public void enterExpeditePassword(Context context, String password) {
-        lock.writeLock().lock();
-        for (UniversalRule rule : m_allCurrentRules) {
-            if (rule.type != PartnerRule.class)
-                continue;
-            PartnerRule partnerRule = (PartnerRule)rule.rule;
-            if (partnerRule.tryToUnlock(password)) {
-                expediteRules(context);
-                return;
+        boolean success = false;
+
+        // Try all enacted rules for password success
+        lock.readLock().lock();
+        try {
+            for (UniversalRule rule : m_allCurrentRules) {
+                if (rule.type != PartnerRule.class)
+                    continue;
+                PartnerRule partnerRule = (PartnerRule) rule.rule;
+                if (partnerRule.tryToUnlock(password)) {
+                    success = true;
+                    break;
+                }
             }
+        } finally {
+            lock.readLock().unlock();
+        }
+
+        if (success) {
+            // Start an expedited TrueTime request
+            lock.writeLock().lock();
+            m_pleaseExpedite = true;
+            lock.writeLock().unlock();
+            startTrueTimeRequest(context);
         }
     }
 
-    private void expediteRules(Context context) {
+    private void expediteRules(Context context, long realTime) {
         Log.w(TAG, "Expediting rules");
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
-        long curr_time = System.currentTimeMillis();
         Cursor cursor = dh.getPendingRules();
         int col_id = cursor.getColumnIndexOrThrow("_id");
         ContentValues cv = new ContentValues();
-        cv.put("enact_time", curr_time);
+        cv.put("enact_time", realTime);
 
         while (cursor.moveToNext()) {
             long id = cursor.getLong(col_id);
@@ -812,7 +851,7 @@ public class RulesManager {
             }
         }
 
-        activateRulesUpTo(context, curr_time, false);
+        activateRulesUpTo(context, realTime, false);
     }
 
     // Some apps may have lowered delays so that they can be in trial mode
@@ -857,6 +896,51 @@ public class RulesManager {
             ActivityRulesEntry.startActivityToConfirmRules(context, ruletexts);
         }
     }
+
+    // Starts a new TrueTime runnable
+    // The TrueTime runnable gets the true time and then performs all actions associated with true time:
+    // queue rules, activate rules, set the alarm
+    // The runnable will post itself 2 minutes later if it fails
+    public void startTrueTimeRequest(final Context context) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (!TrueTime.isInitialized()) {
+                        m_trueTime.initialize();
+                    }
+                    Date now = m_trueTime.now();
+                    long realTime = now.getTime();
+                    long systemTime = System.currentTimeMillis();
+
+                    // Check the expedite boolean under lock
+                    lock.readLock().lock();
+                    boolean expedite = m_pleaseExpedite;
+                    lock.readLock().unlock();
+
+                    commitQueuedRules(context, realTime);
+                    if (expedite) {
+                        expediteRules(context, realTime);
+                        lock.writeLock().lock();
+                        m_pleaseExpedite = false;
+                        lock.writeLock().unlock();
+                    }
+                    activateRulesUpTo(context, realTime, false);
+                    setAlarmForPending(context, realTime, systemTime);
+
+                    // That was successful, now quit
+                    return;
+                } catch (IOException e) {
+                    Log.e(TAG, "TrueTime request got IOException " + e);
+                } catch (Throwable t) {
+                    Log.e(TAG, "TrueTime request got throwable " + t);
+                }
+
+                handler.postDelayed(this, 120000);
+            }
+        });
+    }
+
 }
 
 abstract class RuleWithDelayClassification {

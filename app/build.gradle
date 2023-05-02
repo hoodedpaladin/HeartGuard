@@ -92,6 +92,8 @@ dependencies {
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
     annotationProcessor 'androidx.annotation:annotation:1.2.0'
     implementation "commons-codec:commons-codec:1.15"
+    // Add the TrueTime library (Apache-2.0 license)
+    implementation 'com.github.instacart.truetime-android:library:3.5'
 
     // https://bumptech.github.io/glide/
     implementation('com.github.bumptech.glide:glide:4.11.0') {

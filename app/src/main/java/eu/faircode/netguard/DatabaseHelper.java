@@ -1428,10 +1428,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     // HeartGuard change - add new rule, enacted or not
-    public void addNewRule(String ruletext, long enact_time, int enacted, int major_category, int minor_category) {
+    public void addNewRule(String ruletext, long create_time, long enact_time, int enacted, int major_category, int minor_category) {
         ContentValues cv = new ContentValues();
         cv.put("ruletext", ruletext);
-        cv.put("create_time", System.currentTimeMillis());
+        cv.put("create_time", create_time);
         cv.put("enact_time", enact_time);
         cv.put("enacted", enacted);
         cv.put("major_category", major_category);
