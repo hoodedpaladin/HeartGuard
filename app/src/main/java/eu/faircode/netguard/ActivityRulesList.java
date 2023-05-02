@@ -307,18 +307,9 @@ public class ActivityRulesList extends AppCompatActivity {
     }
 
     private class AdapterRulesList extends CursorAdapter {
-        private int colId;
-        private int colRuleText;
-        private int colEnacted;
-        private int colEnactTime;
 
         public AdapterRulesList(Context context, Cursor cursor) {
             super(context, cursor, 0);
-
-            colId = cursor.getColumnIndexOrThrow("_id");
-            colRuleText = cursor.getColumnIndexOrThrow("ruletext");
-            colEnacted = cursor.getColumnIndexOrThrow("enacted");
-            colEnactTime = cursor.getColumnIndexOrThrow("enact_time");
         }
 
         @Override
