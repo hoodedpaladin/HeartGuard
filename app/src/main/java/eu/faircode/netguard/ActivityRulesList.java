@@ -72,7 +72,7 @@ public class ActivityRulesList extends AppCompatActivity {
 
                 final String ruletext = cursor.getString(colRuleText);
                 final String displayableRuletext = getDisplayTextFromRuletext(ruletext, 1, 0);
-                boolean enacted = cursor.getInt(colEnacted) != 0;
+                boolean enacted = cursor.getInt(colEnacted) > 0;
                 //Log.w(TAG, "clicked id " + Long.toString(id) + " or, from cursor, " + Long.toString(otherid));
                 PopupMenu popup = new PopupMenu(ActivityRulesList.this, view);
                 popup.inflate(R.menu.rules_list_popup);
@@ -285,7 +285,7 @@ public class ActivityRulesList extends AppCompatActivity {
         ruletext = ruletext.replaceAll("totp:\\S+", "totp:******");
         ruletext = ruletext.replaceAll("password:\\S+", "password:******");
 
-        if (enacted != 0) {
+        if (enacted > 0) {
             return ruletext;
         } else {
             SimpleDateFormat x = new SimpleDateFormat("LLL dd - HH:mm:ss");

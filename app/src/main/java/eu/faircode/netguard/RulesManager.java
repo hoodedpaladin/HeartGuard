@@ -500,7 +500,7 @@ public class RulesManager {
         int col_id = cursor.getColumnIndexOrThrow("_id");
         int col_enacted = cursor.getColumnIndexOrThrow("enacted");
 
-        boolean was_enacted = cursor.getInt(col_enacted) != 0;
+        boolean was_enacted = cursor.getInt(col_enacted) > 0;
         long otherid = cursor.getLong(col_id);
 
         Log.w(TAG, String.format("Removing IDs %d and %d due to deletion rule", id, otherid));
@@ -532,7 +532,7 @@ public class RulesManager {
             int col_id = cursor.getColumnIndexOrThrow("_id");
             int col_enacted = cursor.getColumnIndexOrThrow("enacted");
 
-            boolean was_enacted = cursor.getInt(col_enacted) != 0;
+            boolean was_enacted = cursor.getInt(col_enacted) > 0;
             long otherid = cursor.getLong(col_id);
 
             if (was_enacted) {
