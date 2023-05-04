@@ -173,6 +173,27 @@ class IPRule implements RuleForApp {
     }
 }
 
+class DirectIPRule implements RuleForApp {
+    DirectIPRule() {
+    }
+
+    public int isAllowed(Packet packet, List<String> dnames) {
+        if (!dnames.isEmpty()) {
+            return -1;
+        }
+        if (matchesAddr(packet.daddr))
+            return 1;
+        return -1;
+    }
+
+    public boolean matchesAddr(String dname) {
+        if (dname.matches("\\d+\\.\\d+\\.\\d+\\.\\d+") || dname.matches("[0-9a-fA-F:]+")) {
+            return true;
+        }
+        return false;
+    }
+}
+
 // HeartGuard code - decide based on existing rules whether to allow a site
 public class WhitelistManager {
     private static final String TAG = "NetGuard.WM";

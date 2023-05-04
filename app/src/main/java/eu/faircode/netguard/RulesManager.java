@@ -158,9 +158,15 @@ public class RulesManager {
                 continue;
             }
 
-            m = Pattern.compile("sticky").matcher(phrase);
-            if (m.matches()) {
+            if (phrase.equals("sticky")) {
                 putNewBoolean(data_bundle, "sticky", true);
+
+                // Done parsing this phrase
+                continue;
+            }
+
+            if (phrase.equals("directip")) {
+                putNewBoolean(data_bundle, "directip", true);
 
                 // Done parsing this phrase
                 continue;
@@ -201,8 +207,17 @@ public class RulesManager {
             sticky = data_bundle.getBoolean("sticky");
         }
 
+        boolean directip = false;
+        if (data_bundle.containsKey("directip")) {
+            directip = data_bundle.getBoolean("directip");
+        }
+
         if (data_bundle.containsKey("host"))
         {
+            if (directip) {
+                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                return null;
+            }
             if (data_bundle.containsKey("ip")) {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
@@ -213,11 +228,28 @@ public class RulesManager {
 
         if (data_bundle.containsKey("ip"))
         {
+            if (directip) {
+                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                return null;
+            }
             if (data_bundle.containsKey("host")) {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
             return new RuleAndPackage(context, new IPRule(data_bundle.getString("ip"), 1), sticky, packagename);
+        }
+
+        if (directip) {
+            if (data_bundle.containsKey("ip")) {
+                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                return null;
+            }
+            if (data_bundle.containsKey("host")) {
+                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                return null;
+            }
+
+            return new RuleAndPackage(context, new DirectIPRule(), sticky, packagename);
         }
 
         // No rule found
@@ -1087,7 +1119,7 @@ class AllowedPackageRule extends RuleWithDelayClassification {
         try {
             Bundle bundle = RulesManager.parseAllowTextToBundle(context, ruletext);
 
-            if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ip")) {
+            if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ip") && !bundle.containsKey("directip")) {
                 // This is an allowed package
                 String packagename = bundle.getString("package");
                 boolean sticky = false;
@@ -1111,7 +1143,7 @@ class AllowedPackageRule extends RuleWithDelayClassification {
                     sticky = bundle.getBoolean("sticky");
                 }
                 return new UniversalRule(new AllowedUidRule(uid, sticky), ruletext);
-            } else if (bundle.containsKey("host") || bundle.containsKey("ip")) {
+            } else if (bundle.containsKey("host") || bundle.containsKey("ip") || bundle.containsKey("directip")) {
                 // This is a whitelisted URL
                 RuleAndPackage newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
                 if (newrule == null)
