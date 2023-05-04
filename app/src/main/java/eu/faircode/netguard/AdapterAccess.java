@@ -134,30 +134,31 @@ public class AdapterAccess extends CursorAdapter {
         span.setSpan(new UnderlineSpan(), 0, dest.length(), 0);
         tvDest.setText(span);
 
-        if (Util.isNumericAddress(daddr))
-            new AsyncTask<String, Object, String>() {
-                @Override
-                protected void onPreExecute() {
-                    ViewCompat.setHasTransientState(tvDest, true);
-                }
+        // HeartGuard change - don't do reverse name lookup, it obscures what rules we will want to use to enable traffic
+        //if (Util.isNumericAddress(daddr))
+        //    new AsyncTask<String, Object, String>() {
+        //        @Override
+        //        protected void onPreExecute() {
+        //            ViewCompat.setHasTransientState(tvDest, true);
+        //        }
 
-                @Override
-                protected String doInBackground(String... args) {
-                    try {
-                        return InetAddress.getByName(args[0]).getHostName();
-                    } catch (UnknownHostException ignored) {
-                        return args[0];
-                    }
-                }
+        //        @Override
+        //        protected String doInBackground(String... args) {
+        //            try {
+        //                return InetAddress.getByName(args[0]).getHostName();
+        //            } catch (UnknownHostException ignored) {
+        //                return args[0];
+        //            }
+        //        }
 
-                @Override
-                protected void onPostExecute(String addr) {
-                    tvDest.setText(
-                            Util.getProtocolName(protocol, version, true) +
-                                    " >" + addr + (dport > 0 ? "/" + dport : ""));
-                    ViewCompat.setHasTransientState(tvDest, false);
-                }
-            }.execute(daddr);
+        //        @Override
+        //        protected void onPostExecute(String addr) {
+        //            tvDest.setText(
+        //                    Util.getProtocolName(protocol, version, true) +
+        //                            " >" + addr + (dport > 0 ? "/" + dport : ""));
+        //            ViewCompat.setHasTransientState(tvDest, false);
+        //        }
+        //    }.execute(daddr);
 
         if (allowed < 0)
             tvDest.setTextColor(colorText);
