@@ -10,6 +10,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 interface RuleForApp {
     int isAllowed(Packet packet, List<String> dnames);
@@ -149,27 +151,89 @@ class DomainRule implements RuleForApp {
 }
 
 class IPRule implements RuleForApp {
-    private String ip;
-    private int allowed;
+    private static final String TAG = "Netguard.IPRule";
+    private static int TYPE_SINGLE = 0;
+    private static int TYPE_IPV4_SUBNET = 1;
+
+    private String m_ip;
+    private int m_allowed;
+    private int m_subnet_ip;
+    private int m_subnetmask;
+    private int m_type;
 
     IPRule(String ip, int allowed) {
-        this.ip = ip;
-        this.allowed = allowed;
+        m_ip = ip;
+        m_allowed = allowed;
+        m_type = TYPE_SINGLE;
+
+        try {
+            Matcher m = Pattern.compile("(\\d+.\\d+.\\d+.\\d+)/(\\d+)").matcher(ip);
+            if (m.matches()) {
+                long numeric_ip = stringToIp(m.group(1));
+                int subnetbits = Integer.parseInt(m.group(2));
+
+                boolean valid = true;
+                if (numeric_ip == -1)
+                    valid = false;
+                if ((subnetbits > 31) || (subnetbits < 1))
+                    valid = false;
+
+                if (valid) {
+                    m_subnetmask = ~((1 << (32 - subnetbits)) - 1);
+                    m_subnet_ip = ((int)numeric_ip) & m_subnetmask;
+                    m_type = TYPE_IPV4_SUBNET;
+                }
+            }
+        } catch (NumberFormatException e) {
+        }
+    }
+
+    private static long stringToIp(String string) {
+        Matcher m = Pattern.compile("(\\d+).(\\d+).(\\d+).(\\d+)").matcher(string);
+        if (!m.matches()) {
+            return -1;
+        }
+
+        long ip = 0;
+        for (int i = 0; i < 4; i++) {
+            ip = ip << 8;
+            int thisbyte = Integer.parseInt(m.group(i+1));
+            if ((thisbyte < 0) || (thisbyte > 255)) {
+                return -1;
+            }
+            ip |= thisbyte;
+        }
+
+        return ip;
     }
 
     public int isAllowed(Packet packet, List<String> dnames) {
         if (matchesAddr(packet.daddr))
-            return this.allowed;
+            return this.m_allowed;
         return -1;
     }
 
     public boolean matchesAddr(String dname) {
-        // TODO: allow IP address block allowing
         // TODO: better way to match?
-        // TODO: IPV6?
-        if (dname.equals(this.ip))
-            return true;
-        return false;
+        // TODO: IPV6? IPV6 subnets?
+        if (m_type == TYPE_SINGLE) {
+            if (dname.equals(this.m_ip))
+                return true;
+            return false;
+        } else if (m_type == TYPE_IPV4_SUBNET) {
+            long longip = stringToIp(dname);
+            if (longip == -1) {
+                return false;
+            }
+            int ip = (int)longip;
+            if ((ip & m_subnetmask) == m_subnet_ip) {
+                return true;
+            }
+            return false;
+        } else {
+            Log.e(TAG, "Unknown type");
+            return false;
+        }
     }
 }
 
