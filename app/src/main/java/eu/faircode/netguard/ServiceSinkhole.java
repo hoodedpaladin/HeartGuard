@@ -2097,6 +2097,12 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         packet.allowed = mapUidAllowed.get(packet.uid);
                     else
                         Log.i(TAG, "No rules for " + packet);
+                if (!packet.allowed) {
+                    // Check for allowed rules here, so that we can approve the socket immediately
+                    if (WhitelistManager.getInstance(this).isAllowed(this, packet, null)) {
+                        packet.allowed = true;
+                    }
+                }
             }
         }
 
