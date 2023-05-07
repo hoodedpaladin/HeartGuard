@@ -697,6 +697,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
+                clearCache();
             }
         } finally {
             lock.writeLock().unlock();

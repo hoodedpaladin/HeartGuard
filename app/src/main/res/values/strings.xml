@@ -385,4 +385,5 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="submit_these_changes">You will submit these changes, press submit to continue...</string>
     <string name="raw_edit">Raw edit...</string>
     <string name="cancel_button">Cancel</string>
+    <string name="setting_reset_access">Reset all access records</string>
 </resources>

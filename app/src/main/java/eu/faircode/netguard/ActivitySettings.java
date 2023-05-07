@@ -218,6 +218,41 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             }
         });
 
+        // HeartGuard change - delete all accesses
+        // This is practical to do because RulesManager is in charge of all accesses now, anyway
+        Preference pref_reset_access = screen.findPreference("reset_access");
+        pref_reset_access.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                Util.areYouSure(ActivitySettings.this, R.string.setting_reset_access, new Util.DoubtListener() {
+                    @Override
+                    public void onSure() {
+                        new AsyncTask<Object, Object, Throwable>() {
+                            @Override
+                            protected Throwable doInBackground(Object... objects) {
+                                try {
+                                    DatabaseHelper.getInstance(ActivitySettings.this).clearAccess();
+                                    return null;
+                                } catch (Throwable ex) {
+                                    return ex;
+                                }
+                            }
+
+                            @Override
+                            protected void onPostExecute(Throwable ex) {
+                                ServiceSinkhole.reload("Accesses cleared", ActivitySettings.this, false);
+                                if (ex == null)
+                                    Toast.makeText(ActivitySettings.this, R.string.msg_completed, Toast.LENGTH_LONG).show();
+                                else
+                                    Toast.makeText(ActivitySettings.this, ex.toString(), Toast.LENGTH_LONG).show();
+                            }
+                        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                    }
+                });
+                return false;
+            }
+        });
+
         // HeartGuard change - no network options screen
         //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         //    TwoStatePreference pref_reload_onconnectivity =

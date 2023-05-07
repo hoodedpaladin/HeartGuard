@@ -131,6 +131,9 @@
             <Preference
                 android:key="reset_usage"
                 android:title="@string/setting_reset_usage" />
+            <Preference
+                android:key="reset_access"
+                android:title="@string/setting_reset_access" />
             <EditTextPreference
                 android:inputType="number"
                 android:key="rcode"
