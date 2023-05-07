@@ -315,7 +315,6 @@ public class WhitelistManager {
         }
         try {
             // TODO: common code for both loops
-            // TODO: make sure domain is a whole word
             List<RuleForApp> rules = this.app_specific_rules.get(packet.uid);
             if (rules != null) {
                 for (RuleForApp rule : rules) {
