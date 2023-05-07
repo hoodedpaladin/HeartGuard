@@ -15,11 +15,13 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.CursorAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -27,6 +29,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Random;
 
 // Activity to display all current/pending rules in a window
 // Much implementation copied from ActivityForwarding (because why not)
@@ -178,6 +181,9 @@ public class ActivityRulesList extends AppCompatActivity {
                 i.putExtra(ActivityRulesEntry.SPECIFY_MODE, ActivityRulesEntry.MODE_EDIT_RULES);
                 startActivity(i);
                 return true;
+            case R.id.add_expedite_partner:
+                launchAddPartnerPage(this);
+                return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -282,8 +288,7 @@ public class ActivityRulesList extends AppCompatActivity {
     // If you don't want rules to be labeled as pending, set enacted=1 and enactTime=0
     public static String getDisplayTextFromRuletext(String ruletext, int enacted, long enactTime) {
         // Don't show the user the secret information contained in expedite partners!
-        ruletext = ruletext.replaceAll("totp:\\S+", "totp:******");
-        ruletext = ruletext.replaceAll("password:\\S+", "password:******");
+        ruletext = RulesManager.sanitizeRuletext(ruletext);
 
         if (enacted > 0) {
             return ruletext;
@@ -322,5 +327,89 @@ public class ActivityRulesList extends AppCompatActivity {
             TextView tvRuleText = view.findViewById(R.id.tvRuleText);
             tvRuleText.setText(ActivityRulesList.getDisplayTextFromRuleCursor(cursor));
         }
+    }
+
+    // Give a random 16-character Base32 key as a suggestion
+    String getRandomSecretKey() {
+        Random r = new Random();
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        String key = "";
+        for (int i = 0; i < 16; i++) {
+            key += chars.charAt(r.nextInt(chars.length()));
+        }
+        return key;
+    }
+
+    // Check if the secret key works
+    boolean isSecretKeyOkay(String secretKey) {
+        return secretKey.matches("[A-Z2-7]+");
+    }
+
+    // Launch a dialog to add an expedite partner
+    private void launchAddPartnerPage(final Context context) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.addpartner, null, false);
+        final EditText etPartnerNickname = view.findViewById(R.id.partner_nickname);
+        final EditText etSecretKey = view.findViewById(R.id.partner_secret_key);
+
+        etSecretKey.setText(getRandomSecretKey());
+
+        final AlertDialog alertDialog;
+        alertDialog = new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // No action - this gets overridden
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialogInterface) {
+                    }
+                })
+                .create();
+        // Override the onClickListener as soon as this dialog is displayed
+        // Otherwise, it will always get dismissed
+        alertDialog.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface dialog) {
+                Button b = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                b.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        String nickname = etPartnerNickname.getText().toString();
+                        String secretKey = etSecretKey.getText().toString();
+
+                        // Nickname - no leading whitespace, and middle whitespace turned into underscores
+                        nickname = nickname.trim().replaceAll("\\s+", "_");
+                        if (nickname.length() == 0) {
+                            nickname = getString(R.string.accountability_partner_nickname);
+                        }
+                        etPartnerNickname.setText(nickname);
+
+                        //Secret Key - must be base 32, no whitespace
+                        secretKey = secretKey.trim().toUpperCase();
+                        etSecretKey.setText(secretKey);
+                        if (!isSecretKeyOkay(secretKey)) {
+                            Toast.makeText(ActivityRulesList.this, R.string.secret_key_rules, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        String ruletext = "partner name:" + nickname + " totp:" + secretKey;
+                        RulesManager.getInstance(context).queueRuleText(context, ruletext);
+                        alertDialog.dismiss();
+                    }
+                });
+            }
+        });
+        alertDialog.show();
     }
 }

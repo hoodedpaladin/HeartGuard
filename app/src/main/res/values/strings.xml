@@ -386,4 +386,11 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="raw_edit">Raw edit...</string>
     <string name="cancel_button">Cancel</string>
     <string name="setting_reset_access">Reset all access records</string>
+    <string name="add_new_partner">Add New Partner</string>
+    <string name="add_new_partner_explanation">Have your partner add this secret code to their authenticator app, or vice versa. Then forget it. (This password is not stored securely! Don\'t use this for any other reason!)</string>
+    <string name="partner_name">Partner nickname (to remember this expedite by)</string>
+    <string name="accountability_partner_nickname">accountability_partner</string>
+    <string name="secret_key">Secret key</string>
+    <string name="add_expedite_partner">Add expedite partner...</string>
+    <string name="secret_key_rules">Secret keys are only made of the characters A-Z and 2-7</string>
 </resources>

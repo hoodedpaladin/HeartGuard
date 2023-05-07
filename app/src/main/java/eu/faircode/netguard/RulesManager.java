@@ -384,7 +384,7 @@ public class RulesManager {
         long id = cursor.getLong(col_id);
         long enact_time = cursor.getLong(col_enact_time);
 
-        Log.w(TAG, "Pending rule \"" + ruletext + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
+        Log.w(TAG, "Pending rule \"" + sanitizeRuletext(ruletext) + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
 
         // enact_time is in real time, but the alarm is set in system time
         // So do some math to make it true
@@ -410,7 +410,7 @@ public class RulesManager {
             long id = cursor.getLong(col_id);
             long enact_time = cursor.getLong(col_enact_time);
 
-            Log.d(TAG, "Pending rule \"" + ruletext + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
+            Log.d(TAG, "Pending rule \"" + sanitizeRuletext(ruletext) + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
 
             if (enact_time > current_time) {
                 break;
@@ -458,7 +458,7 @@ public class RulesManager {
 
     // Sets a row to enacted. Returns true if this makes a runtime change.
     private boolean enactRule(Context context, String ruletext, long id) {
-        Log.w(TAG, "Enacting rule \"" + ruletext + "\" ID=" + Long.toString(id));
+        Log.w(TAG, "Enacting rule \"" + sanitizeRuletext(ruletext) + "\" ID=" + Long.toString(id));
 
         if (ruletext.startsWith("- ")) {
             // This is a negative rule
@@ -521,7 +521,7 @@ public class RulesManager {
         Cursor cursor = dh.getRuleMatchingRuletext(otherruletext);
 
         if (!cursor.moveToFirst()) {
-            Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", ruletext));
+            Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", sanitizeRuletext(ruletext)));
             dh.removeRulesById(new Long[]{id});
             return false;
         }
@@ -553,7 +553,7 @@ public class RulesManager {
             Cursor cursor = dh.getRuleMatchingRuletext(otherruletext);
 
             if (!cursor.moveToFirst()) {
-                Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", ruletext));
+                Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", sanitizeRuletext(ruletext)));
                 dh.removeRulesById(new Long[]{id});
                 return false;
             }
@@ -621,7 +621,7 @@ public class RulesManager {
         // Check for existing (enacted or pending) rule
         Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext);
         if (existing_rule.moveToFirst()) {
-            Log.w(TAG, String.format("Rule \"%s\" already exists", ruletext));
+            Log.w(TAG, String.format("Rule \"%s\" already exists", sanitizeRuletext(ruletext)));
             return;
         }
 
@@ -684,7 +684,7 @@ public class RulesManager {
         }
 
         long enact_time = realTime + (delay * 1000L);
-        Log.w(TAG, String.format("Queueing new rule \"%s\" with %d delay (enact_time %d)", ruletext, delay, enact_time));
+        Log.w(TAG, String.format("Queueing new rule \"%s\" with %d delay (enact_time %d)", sanitizeRuletext(ruletext), delay, enact_time));
         dh.addNewRule(ruletext, realTime, enact_time, 0, major_category, minor_category);
     }
 
@@ -812,7 +812,7 @@ public class RulesManager {
 
         int i = 0;
         while (cursor.moveToNext()) {
-            Log.w(TAG, Integer.toString(i) + ": " + getStringOfRuleDbEntry(cursor));
+            Log.w(TAG, Integer.toString(i) + ": " + sanitizeRuletext(getStringOfRuleDbEntry(cursor)));
             i += 1;
         }
         Log.w(TAG, Integer.toString(i) + " total entries");
@@ -969,6 +969,13 @@ public class RulesManager {
         });
     }
 
+    // Clean up the ruletext to be displayed
+    public static String sanitizeRuletext(String ruletext) {
+        // Don't show the user the secret information contained in expedite partners!
+        ruletext = ruletext.replaceAll("totp:\\S+", "totp:******");
+        ruletext = ruletext.replaceAll("password:\\S+", "password:******");
+        return ruletext;
+    }
 }
 
 abstract class RuleWithDelayClassification {
