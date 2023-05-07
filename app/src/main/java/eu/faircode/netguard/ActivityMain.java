@@ -777,16 +777,17 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         }
 
         markPro(menu.findItem(R.id.menu_log), ActivityPro.SKU_LOG);
-        if (!IAB.isPurchasedAny(this))
-            markPro(menu.findItem(R.id.menu_pro), null);
+        // HeartGuard change - removed menu items
+        //if (!IAB.isPurchasedAny(this))
+        //    markPro(menu.findItem(R.id.menu_pro), null);
 
-        if (!Util.hasValidFingerprint(this) || getIntentInvite(this).resolveActivity(pm) == null)
-            menu.removeItem(R.id.menu_invite);
+        //if (!Util.hasValidFingerprint(this) || getIntentInvite(this).resolveActivity(pm) == null)
+        //    menu.removeItem(R.id.menu_invite);
 
-        if (getIntentSupport().resolveActivity(getPackageManager()) == null)
-            menu.removeItem(R.id.menu_support);
+        //if (getIntentSupport().resolveActivity(getPackageManager()) == null)
+        //    menu.removeItem(R.id.menu_support);
 
-        menu.findItem(R.id.menu_apps).setEnabled(getIntentApps(this).resolveActivity(pm) != null);
+        //menu.findItem(R.id.menu_apps).setEnabled(getIntentApps(this).resolveActivity(pm) != null);
 
         return true;
     }
@@ -889,29 +890,32 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                 startActivity(new Intent(this, ActivitySettings.class));
                 return true;
 
-            case R.id.menu_pro:
-                startActivity(new Intent(ActivityMain.this, ActivityPro.class));
-                return true;
+            // HeartGuard change - removed menu items
+            //case R.id.menu_pro:
+            //    startActivity(new Intent(ActivityMain.this, ActivityPro.class));
+            //    return true;
 
-            case R.id.menu_invite:
-                startActivityForResult(getIntentInvite(this), REQUEST_INVITE);
-                return true;
+            //case R.id.menu_invite:
+            //    startActivityForResult(getIntentInvite(this), REQUEST_INVITE);
+            //    return true;
 
             case R.id.menu_legend:
                 menu_legend();
                 return true;
 
-            case R.id.menu_support:
-                startActivity(getIntentSupport());
-                return true;
+            // HeartGuard change - removed menu items
+            //case R.id.menu_support:
+            //    startActivity(getIntentSupport());
+            //    return true;
 
             case R.id.menu_about:
                 menu_about();
                 return true;
 
-            case R.id.menu_apps:
-                menu_apps();
-                return true;
+            // HeartGuard change - removed menu items
+            //case R.id.menu_apps:
+            //    menu_apps();
+            //    return true;
 
             default:
                 return super.onOptionsItemSelected(item);
@@ -1219,14 +1223,16 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             }
         });
 
-        // Handle rate
-        btnRate.setVisibility(getIntentRate(this).resolveActivity(getPackageManager()) == null ? View.GONE : View.VISIBLE);
-        btnRate.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(getIntentRate(ActivityMain.this));
-            }
-        });
+        // HeartGuard change - removed menu items
+        btnRate.setVisibility(View.GONE);
+        //// Handle rate
+        //btnRate.setVisibility(getIntentRate(this).resolveActivity(getPackageManager()) == null ? View.GONE : View.VISIBLE);
+        //btnRate.setOnClickListener(new View.OnClickListener() {
+        //    @Override
+        //    public void onClick(View view) {
+        //        startActivity(getIntentRate(ActivityMain.this));
+        //    }
+        //});
 
         // Show dialog
         dialogAbout = new AlertDialog.Builder(this)
@@ -1242,9 +1248,10 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         dialogAbout.show();
     }
 
-    private void menu_apps() {
-        startActivity(getIntentApps(this));
-    }
+    // HeartGuard change - removed menu items
+    //private void menu_apps() {
+    //    startActivity(getIntentApps(this));
+    //}
 
     private static Intent getIntentPro(Context context) {
         if (Util.isPlayStoreInstall(context))
@@ -1264,22 +1271,24 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         return intent;
     }
 
-    private static Intent getIntentApps(Context context) {
-        return new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/dev?id=8420080860664580239"));
-    }
+    // HeartGuard change - removed menu items
+    //private static Intent getIntentApps(Context context) {
+    //    return new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/dev?id=8420080860664580239"));
+    //}
 
-    private static Intent getIntentRate(Context context) {
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + context.getPackageName()));
-        if (intent.resolveActivity(context.getPackageManager()) == null)
-            intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + context.getPackageName()));
-        return intent;
-    }
+    //private static Intent getIntentRate(Context context) {
+    //    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + context.getPackageName()));
+    //    if (intent.resolveActivity(context.getPackageManager()) == null)
+    //        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + context.getPackageName()));
+    //    return intent;
+    //}
 
-    private static Intent getIntentSupport() {
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData(Uri.parse("https://github.com/M66B/NetGuard/blob/master/FAQ.md"));
-        return intent;
-    }
+    // HeartGuard change - removed menu items
+    //private static Intent getIntentSupport() {
+    //    Intent intent = new Intent(Intent.ACTION_VIEW);
+    //    intent.setData(Uri.parse("https://github.com/M66B/NetGuard/blob/master/FAQ.md"));
+    //    return intent;
+    //}
 
     private Intent getIntentLogcat() {
         Intent intent;
