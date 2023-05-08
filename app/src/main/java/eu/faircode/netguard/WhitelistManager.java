@@ -6,15 +6,17 @@ import android.database.Cursor;
 import android.util.Log;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 interface RuleForApp {
-    int isAllowed(Packet packet, List<String> dnames);
+    int isAllowed(String daddr, List<String> dnames);
     boolean matchesAddr(String dname);
 }
 
@@ -103,20 +105,28 @@ class RuleAndPackage extends RuleWithDelayClassification {
     }
 
     @Override
-    public List<String> getActionsAfterAdd(Context context) {
-        // After an add, the access rules that this matches will be changed to allowed
-        WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, this, false, 0);
+    public Set<String> getActionsAfterAdd(Context context) {
+        // After an add, the access rules that this matches will be allowed
+        Set<Integer> uids_to_reload = WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, this, false, 0);
 
-        return null;
+        Set<String> actions = new HashSet<>();
+        for (int uid : uids_to_reload) {
+            actions.add("uid " + uid);
+        }
+        return actions;
     }
 
     @Override
-    public List<String> getActionsAfterRemove(Context context) {
-        // After a remove, just delete the access rule. Let it come up again and maybe some other rule will allow it.
-        // We could re-evaluate it now, but removing rules is relatively rare, so let's optimize that later.
-        WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, this, true, 0);
+    public Set<String> getActionsAfterRemove(Context context) {
+        // After a delete, the access rules that this matches will be deleted
+        // If they are allowed by another rule, let them be added again later.
+        Set<Integer> uids_to_reload = WhitelistManager.getInstance(context).writeAccessRulesForAddition(context, this, true, 0);
 
-        return null;
+        Set<String> actions = new HashSet<>();
+        for (int uid : uids_to_reload) {
+            actions.add("uid " + uid);
+        }
+        return actions;
     }
 }
 
@@ -140,7 +150,7 @@ class DomainRule implements RuleForApp {
         return false;
     }
 
-    public int isAllowed(Packet packet, List<String> dnames) {
+    public int isAllowed(String daddr, List<String> dnames) {
         for (String dname : dnames) {
             if (matchesAddr(dname)) {
                 return this.allowed;
@@ -207,8 +217,8 @@ class IPRule implements RuleForApp {
         return ip;
     }
 
-    public int isAllowed(Packet packet, List<String> dnames) {
-        if (matchesAddr(packet.daddr))
+    public int isAllowed(String daddr, List<String> dnames) {
+        if (matchesAddr(daddr))
             return this.m_allowed;
         return -1;
     }
@@ -241,11 +251,11 @@ class DirectIPRule implements RuleForApp {
     DirectIPRule() {
     }
 
-    public int isAllowed(Packet packet, List<String> dnames) {
+    public int isAllowed(String daddr, List<String> dnames) {
         if (!dnames.isEmpty()) {
             return -1;
         }
-        if (matchesAddr(packet.daddr))
+        if (matchesAddr(daddr))
             return 1;
         return -1;
     }
@@ -305,20 +315,20 @@ public class WhitelistManager {
         }
     }
 
-    public boolean isAllowed(Context context, Packet packet, String dname) {
+    public boolean isAllowed(Context context, String daddr, int uid) {
         lock.readLock().lock();
 
         List<String> alldnames = new LinkedList<>();
-        Cursor cursor = DatabaseHelper.getInstance(context).getAllQNames(packet.daddr);
+        Cursor cursor = DatabaseHelper.getInstance(context).getAllQNames(daddr);
         while (cursor.moveToNext()) {
             alldnames.add(cursor.getString(0));
         }
         try {
             // TODO: common code for both loops
-            List<RuleForApp> rules = this.app_specific_rules.get(packet.uid);
+            List<RuleForApp> rules = this.app_specific_rules.get(uid);
             if (rules != null) {
                 for (RuleForApp rule : rules) {
-                    int allowed = rule.isAllowed(packet, alldnames);
+                    int allowed = rule.isAllowed(daddr, alldnames);
                     if (allowed >= 0)
                         return allowed == 1;
                 }
@@ -326,7 +336,7 @@ public class WhitelistManager {
 
             rules = this.global_rules;
             for (RuleForApp rule : rules) {
-                int allowed = rule.isAllowed(packet, alldnames);
+                int allowed = rule.isAllowed(daddr, alldnames);
                 if (allowed >= 0)
                     return allowed == 1;
             }
@@ -349,7 +359,7 @@ public class WhitelistManager {
         list.add(rule);
     }
 
-    public static void writeAccessRulesForAddition(Context context, RuleAndPackage addedrule, boolean delete, int block) {
+    public Set<Integer> writeAccessRulesForAddition(Context context, RuleAndPackage addedrule, boolean delete, int block) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
 
         Cursor cursor = dh.getAllAccess();
@@ -357,8 +367,10 @@ public class WhitelistManager {
         int col_id = cursor.getColumnIndexOrThrow("ID");
         int col_uid = cursor.getColumnIndexOrThrow("uid");
         int col_daddr = cursor.getColumnIndexOrThrow("daddr");
+        int col_block = cursor.getColumnIndexOrThrow("block");
 
-        boolean reload = false;
+        Set<Integer> uids_to_reload = new HashSet<>();
+
         while (cursor.moveToNext()) {
             int uid = cursor.getInt(col_uid);
 
@@ -389,12 +401,19 @@ public class WhitelistManager {
                 if (delete) {
                     Log.w(TAG, String.format("Clearing access ID %d because uid %d daddr %s is a match", id, uid, match));
                     dh.clearAccessId(id);
+                    uids_to_reload.add(uid);
                 } else {
-                    Log.w(TAG, String.format("Setting access ID %d to %d because uid %d daddr %s is a match", id, block, uid, match));
-                    dh.setAccess(id, block);
+                    int access_block = cursor.getInt(col_block);
+
+                    if (access_block != block) {
+                        Log.w(TAG, String.format("Setting access ID %d to %d because uid %d daddr %s is a match", id, block, uid, match));
+                        dh.setAccess(id, block);
+                        uids_to_reload.add(uid);
+                    }
                 }
-                reload = true;
             }
         }
+
+        return uids_to_reload;
     }
 }

@@ -25,6 +25,7 @@ import org.apache.commons.codec.binary.Base32;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -430,29 +431,63 @@ public class RulesManager {
                 LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
             }
             // Now, manipulate all access rules to match how they should be
+            Set<String> actions = new HashSet<>();
             for (String ruletext : enacted_ruletexts) {
-                postAddActionsForRuletext(context, ruletext);
+                Set<String> new_actions = postAddActionsForRuletext(context, ruletext);
+                if (new_actions != null) {
+                    actions.addAll(new_actions);
+                }
             }
 
-            // Now, reload the ServiceSinkhole
-            if (this.getPreferenceEnabled(context)) {
-                ServiceSinkhole.reload("rule changed", context, false);
+            boolean reload = false;
+            List<Integer> uids_to_reload = new LinkedList<>();
+
+            for (String action : actions) {
+                if (action == "reload") {
+                    reload = true;
+                    continue;
+                }
+
+                Matcher m = Pattern.compile("uid (\\d+)").matcher(action);
+                if (m.matches()) {
+                    int uid = Integer.parseInt(m.group(1));
+                    uids_to_reload.add(uid);
+                    continue;
+                }
+
+                // Unknown string
+                Log.e(TAG, "Unknown action " + action);
+                reload = true;
+                break;
+            }
+
+            // Just reload the service if we have to reload or if there are a lot of UIDs to reload
+            if (reload || (uids_to_reload.size() > 4)) {
+                // Now, reload the ServiceSinkhole
+                if (this.getPreferenceEnabled(context)) {
+                    ServiceSinkhole.reload("rule changed", context, false);
+                } else {
+                    ServiceSinkhole.stop("rule changed", context, false);
+                }
             } else {
-                ServiceSinkhole.stop("rule changed", context, false);
+                // Reload the UIDs individually
+                for (int uid : uids_to_reload) {
+                    ServiceSinkhole.pleaseUpdateUid(uid, context);
+                }
             }
         }
     }
 
     // Called for each ruletext string that succeeds, but after the RM and WM have updated.
     // These actions should generally tend to the access rules
-    private void postAddActionsForRuletext(Context context, String ruletext) {
+    private Set<String> postAddActionsForRuletext(Context context, String ruletext) {
         if (ruletext.matches("- .*")) {
             String neg_ruletext = ruletext.substring(2);
             UniversalRule rule = UniversalRule.getRuleFromText(context, neg_ruletext);
-            rule.rule.getActionsAfterRemove(context);
+            return rule.rule.getActionsAfterRemove(context);
         } else {
             UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
-            rule.rule.getActionsAfterAdd(context);
+            return rule.rule.getActionsAfterAdd(context);
         }
     }
 
@@ -984,10 +1019,10 @@ abstract class RuleWithDelayClassification {
     public abstract int getMajorCategory();
     public abstract int getMinorCategory();
 
-    public List<String> getActionsAfterAdd(Context context) {
+    public Set<String> getActionsAfterAdd(Context context) {
         return null;
     }
-    public List<String> getActionsAfterRemove(Context context) {
+    public Set<String> getActionsAfterRemove(Context context) {
         return null;
     }
 }
@@ -1172,6 +1207,13 @@ class AllowedPackageRule extends RuleWithDelayClassification {
     public int getMinorCategory() {
         return 0;
     }
+
+    public Set<String> getActionsAfterAdd(Context context) {
+        return Collections.singleton("reload");
+    }
+    public Set<String> getActionsAfterRemove(Context context) {
+        return Collections.singleton("reload");
+    }
 }
 
 class AllowedUidRule extends RuleWithDelayClassification {
@@ -1204,6 +1246,13 @@ class AllowedUidRule extends RuleWithDelayClassification {
 
     public int getMinorCategory() {
         return 0;
+    }
+
+    public Set<String> getActionsAfterAdd(Context context) {
+        return Collections.singleton("reload");
+    }
+    public Set<String> getActionsAfterRemove(Context context) {
+        return Collections.singleton("reload");
     }
 }
 
@@ -1269,6 +1318,13 @@ class FeatureRule extends RuleWithDelayClassification {
 
     public int getMinorCategory() {
         return 0;
+    }
+
+    public Set<String> getActionsAfterAdd(Context context) {
+        return Collections.singleton("reload");
+    }
+    public Set<String> getActionsAfterRemove(Context context) {
+        return Collections.singleton("reload");
     }
 }
 

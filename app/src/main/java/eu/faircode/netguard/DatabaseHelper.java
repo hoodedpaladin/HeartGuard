@@ -579,7 +579,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     if (block < 0) {
                         // HeartGuard change - simple whitelist feature
                         WhitelistManager wm = WhitelistManager.getInstance(context);
-                        if (wm.isAllowed(context, packet, dname))
+                        if (wm.isAllowed(context, packet.daddr, packet.uid))
                         {
                             Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
                             block = 0;
