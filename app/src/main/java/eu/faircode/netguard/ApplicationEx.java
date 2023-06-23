@@ -45,14 +45,9 @@ public class ApplicationEx extends Application {
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
             @Override
             public void uncaughtException(Thread thread, Throwable ex) {
-                if (Util.ownFault(ApplicationEx.this, ex)
-                        && Util.isPlayStoreInstall(ApplicationEx.this)) {
-                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                    mPrevHandler.uncaughtException(thread, ex);
-                } else {
-                    Log.w(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                    System.exit(1);
-                }
+                // HeartGuard change - send all uncaught exceptions to the default handler, so they can be debugged
+                Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                mPrevHandler.uncaughtException(thread, ex);
             }
         });
     }
