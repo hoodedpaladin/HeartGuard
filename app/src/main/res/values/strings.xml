@@ -1,9 +1,9 @@
 <resources>
-    <string name="app_name" translatable="false">NetGuard</string>
-    <string name="app_description">NetGuard provides simple and advanced ways to block access to the internet - no root required. Apps and addresses can individually be allowed or denied access to your Wi-Fi and/or mobile connection.</string>
+    <string name="app_name" translatable="false">HeartGuard</string>
+    <string name="app_description">HeartGuard provides simple and advanced ways to block access to the internet - no root required. Apps and addresses can individually be allowed or denied access to your Wi-Fi and/or mobile connection.</string>
     <string name="app_copyright" translatable="false">Copyright \u00A9 2015–2022 by M. Bokhorst (M66B). Further HeartGuard modifications added 2023 HP</string>
-    <string name="app_android">NetGuard requires Android 5.1 or later</string>
-    <string name="app_xposed">Xposed causes too many crashes, which might result in NetGuard being removed from the Google Play Store, therefore NetGuard isn\'t supported while Xposed is installed</string>
+    <string name="app_android">HeartGuard requires Android 5.1 or later</string>
+    <string name="app_xposed">Xposed causes too many crashes, which might result in HeartGuard being removed from the Google Play Store, therefore NetGuard isn\'t supported while Xposed is installed</string>
     <string name="app_eula" translatable="false">THIS SOFTWARE IS PROVIDED BY THE AUTHOR \'\'AS IS\'\' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</string>
     <string name="app_privacy"><a href="https://www.netguard.me/privacy/">Privacy policy</a></string>
     <string name="app_first">Great care has been taken to develop and test NetGuard, however it is impossible to guarantee NetGuard will work correctly on every device.</string>
@@ -142,14 +142,14 @@
     <string name="setting_technical_subscription">Subscriptions</string>
 
     <string name="summary_install">Show status bar notification to directly configure newly installed apps (pro feature)</string>
-    <string name="summary_auto">After disabling using the widget, automatically enable NetGuard again after the selected number of minutes (enter zero to disable this option)</string>
+    <string name="summary_auto">After disabling using the widget, automatically enable HeartGuard again after the selected number of minutes (enter zero to disable this option)</string>
     <string name="summary_delay">After turning the screen off, keep screen on rules active for the selected number of minutes (enter zero to disable this option)</string>
     <string name="summary_update">Check for new releases on GitHub twice daily</string>
 
     <string name="summary_tethering">Depending on the Android version, tethering may work or may not work. Tethered traffic cannot be filtered.</string>
     <string name="summary_subnet">Enable subnet routing; might enable Wi-Fi calling, but might also trigger bugs in Android and increase battery usage</string>
     <string name="summary_lan">Allow apps to connect to local area network addresses, like 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16</string>
-    <string name="summary_ip6">Route IP version 6 traffic to NetGuard so it can selectively be allowed or blocked</string>
+    <string name="summary_ip6">Route IP version 6 traffic to HeartGuard so it can selectively be allowed or blocked</string>
     <string name="summary_wifi_home">Apply Wi-Fi network rules for selected network only (apply mobile network rules for other Wi-Fi networks)</string>
     <string name="summary_metered">Apply mobile network rules to metered (paid, tethered) Wi-Fi networks</string>
     <string name="summary_metered_2g">Apply Wi-Fi network rules for 2G data connections</string>
@@ -157,7 +157,7 @@
     <string name="summary_metered_4g">Apply Wi-Fi network rules for LTE data connections</string>
     <string name="summary_national_roaming">Do not apply roaming rules when the SIM and mobile network country are the same</string>
     <string name="summary_eu_roaming">Do not apply roaming rules when the SIM and mobile network country are within the EU (roam like at home)</string>
-    <string name="summary_call">Disable NetGuard on incoming or outgoing telephone call. This can be used to work around IP/Wi-Fi calling problems.</string>
+    <string name="summary_call">Disable HeartGuard on incoming or outgoing telephone call. This can be used to work around IP/Wi-Fi calling problems.</string>
 
     <string name="summary_system">Define rules for system apps (for experts)</string>
     <string name="summary_log_app">Log attempts to access the internet for apps. This might result in extra battery usage.</string>
@@ -168,7 +168,7 @@
     <string name="summary_rcode">The default value is 3 (NXDOMAIN), which means \'non-existent domain\'.</string>
     <string name="summary_validate">Domain name used to validate the internet connection at port 443 (https).</string>
     <string name="summary_socks5_enabled">Only TCP traffic will be sent to the proxy server</string>
-    <string name="summary_watchdog">Periodically check if NetGuard is still running (enter zero to disable this option). This might result in extra battery usage.</string>
+    <string name="summary_watchdog">Periodically check if HeartGuard is still running (enter zero to disable this option). This might result in extra battery usage.</string>
 
     <string name="summary_stats">Show network speed graph in status bar notification</string>
 
@@ -179,20 +179,20 @@
     <string name="msg_packages">%1$d allowed, %2$d blocked</string>
     <string name="msg_hosts">%1$d allowed, %2$d blocked, %3$d hosts</string>
     <string name="msg_waiting">Waiting for event</string>
-    <string name="msg_disabled">NetGuard is disabled, use the switch above to enable NetGuard</string>
-    <string name="msg_revoked">NetGuard has been disabled, likely by using another VPN based app</string>
+    <string name="msg_disabled">HeartGuard is disabled, use the switch above to enable HeartGuard</string>
+    <string name="msg_revoked">HeartGuard has been disabled, likely by using another VPN based app</string>
     <string name="msg_installed">\'%1$s\' installed</string>
     <string name="msg_installed_n">Has been installed</string>
     <string name="msg_access">%1$s attempted internet access</string>
     <string name="msg_access_n">Attempted internet access</string>
     <string name="msg_completed">Action completed</string>
-    <string name="msg_vpn">NetGuard uses a local VPN to filter internet traffic.
+    <string name="msg_vpn">HeartGuard uses a local VPN to filter internet traffic.
 For this reason, please allow a VPN connection in the next dialog.
 Your internet traffic is not being sent to a remote VPN server.</string>
-    <string name="msg_autostart">NetGuard could not start automatically. This is likely because of a bug in your Android version.</string>
+    <string name="msg_autostart">HeartGuard could not start automatically. This is likely because of a bug in your Android version.</string>
     <string name="msg_error">An unexpected error has occurred: \'%s\'</string>
     <string name="msg_start_failed">Android refused to start the VPN service at this moment. This is likely because of a bug in your Android version.</string>
-    <string name="msg_try">Try NetGuard</string>
+    <string name="msg_try">Try HeartGuard</string>
     <string name="msg_terms">By donating you agree to the <a href="http://www.netguard.me/#terms">terms &amp; conditions</a></string>
     <string name="msg_dimming">If you cannot press OK in the next dialog, another (screen dimming) app is likely manipulating the screen.</string>
     <string name="msg_mbday">&#177; %1$.3f&#9650; %2$.3f&#9660; MB/day</string>
@@ -202,11 +202,11 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="msg_mb">%1$7.3f&#9650; %2$7.3f&#9660; MB</string>
     <string name="msg_gb">%1$7.3f&#9650; %2$7.3f&#9660; GB</string>
     <string name="msg_count">%dx</string>
-    <string name="msg_doze">For consistent results, the Android battery optimizations should be disabled for NetGuard.
-\n\nIn the next dialog, select \"All apps\" at the top, tap on NetGuard in the list and select and confirm \"Don\'t optimize\".</string>
-    <string name="msg_datasaving">For consistent results, the Android data saving options should be disabled for NetGuard
+    <string name="msg_doze">For consistent results, the Android battery optimizations should be disabled for HeartGuard.
+\n\nIn the next dialog, select \"All apps\" at the top, tap on HeartGuard in the list and select and confirm \"Don\'t optimize\".</string>
+    <string name="msg_datasaving">For consistent results, the Android data saving options should be disabled for HeartGuard
 \n\nIn the next dialog, enable the options \"Background data\" and \"Unrestricted data usage\"</string>
-    <string name="msg_filter">Using filtering will cause Android to attribute data and power usage to NetGuard - Android assumes the data and power are being used by NetGuard, rather than the original apps</string>
+    <string name="msg_filter">Using filtering will cause Android to attribute data and power usage to HeartGuard - Android assumes the data and power are being used by HeartGuard, rather than the original apps</string>
     <string name="msg_filter4">Android 4 requires filtering to be enabled</string>
     <string name="msg_log_disabled">Traffic logging is disabled, use the switch above to enable logging. Traffic logging might result in extra battery usage.</string>
     <string name="msg_clear_rules">This will reset the rules and conditions to their default values</string>
@@ -219,7 +219,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="msg_stop_forward">Stop forwarding of %1$s port %2$d?</string>
     <string name="msg_metered">Network is metered</string>
     <string name="msg_inactive">No active internet connection</string>
-    <string name="msg_queue">NetGuard is busy</string>
+    <string name="msg_queue">HeartGuard is busy</string>
     <string name="msg_update">Update available, tap to download</string>
     <string name="msg_usage">You can allow (greenish) or deny (reddish) Wi-Fi or mobile internet access by tapping on the icons next to an app</string>
     <string name="msg_fairemail">If you installed NetGuard to protect your privacy, you might be interested in <a href="https://email.faircode.eu/">FairEmail</a>, an open source, privacy friendly email app, too</string>
@@ -228,11 +228,11 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="msg_system">Managing all (system) apps can be enabled in the settings</string>
     <string name="msg_issue">Please describe the problem and indicate the time of the problem:</string>
     <string name="msg_vpn_cancelled">VPN connection cancelled\nDid you configure another VPN to be an always-on VPN?</string>
-    <string name="msg_on">Powering down your device with NetGuard enabled, will automatically start NetGuard on powering up your device</string>
+    <string name="msg_on">Powering down your device with HeartGuard enabled, will automatically start HeartGuard on powering up your device</string>
     <string name="msg_unavailable">This feature is not available on this Android version</string>
     <string name="msg_always_on">Another VPN is set as Always-on VPN</string>
-    <string name="msg_always_on_lockdown">Turn off "Block connections without VPN" in Android VPN settings to use NetGuard in filtering mode</string>
-    <string name="msg_private_dns">Turn off "Private DNS" in Android network settings to use NetGuard in filtering mode</string>
+    <string name="msg_always_on_lockdown">Turn off "Block connections without VPN" in Android VPN settings to use HeartGuard in filtering mode</string>
+    <string name="msg_private_dns">Turn off "Private DNS" in Android network settings to use HeartGuard in filtering mode</string>
 
     <string name="title_lockdown_enabled">Traffic is locked down</string>
     <string name="title_unmetered_allowed">Unmetered traffic is allowed</string>
