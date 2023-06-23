@@ -21,7 +21,7 @@
 -keepattributes SourceFile,LineNumberTable
 
 #NetGuard
--keepnames class eu.faircode.netguard.** { *; }
+-keepnames class eu.faircode.main.** { *; }
 
 #JNI
 -keepclasseswithmembernames class * {
@@ -29,19 +29,19 @@
 }
 
 #JNI callbacks
--keep class eu.faircode.netguard.Allowed { *; }
--keep class eu.faircode.netguard.Packet { *; }
--keep class eu.faircode.netguard.ResourceRecord { *; }
--keep class eu.faircode.netguard.Usage { *; }
--keep class eu.faircode.netguard.ServiceSinkhole {
+-keep class heartguard.heartguard.main.Allowed { *; }
+-keep class heartguard.heartguard.main.Packet { *; }
+-keep class heartguard.heartguard.main.ResourceRecord { *; }
+-keep class heartguard.heartguard.main.Usage { *; }
+-keep class heartguard.heartguard.main.ServiceSinkhole {
     void nativeExit(java.lang.String);
     void nativeError(int, java.lang.String);
-    void logPacket(eu.faircode.netguard.Packet);
-    void dnsResolved(eu.faircode.netguard.ResourceRecord);
+    void logPacket(heartguard.heartguard.main.Packet);
+    void dnsResolved(heartguard.heartguard.main.ResourceRecord);
     boolean isDomainBlocked(java.lang.String);
     int getUidQ(int, int, java.lang.String, int, java.lang.String, int);
-    eu.faircode.netguard.Allowed isAddressAllowed(eu.faircode.netguard.Packet);
-    void accountUsage(eu.faircode.netguard.Usage);
+    heartguard.heartguard.main.Allowed isAddressAllowed(heartguard.heartguard.main.Packet);
+    void accountUsage(heartguard.heartguard.main.Usage);
 }
 
 #AndroidX

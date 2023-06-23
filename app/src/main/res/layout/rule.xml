@@ -458,7 +458,7 @@
                 android:textAppearance="@style/TextSmall"
                 android:textStyle="italic" />
 
-            <eu.faircode.netguard.ExpandedListView
+            <heartguard.heartguard.main.ExpandedListView
                 android:id="@+id/lvAccess"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

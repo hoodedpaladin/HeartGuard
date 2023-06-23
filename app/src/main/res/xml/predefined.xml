@@ -10,10 +10,10 @@
 
     <wifi
         blocked="false"
-        package="eu.faircode.netguard" />
+        package="heartguard.heartguard.main" />
     <other
         blocked="false"
-        package="eu.faircode.netguard"
+        package="heartguard.heartguard.main"
         roaming="false" />
 
     <wifi

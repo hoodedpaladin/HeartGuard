@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="eu.faircode.netguard"
+    package="heartguard.heartguard.main"
     android:installLocation="internalOnly">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -25,7 +25,7 @@
     </queries-->
 
     <permission
-        android:name="eu.faircode.netguard.permission.ADMIN"
+        android:name="heartguard.heartguard.main.permission.ADMIN"
         android:description="@string/app_description"
         android:label="@string/app_name"
         android:protectionLevel="signature" />
@@ -46,7 +46,7 @@
         android:required="false" />
 
     <application
-        android:name="ApplicationEx"
+        android:name="heartguard.heartguard.main.ApplicationEx"
         android:allowBackup="false"
         android:appCategory="productivity"
         android:description="@string/app_description"
@@ -63,7 +63,7 @@
             android:value="2.1" />
 
         <activity
-            android:name=".ActivityMain"
+            android:name="heartguard.heartguard.main.ActivityMain"
             android:configChanges="orientation|screenSize"
             android:exported="true"
             android:label="@string/app_name"
@@ -95,11 +95,11 @@
         </activity>
 
         <activity
-            android:name=".ActivitySettings"
+            android:name="heartguard.heartguard.main.ActivitySettings"
             android:configChanges="orientation|screenSize"
             android:exported="true"
             android:label="@string/menu_settings"
-            android:parentActivityName=".ActivityMain">
+            android:parentActivityName="heartguard.heartguard.main.ActivityMain">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
@@ -110,71 +110,71 @@
 
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ActivityMain" />
+                android:value="heartguard.heartguard.main.ActivityMain" />
         </activity>
 
         <activity
-            android:name=".ActivityLog"
+            android:name="heartguard.heartguard.main.ActivityLog"
             android:configChanges="orientation|screenSize"
             android:label="@string/menu_log"
-            android:parentActivityName=".ActivityMain">
+            android:parentActivityName="heartguard.heartguard.main.ActivityMain">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ActivityMain" />
+                android:value="heartguard.heartguard.main.ActivityMain" />
         </activity>
 
         <activity
-            android:name=".ActivityPro"
+            android:name="heartguard.heartguard.main.ActivityPro"
             android:configChanges="orientation|screenSize"
             android:label="@string/title_pro"
-            android:parentActivityName=".ActivityMain">
+            android:parentActivityName="heartguard.heartguard.main.ActivityMain">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ActivityMain" />
+                android:value="heartguard.heartguard.main.ActivityMain" />
         </activity>
 
         <activity
-            android:name=".ActivityDns"
+            android:name="heartguard.heartguard.main.ActivityDns"
             android:configChanges="orientation|screenSize"
             android:label="@string/setting_show_resolved"
-            android:parentActivityName=".ActivitySettings">
+            android:parentActivityName="heartguard.heartguard.main.ActivitySettings">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ActivitySettings" />
+                android:value="heartguard.heartguard.main.ActivitySettings" />
         </activity>
 
         <activity
-            android:name=".ActivityForwarding"
+            android:name="heartguard.heartguard.main.ActivityForwarding"
             android:configChanges="orientation|screenSize"
             android:label="@string/setting_forwarding"
-            android:parentActivityName=".ActivitySettings">
+            android:parentActivityName="heartguard.heartguard.main.ActivitySettings">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ActivitySettings" />
+                android:value="heartguard.heartguard.main.ActivitySettings" />
         </activity>
 
         <activity
-            android:name=".ActivityRulesList"
+            android:name="heartguard.heartguard.main.ActivityRulesList"
             android:configChanges="orientation|screenSize"
             android:label="@string/rules_list"
-            android:parentActivityName=".ActivitySettings">
+            android:parentActivityName="heartguard.heartguard.main.ActivitySettings">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ActivitySettings" />
+                android:value="heartguard.heartguard.main.ActivitySettings" />
         </activity>
 
         <activity
-            android:name=".ActivityRulesEntry"
+            android:name="heartguard.heartguard.main.ActivityRulesEntry"
             android:configChanges="orientation|screenSize"
             android:label="@string/rules_entry"
-            android:parentActivityName=".ActivitySettings">
+            android:parentActivityName="heartguard.heartguard.main.ActivitySettings">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value=".ActivityRulesList" />
+                android:value="heartguard.heartguard.main.ActivityRulesList" />
         </activity>
 
         <activity
-            android:name=".ActivityForwardApproval"
+            android:name="heartguard.heartguard.main.ActivityForwardApproval"
             android:configChanges="orientation|screenSize"
             android:exported="true"
             android:label="@string/app_name"
@@ -186,7 +186,7 @@
         </activity>
 
         <service
-            android:name=".ServiceSinkhole"
+            android:name="heartguard.heartguard.main.ServiceSinkhole"
             android:exported="true"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_VPN_SERVICE">
@@ -196,7 +196,7 @@
         </service>
 
         <service
-            android:name=".ServiceExternal"
+            android:name="heartguard.heartguard.main.ServiceExternal"
             android:exported="true"
             android:label="@string/app_name">
             <intent-filter>
@@ -205,7 +205,7 @@
         </service>
 
         <receiver
-            android:name=".ReceiverAutostart"
+            android:name="heartguard.heartguard.main.ReceiverAutostart"
             android:exported="true"
             android:label="@string/app_name">
             <intent-filter android:priority="999">
@@ -215,7 +215,7 @@
         </receiver>
 
         <receiver
-            android:name=".ReceiverPackageRemoved"
+            android:name="heartguard.heartguard.main.ReceiverPackageRemoved"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.PACKAGE_FULLY_REMOVED" />
