@@ -126,13 +126,14 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             return;
         }
 
+        // HeartGuard change - don't quit just because of Xposed
         // Check for Xposed
-        if (Util.hasXposed(this)) {
-            Log.i(TAG, "Xposed running");
-            super.onCreate(savedInstanceState);
-            setContentView(R.layout.xposed);
-            return;
-        }
+        //if (Util.hasXposed(this)) {
+        //    Log.i(TAG, "Xposed running");
+        //    super.onCreate(savedInstanceState);
+        //    setContentView(R.layout.xposed);
+        //    return;
+        //}
 
         // HeartGuard change - debug the "A resource failed to call close." message
         StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder(StrictMode.getVmPolicy())
