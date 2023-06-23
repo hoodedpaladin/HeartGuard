@@ -314,7 +314,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                             wl.release();
                         else
                             Log.w(TAG, "Wakelock under-locked");
-                        Log.i(TAG, "Messages=" + hasMessages(0) + " wakelock=" + wl.isHeld());
+                        //Log.i(TAG, "Messages=" + hasMessages(0) + " wakelock=" + wl.isHeld());
                     }
                 } catch (Throwable ex) {
                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
@@ -1739,8 +1739,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                             if (!exists || !mapUidIPFilters.get(key).get(iname).isBlocked()) {
                                 IPRule rule = new IPRule(key, name + "/" + iname, block, time, ttl);
                                 mapUidIPFilters.get(key).put(iname, rule);
-                                if (exists)
-                                    Log.i(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
+                                //if (exists)
+                                //    Log.i(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
                             } else if (exists) {
                                 mapUidIPFilters.get(key).get(iname).updateExpires(time, ttl);
                                 if (dname != null && ttl > 60 * 1000L)
@@ -1749,8 +1749,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                                 if (dname != null)
                                     Log.i(TAG, "Ignored " + key + " " + daddr + "/" + dresource + "=" + block);
                             }
-                        } else
-                            Log.w(TAG, "Address not numeric " + name);
+                        }// else
+                         //   Log.i(TAG, "Address not numeric " + name);
                     } catch (UnknownHostException ex) {
                         Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                     }
@@ -1822,13 +1822,13 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                             if (!exists || !mapUidIPFilters.get(key).get(iname).isBlocked()) {
                                 IPRule rule = new IPRule(key, name + "/" + iname, block, time, ttl);
                                 mapUidIPFilters.get(key).put(iname, rule);
-                                if (exists)
-                                    Log.i(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
+                                //if (exists)
+                                //    Log.i(TAG, "Address conflict " + key + " " + daddr + "/" + dresource);
                             } else if (exists) {
                                 mapUidIPFilters.get(key).get(iname).updateExpires(time, ttl);
                             }
-                        } else
-                            Log.w(TAG, "Address not numeric " + name);
+                        }// else
+                         //   Log.i(TAG, "Address not numeric " + name);
                     } catch (UnknownHostException ex) {
                         Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                     }
@@ -2004,7 +2004,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     // Called from native code
     private void dnsResolved(ResourceRecord rr) {
         if (DatabaseHelper.getInstance(ServiceSinkhole.this).insertDns(rr)) {
-            Log.i(TAG, "New IP " + rr);
+            //Log.i(TAG, "New IP " + rr);
             prepareUidIPFilters(rr.QName);
         }
     }
@@ -2030,9 +2030,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         InetSocketAddress local = new InetSocketAddress(saddr, sport);
         InetSocketAddress remote = new InetSocketAddress(daddr, dport);
 
-        Log.i(TAG, "Get uid local=" + local + " remote=" + remote);
+        //Log.i(TAG, "Get uid local=" + local + " remote=" + remote);
         int uid = cm.getConnectionOwnerUid(protocol, local, remote);
-        Log.i(TAG, "Get uid=" + uid);
+        //Log.i(TAG, "Get uid=" + uid);
         return uid;
     }
 
@@ -2065,7 +2065,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     !mapUidKnown.containsKey(packet.uid) && isSupported(packet.protocol)) {
                 // Allow unknown system traffic
                 packet.allowed = true;
-                Log.i(TAG, "Allowing unknown system " + packet);
+                //Log.i(TAG, "Allowing unknown system " + packet);
             } else if (packet.uid == Process.myUid()) {
                 // Allow self
                 packet.allowed = true;
@@ -2084,8 +2084,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                             else {
                                 filtered = true;
                                 packet.allowed = !rule.isBlocked();
-                                Log.i(TAG, "Filtering " + packet +
-                                        " allowed=" + packet.allowed + " rule " + rule);
+                                //Log.i(TAG, "Filtering " + packet +
+                                //        " allowed=" + packet.allowed + " rule " + rule);
                             }
                         }
                     } catch (UnknownHostException ex) {
@@ -2095,8 +2095,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 if (!filtered)
                     if (mapUidAllowed.containsKey(packet.uid))
                         packet.allowed = mapUidAllowed.get(packet.uid);
-                    else
-                        Log.i(TAG, "No rules for " + packet);
+                    //else
+                    //    Log.i(TAG, "No rules for " + packet);
                 if (!packet.allowed) {
                     // Check for allowed rules here, so that we can approve the socket immediately
                     if (WhitelistManager.getInstance(this).isAllowed(this, packet.daddr, packet.uid)) {
