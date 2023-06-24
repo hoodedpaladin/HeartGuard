@@ -2323,6 +2323,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
                 Socket socket = null;
                 try {
+                    TrafficStats.setThreadStatsTag((int)Thread.currentThread().getId());
                     socket = network.getSocketFactory().createSocket();
                     socket.connect(new InetSocketAddress(host, 443), 10000);
                     Log.i(TAG, "Validated " + network + " " + ni + " host=" + host);
