@@ -267,15 +267,15 @@ public class ActivityRulesList extends AppCompatActivity {
     private void allRulesToClipboard() {
         int num = 0;
         String message = "";
-        Cursor cursor = DatabaseHelper.getInstance(this).getAllRulesSorted();
+        try (Cursor cursor = DatabaseHelper.getInstance(this).getAllRulesSorted()) {
+            while (cursor.moveToNext()) {
+                if (num > 0) {
+                    message += "\n";
+                }
+                num += 1;
 
-        while (cursor.moveToNext()) {
-            if (num > 0) {
-                message += "\n";
+                message += getDisplayTextFromRuleCursor(cursor);
             }
-            num += 1;
-
-            message += getDisplayTextFromRuleCursor(cursor);
         }
 
         ClipboardManager clipboard = (ClipboardManager) ActivityRulesList.this.getSystemService(Context.CLIPBOARD_SERVICE);

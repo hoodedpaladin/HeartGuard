@@ -370,109 +370,111 @@ public class RulesManager {
 
     private void setAlarmForPending(Context context, long realTime, long systemTime) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
-        Cursor cursor = dh.getPendingRules();
+        try (Cursor cursor = dh.getPendingRules()) {
 
-        if (!cursor.moveToFirst()) {
-            // No pending rules
-            return;
+            if (!cursor.moveToFirst()) {
+                // No pending rules
+                return;
+            }
+
+            int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+            int col_id = cursor.getColumnIndexOrThrow("_id");
+            int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
+
+            String ruletext = cursor.getString(col_ruletext);
+            long id = cursor.getLong(col_id);
+            long enact_time = cursor.getLong(col_enact_time);
+
+            Log.w(TAG, "Pending rule \"" + sanitizeRuletext(ruletext) + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
+
+            // enact_time is in real time, but the alarm is set in system time
+            // So do some math to make it true
+            long offset = systemTime - realTime;
+            long enact_system_time = enact_time + offset;
+            setAlarmForTime(context, enact_system_time);
         }
-
-        int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-        int col_id = cursor.getColumnIndexOrThrow("_id");
-        int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
-
-        String ruletext = cursor.getString(col_ruletext);
-        long id = cursor.getLong(col_id);
-        long enact_time = cursor.getLong(col_enact_time);
-
-        Log.w(TAG, "Pending rule \"" + sanitizeRuletext(ruletext) + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
-
-        // enact_time is in real time, but the alarm is set in system time
-        // So do some math to make it true
-        long offset = systemTime - realTime;
-        long enact_system_time = enact_time + offset;
-        setAlarmForTime(context, enact_system_time);
     }
 
     // Activate all rules up to a certain time.
     // Upon initial object creation, set startup=true, and we will not reload rules / alert listeners
     private void activateRulesUpTo(Context context, long current_time, boolean startup) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
-        Cursor cursor = dh.getPendingRules();
 
-        int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-        int col_id = cursor.getColumnIndexOrThrow("_id");
-        int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
+        try (Cursor cursor = dh.getPendingRules()) {
+            int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+            int col_id = cursor.getColumnIndexOrThrow("_id");
+            int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
 
-        int num_enacted = 0;
-        List<String> enacted_ruletexts = new LinkedList<>();
-        while (cursor.moveToNext()) {
-            String ruletext = cursor.getString(col_ruletext);
-            long id = cursor.getLong(col_id);
-            long enact_time = cursor.getLong(col_enact_time);
+            int num_enacted = 0;
+            List<String> enacted_ruletexts = new LinkedList<>();
+            while (cursor.moveToNext()) {
+                String ruletext = cursor.getString(col_ruletext);
+                long id = cursor.getLong(col_id);
+                long enact_time = cursor.getLong(col_enact_time);
 
-            Log.d(TAG, "Pending rule \"" + sanitizeRuletext(ruletext) + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
+                Log.d(TAG, "Pending rule \"" + sanitizeRuletext(ruletext) + "\" ID=" + Long.toString(id) + " enact_time=" + Long.toString(enact_time));
 
-            if (enact_time > current_time) {
-                break;
-            }
-            boolean changed = enactRule(context, ruletext, id);
-            if (changed) {
-                num_enacted += 1;
-                enacted_ruletexts.add(ruletext);
-            }
-        }
-
-        if (num_enacted > 0) {
-            // Move all rules from text to RM and WM
-            getAllEnactedRulesFromDb(context);
-            WhitelistManager.getInstance(context).updateRulesFromRulesManager(context);
-            if (!startup) {
-                LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
-            }
-            // Now, manipulate all access rules to match how they should be
-            Set<String> actions = new HashSet<>();
-            for (String ruletext : enacted_ruletexts) {
-                Set<String> new_actions = postAddActionsForRuletext(context, ruletext);
-                if (new_actions != null) {
-                    actions.addAll(new_actions);
+                if (enact_time > current_time) {
+                    break;
+                }
+                boolean changed = enactRule(context, ruletext, id);
+                if (changed) {
+                    num_enacted += 1;
+                    enacted_ruletexts.add(ruletext);
                 }
             }
 
-            boolean reload = false;
-            List<Integer> uids_to_reload = new LinkedList<>();
+            if (num_enacted > 0) {
+                // Move all rules from text to RM and WM
+                getAllEnactedRulesFromDb(context);
+                WhitelistManager.getInstance(context).updateRulesFromRulesManager(context);
+                if (!startup) {
+                    LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
+                }
+                // Now, manipulate all access rules to match how they should be
+                Set<String> actions = new HashSet<>();
+                for (String ruletext : enacted_ruletexts) {
+                    Set<String> new_actions = postAddActionsForRuletext(context, ruletext);
+                    if (new_actions != null) {
+                        actions.addAll(new_actions);
+                    }
+                }
 
-            for (String action : actions) {
-                if (action == "reload") {
+                boolean reload = false;
+                List<Integer> uids_to_reload = new LinkedList<>();
+
+                for (String action : actions) {
+                    if (action == "reload") {
+                        reload = true;
+                        continue;
+                    }
+
+                    Matcher m = Pattern.compile("uid (\\d+)").matcher(action);
+                    if (m.matches()) {
+                        int uid = Integer.parseInt(m.group(1));
+                        uids_to_reload.add(uid);
+                        continue;
+                    }
+
+                    // Unknown string
+                    Log.e(TAG, "Unknown action " + action);
                     reload = true;
-                    continue;
+                    break;
                 }
 
-                Matcher m = Pattern.compile("uid (\\d+)").matcher(action);
-                if (m.matches()) {
-                    int uid = Integer.parseInt(m.group(1));
-                    uids_to_reload.add(uid);
-                    continue;
-                }
-
-                // Unknown string
-                Log.e(TAG, "Unknown action " + action);
-                reload = true;
-                break;
-            }
-
-            // Just reload the service if we have to reload or if there are a lot of UIDs to reload
-            if (reload || (uids_to_reload.size() > 4)) {
-                // Now, reload the ServiceSinkhole
-                if (this.getPreferenceEnabled(context)) {
-                    ServiceSinkhole.reload("rule changed", context, false);
+                // Just reload the service if we have to reload or if there are a lot of UIDs to reload
+                if (reload || (uids_to_reload.size() > 4)) {
+                    // Now, reload the ServiceSinkhole
+                    if (this.getPreferenceEnabled(context)) {
+                        ServiceSinkhole.reload("rule changed", context, false);
+                    } else {
+                        ServiceSinkhole.stop("rule changed", context, false);
+                    }
                 } else {
-                    ServiceSinkhole.stop("rule changed", context, false);
-                }
-            } else {
-                // Reload the UIDs individually
-                for (int uid : uids_to_reload) {
-                    ServiceSinkhole.pleaseUpdateUid(uid, context);
+                    // Reload the UIDs individually
+                    for (int uid : uids_to_reload) {
+                        ServiceSinkhole.pleaseUpdateUid(uid, context);
+                    }
                 }
             }
         }
@@ -518,22 +520,23 @@ public class RulesManager {
         }
 
         if (rule.type == DelayRule.class) {
-            Cursor cursor = dh.getEnactedRules();
-            DelayRule delayRule = (DelayRule)rule.rule;
+            try (Cursor cursor = dh.getEnactedRules()) {
+                DelayRule delayRule = (DelayRule) rule.rule;
 
-            int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-            int col_id = cursor.getColumnIndexOrThrow("_id");
+                int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+                int col_id = cursor.getColumnIndexOrThrow("_id");
 
-            while (cursor.moveToNext()) {
-                Long otherid = cursor.getLong(col_id);
+                while (cursor.moveToNext()) {
+                    Long otherid = cursor.getLong(col_id);
 
-                if (otherid != id) {
-                    String otherruletext = cursor.getString(col_ruletext);
-                    if (otherruletext.matches("delay .+")) {
-                        DelayRule otherRule = (DelayRule)(DelayRule.parseRule(otherruletext).rule);
-                        if (delayRule.sameAs(otherRule)) {
-                            Log.w(TAG, String.format("Removing rule %d because it's also a delay rule", otherid));
-                            dh.removeRulesById(new Long[]{otherid});
+                    if (otherid != id) {
+                        String otherruletext = cursor.getString(col_ruletext);
+                        if (otherruletext.matches("delay .+")) {
+                            DelayRule otherRule = (DelayRule) (DelayRule.parseRule(otherruletext).rule);
+                            if (delayRule.sameAs(otherRule)) {
+                                Log.w(TAG, String.format("Removing rule %d because it's also a delay rule", otherid));
+                                dh.removeRulesById(new Long[]{otherid});
+                            }
                         }
                     }
                 }
@@ -553,23 +556,24 @@ public class RulesManager {
         String otherruletext = m.group(1);
 
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
-        Cursor cursor = dh.getRuleMatchingRuletext(otherruletext);
+        try (Cursor cursor = dh.getRuleMatchingRuletext(otherruletext)) {
 
-        if (!cursor.moveToFirst()) {
-            Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", sanitizeRuletext(ruletext)));
-            dh.removeRulesById(new Long[]{id});
-            return false;
+            if (!cursor.moveToFirst()) {
+                Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", sanitizeRuletext(ruletext)));
+                dh.removeRulesById(new Long[]{id});
+                return false;
+            }
+            int col_id = cursor.getColumnIndexOrThrow("_id");
+            int col_enacted = cursor.getColumnIndexOrThrow("enacted");
+
+            boolean was_enacted = cursor.getInt(col_enacted) > 0;
+            long otherid = cursor.getLong(col_id);
+
+            Log.w(TAG, String.format("Removing IDs %d and %d due to deletion rule", id, otherid));
+            dh.removeRulesById(new Long[]{id, otherid});
+
+            return was_enacted;
         }
-        int col_id = cursor.getColumnIndexOrThrow("_id");
-        int col_enacted = cursor.getColumnIndexOrThrow("enacted");
-
-        boolean was_enacted = cursor.getInt(col_enacted) > 0;
-        long otherid = cursor.getLong(col_id);
-
-        Log.w(TAG, String.format("Removing IDs %d and %d due to deletion rule", id, otherid));
-        dh.removeRulesById(new Long[]{id, otherid});
-
-        return was_enacted;
     }
 
     // Sets a row to enacted. Returns true if this makes a runtime change.
@@ -584,9 +588,7 @@ public class RulesManager {
 
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
         lock.writeLock().lock();
-        try {
-            Cursor cursor = dh.getRuleMatchingRuletext(otherruletext);
-
+        try (Cursor cursor = dh.getRuleMatchingRuletext(otherruletext)) {
             if (!cursor.moveToFirst()) {
                 Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", sanitizeRuletext(ruletext)));
                 dh.removeRulesById(new Long[]{id});
@@ -654,10 +656,11 @@ public class RulesManager {
         int delay = m_delay;
 
         // Check for existing (enacted or pending) rule
-        Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext);
-        if (existing_rule.moveToFirst()) {
-            Log.w(TAG, String.format("Rule \"%s\" already exists", sanitizeRuletext(ruletext)));
-            return;
+        try (Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext)) {
+            if (existing_rule.moveToFirst()) {
+                Log.w(TAG, String.format("Rule \"%s\" already exists", sanitizeRuletext(ruletext)));
+                return;
+            }
         }
 
         Matcher m = Pattern.compile("- (.*)").matcher(ruletext);
@@ -671,10 +674,11 @@ public class RulesManager {
 
             // Not only do we not want a duplicate removal rule, we also don't want to
             // queue a removal for a rule that doesn't exist
-            existing_rule = dh.getRuleMatchingRuletext(ruletext_to_remove);
-            if (!existing_rule.moveToFirst()) {
-                Log.w(TAG, String.format("Rule \"%s\" has nothing to delete", ruletext));
-                return;
+            try (Cursor existing_rule = dh.getRuleMatchingRuletext(ruletext_to_remove)) {
+                if (!existing_rule.moveToFirst()) {
+                    Log.w(TAG, String.format("Rule \"%s\" has nothing to delete", ruletext));
+                    return;
+                }
             }
             UniversalRule ruleToDelete = UniversalRule.getRuleFromText(context, ruletext_to_remove);
             if (ruleToDelete == null) {
@@ -737,27 +741,28 @@ public class RulesManager {
 
         lock.writeLock().lock();
 
-        Cursor cursor = dh.getEnactedRules();
-        int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+        try (Cursor cursor = dh.getEnactedRules()) {
+            int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
 
-        // Read all rules from DB into list
-        List<UniversalRule> allrules = new ArrayList<UniversalRule>();
-        while (cursor.moveToNext()) {
-            String ruletext = cursor.getString(col_ruletext);
-            UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
-            if (rule == null) {
-                Log.e(TAG, "Rule \"" + ruletext + "\" isn't a rule");
-            } else {
-                allrules.add(rule);
+            // Read all rules from DB into list
+            List<UniversalRule> allrules = new ArrayList<UniversalRule>();
+            while (cursor.moveToNext()) {
+                String ruletext = cursor.getString(col_ruletext);
+                UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
+                if (rule == null) {
+                    Log.e(TAG, "Rule \"" + ruletext + "\" isn't a rule");
+                } else {
+                    allrules.add(rule);
+                }
             }
+
+            m_allCurrentRules = allrules;
+            updateFieldsFromCurrentRules(context);
+
+            Log.w(TAG, "Got " + Integer.toString(m_allCurrentRules.size()) + " rules from DB");
+        } finally {
+            lock.writeLock().unlock();
         }
-
-        m_allCurrentRules = allrules;
-        updateFieldsFromCurrentRules(context);
-
-        Log.w(TAG, "Got " + Integer.toString(m_allCurrentRules.size()) + " rules from DB");
-
-        lock.writeLock().unlock();
     }
 
     private void updateFieldsFromCurrentRules(Context context) {
@@ -843,14 +848,14 @@ public class RulesManager {
         Log.w(TAG, "Logging all rules DB entries at point of time \"" + explanation + "\"");
 
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
-        Cursor cursor = dh.getAllRules();
-
-        int i = 0;
-        while (cursor.moveToNext()) {
-            Log.w(TAG, Integer.toString(i) + ": " + sanitizeRuletext(getStringOfRuleDbEntry(cursor)));
-            i += 1;
+        try (Cursor cursor = dh.getAllRules()) {
+            int i = 0;
+            while (cursor.moveToNext()) {
+                Log.w(TAG, Integer.toString(i) + ": " + sanitizeRuletext(getStringOfRuleDbEntry(cursor)));
+                i += 1;
+            }
+            Log.w(TAG, Integer.toString(i) + " total entries");
         }
-        Log.w(TAG, Integer.toString(i) + " total entries");
     }
 
     // At the moment of manage_system toggle, or at app startup, the display settings should reflect it
@@ -899,18 +904,19 @@ public class RulesManager {
     private void expediteRules(Context context, long realTime) {
         Log.w(TAG, "Expediting rules");
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
-        Cursor cursor = dh.getPendingRules();
-        int col_id = cursor.getColumnIndexOrThrow("_id");
-        ContentValues cv = new ContentValues();
-        cv.put("enact_time", realTime);
+        try (Cursor cursor = dh.getPendingRules()) {
+            int col_id = cursor.getColumnIndexOrThrow("_id");
+            ContentValues cv = new ContentValues();
+            cv.put("enact_time", realTime);
 
-        while (cursor.moveToNext()) {
-            long id = cursor.getLong(col_id);
-            lock.writeLock().lock();
-            try {
-                dh.updateRuleWithCV(Long.toString(id), cv);
-            } finally {
-                lock.writeLock().unlock();
+            while (cursor.moveToNext()) {
+                long id = cursor.getLong(col_id);
+                lock.writeLock().lock();
+                try {
+                    dh.updateRuleWithCV(Long.toString(id), cv);
+                } finally {
+                    lock.writeLock().unlock();
+                }
             }
         }
 

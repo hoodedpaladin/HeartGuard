@@ -986,9 +986,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         List<String> alldnames = new LinkedList<>();
         alldnames.add(qname);
 
-        Cursor alternates_cursor = dh.getAlternateQNames(qname);
-        while (alternates_cursor.moveToNext()) {
-            alldnames.add(alternates_cursor.getString(0));
+        try (Cursor alternates_cursor = dh.getAlternateQNames(qname)) {
+            while (alternates_cursor.moveToNext()) {
+                alldnames.add(alternates_cursor.getString(0));
+            }
         }
 
         return alldnames;

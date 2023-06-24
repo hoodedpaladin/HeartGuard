@@ -121,41 +121,41 @@ public class ActivityRulesEntry extends AppCompatActivity {
     // If there is a pending deletion, the corresponding enacted rule is not "solid"
     private void getCurrentRuleset() {
         DatabaseHelper dh = DatabaseHelper.getInstance(this);
-        Cursor cursor = dh.getAllRulesSorted();
+        try (Cursor cursor = dh.getAllRulesSorted()) {
+            int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+            int col_enacted = cursor.getColumnIndexOrThrow("enacted");
 
-        int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-        int col_enacted = cursor.getColumnIndexOrThrow("enacted");
+            m_solid_rules = new LinkedList<>();
+            m_pending_additions = new LinkedList<>();
+            m_pending_deletions = new LinkedList<>();
+            while (cursor.moveToNext()) {
+                boolean enacted = cursor.getInt(col_enacted) > 0;
+                String ruletext = cursor.getString(col_ruletext);
 
-        m_solid_rules = new LinkedList<>();
-        m_pending_additions = new LinkedList<>();
-        m_pending_deletions = new LinkedList<>();
-        while(cursor.moveToNext()) {
-            boolean enacted = cursor.getInt(col_enacted) > 0;
-            String ruletext = cursor.getString(col_ruletext);
+                if (ruletext.matches("- .*")) {
+                    String delete_rule = ruletext.substring(2);
 
-            if (ruletext.matches("- .*")) {
-                String delete_rule = ruletext.substring(2);
-
-                if (delete_rule.startsWith("delay") || delete_rule.startsWith("partner")) {
-                    // Ignore delay additions and deletions
-                    continue;
-                }
-                for (int i = 0; i < m_solid_rules.size(); i++) {
-                    if (m_solid_rules.get(i).equals(delete_rule)) {
-                        m_solid_rules.remove(i);
-                        i -= 1;
+                    if (delete_rule.startsWith("delay") || delete_rule.startsWith("partner")) {
+                        // Ignore delay additions and deletions
+                        continue;
                     }
-                }
-                m_pending_deletions.add(delete_rule);
-            } else {
-                if (ruletext.startsWith("delay") || ruletext.startsWith("partner")) {
-                    // Ignore delay additions and deletions
-                    continue;
-                }
-                if (enacted) {
-                    m_solid_rules.add(ruletext);
+                    for (int i = 0; i < m_solid_rules.size(); i++) {
+                        if (m_solid_rules.get(i).equals(delete_rule)) {
+                            m_solid_rules.remove(i);
+                            i -= 1;
+                        }
+                    }
+                    m_pending_deletions.add(delete_rule);
                 } else {
-                    m_pending_additions.add(ruletext);
+                    if (ruletext.startsWith("delay") || ruletext.startsWith("partner")) {
+                        // Ignore delay additions and deletions
+                        continue;
+                    }
+                    if (enacted) {
+                        m_solid_rules.add(ruletext);
+                    } else {
+                        m_pending_additions.add(ruletext);
+                    }
                 }
             }
         }

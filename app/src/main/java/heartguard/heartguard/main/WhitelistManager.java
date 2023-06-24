@@ -319,9 +319,10 @@ public class WhitelistManager {
         lock.readLock().lock();
 
         List<String> alldnames = new LinkedList<>();
-        Cursor cursor = DatabaseHelper.getInstance(context).getAllQNames(daddr);
-        while (cursor.moveToNext()) {
-            alldnames.add(cursor.getString(0));
+        try (Cursor cursor = DatabaseHelper.getInstance(context).getAllQNames(daddr)) {
+            while (cursor.moveToNext()) {
+                alldnames.add(cursor.getString(0));
+            }
         }
         try {
             // TODO: common code for both loops
@@ -362,58 +363,59 @@ public class WhitelistManager {
     public Set<Integer> writeAccessRulesForAddition(Context context, RuleAndPackage addedrule, boolean delete, int block) {
         DatabaseHelper dh = DatabaseHelper.getInstance(context);
 
-        Cursor cursor = dh.getAllAccess();
+        try (Cursor cursor = dh.getAllAccess()) {
 
-        int col_id = cursor.getColumnIndexOrThrow("ID");
-        int col_uid = cursor.getColumnIndexOrThrow("uid");
-        int col_daddr = cursor.getColumnIndexOrThrow("daddr");
-        int col_block = cursor.getColumnIndexOrThrow("block");
+            int col_id = cursor.getColumnIndexOrThrow("ID");
+            int col_uid = cursor.getColumnIndexOrThrow("uid");
+            int col_daddr = cursor.getColumnIndexOrThrow("daddr");
+            int col_block = cursor.getColumnIndexOrThrow("block");
 
-        Set<Integer> uids_to_reload = new HashSet<>();
+            Set<Integer> uids_to_reload = new HashSet<>();
 
-        while (cursor.moveToNext()) {
-            int uid = cursor.getInt(col_uid);
+            while (cursor.moveToNext()) {
+                int uid = cursor.getInt(col_uid);
 
-            // Check if UID matches or is global
-            int rule_uid = addedrule.getUid(context);
-            if (rule_uid == RuleAndPackage.UID_NOT_FOUND) {
-                // The package doesn't exist, so, no access rules must match
-                continue;
-            }
-            if ((rule_uid != RuleAndPackage.UID_GLOBAL) && (uid != uid)) {
-                continue;
-            }
-
-            // Get a list of all applicable dnames
-            String daddr = cursor.getString(col_daddr);
-            List<String> alldnames = dh.getListAlternateQNames(daddr);
-
-            String match = null;
-            for (String thisdname : alldnames) {
-                if (addedrule.rule.matchesAddr(thisdname)) {
-                    match = thisdname;
-                    break;
+                // Check if UID matches or is global
+                int rule_uid = addedrule.getUid(context);
+                if (rule_uid == RuleAndPackage.UID_NOT_FOUND) {
+                    // The package doesn't exist, so, no access rules must match
+                    continue;
                 }
-            }
+                if ((rule_uid != RuleAndPackage.UID_GLOBAL) && (uid != uid)) {
+                    continue;
+                }
 
-            if (match != null) {
-                long id = cursor.getLong(col_id);
-                if (delete) {
-                    Log.w(TAG, String.format("Clearing access ID %d because uid %d daddr %s is a match", id, uid, match));
-                    dh.clearAccessId(id);
-                    uids_to_reload.add(uid);
-                } else {
-                    int access_block = cursor.getInt(col_block);
+                // Get a list of all applicable dnames
+                String daddr = cursor.getString(col_daddr);
+                List<String> alldnames = dh.getListAlternateQNames(daddr);
 
-                    if (access_block != block) {
-                        Log.w(TAG, String.format("Setting access ID %d to %d because uid %d daddr %s is a match", id, block, uid, match));
-                        dh.setAccess(id, block);
+                String match = null;
+                for (String thisdname : alldnames) {
+                    if (addedrule.rule.matchesAddr(thisdname)) {
+                        match = thisdname;
+                        break;
+                    }
+                }
+
+                if (match != null) {
+                    long id = cursor.getLong(col_id);
+                    if (delete) {
+                        Log.w(TAG, String.format("Clearing access ID %d because uid %d daddr %s is a match", id, uid, match));
+                        dh.clearAccessId(id);
                         uids_to_reload.add(uid);
+                    } else {
+                        int access_block = cursor.getInt(col_block);
+
+                        if (access_block != block) {
+                            Log.w(TAG, String.format("Setting access ID %d to %d because uid %d daddr %s is a match", id, block, uid, match));
+                            dh.setAccess(id, block);
+                            uids_to_reload.add(uid);
+                        }
                     }
                 }
             }
-        }
 
-        return uids_to_reload;
+            return uids_to_reload;
+        }
     }
 }
