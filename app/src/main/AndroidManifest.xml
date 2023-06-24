@@ -144,16 +144,6 @@
         </activity>
 
         <activity
-            android:name="heartguard.heartguard.main.ActivityForwarding"
-            android:configChanges="orientation|screenSize"
-            android:label="@string/setting_forwarding"
-            android:parentActivityName="heartguard.heartguard.main.ActivitySettings">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="heartguard.heartguard.main.ActivitySettings" />
-        </activity>
-
-        <activity
             android:name="heartguard.heartguard.main.ActivityRulesList"
             android:configChanges="orientation|screenSize"
             android:label="@string/rules_list"
@@ -171,18 +161,6 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="heartguard.heartguard.main.ActivityRulesList" />
-        </activity>
-
-        <activity
-            android:name="heartguard.heartguard.main.ActivityForwardApproval"
-            android:configChanges="orientation|screenSize"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/AppDialog">
-            <intent-filter>
-                <action android:name="eu.faircode.netguard.START_PORT_FORWARD" />
-                <action android:name="eu.faircode.netguard.STOP_PORT_FORWARD" />
-            </intent-filter>
         </activity>
 
         <service
