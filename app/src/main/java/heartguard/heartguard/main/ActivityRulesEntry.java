@@ -84,19 +84,19 @@ public class ActivityRulesEntry extends AppCompatActivity {
                 et = findViewById(R.id.etAddMultipleRules);
                 String text = et.getText().toString();
                 if (m_mode == MODE_ADD_RULES) {
-                    submitText(text);
+                    submitText(text, true);
                 } else if (m_mode == MODE_EDIT_RULES) {
                     submitRawEdit(text);
                     ActivityRulesEntry.super.finish();
                 } else if (m_mode == MODE_SUBMIT_CHANGES) {
-                    submitText(text);
+                    submitText(text, false);
                 }
             }
         });
     }
 
     // The submit button has been pressed, so submit all lines
-    private void submitText(String text) {
+    private void submitText(String text, boolean filterRules) {
         RulesManager rm = RulesManager.getInstance(this);
         String[] lines = text.split("\n");
 
@@ -105,6 +105,12 @@ public class ActivityRulesEntry extends AppCompatActivity {
             if (line.length() == 0) {
                 continue;
             }
+
+            if (filterRules && (line.startsWith("delay") || line.startsWith("partner"))) {
+                // Ignore delay additions and deletions
+                continue;
+            }
+
             rm.queueRuleText(this, line);
         }
 
