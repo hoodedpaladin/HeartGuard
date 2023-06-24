@@ -63,6 +63,7 @@ public class RulesManager {
     private Map<Integer, Boolean> m_allowedUids;
 
     private TrueTime m_trueTime;
+    private final boolean useTrueTime = false;
 
     private ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -85,7 +86,11 @@ public class RulesManager {
         backgroundThread = new HandlerThread("HeartGuard RM bg");
         backgroundThread.start();
         handler = new Handler(backgroundThread.getLooper());
-        m_trueTime = TrueTime.build().withSharedPreferencesCache(context).withLoggingEnabled(true);
+        if (useTrueTime) {
+            m_trueTime = TrueTime.build().withSharedPreferencesCache(context).withLoggingEnabled(true);
+        } else {
+            m_trueTime = null;
+        }
 
         // Now parse all rules
         // (Do this before any other logical steps, just in case we logically need the
@@ -975,11 +980,17 @@ public class RulesManager {
             @Override
             public void run() {
                 try {
-                    if (!TrueTime.isInitialized()) {
-                        m_trueTime.initialize();
+                    long realTime;
+
+                    if (useTrueTime) {
+                        if (!TrueTime.isInitialized()) {
+                            m_trueTime.initialize();
+                        }
+                        Date now = m_trueTime.now();
+                        realTime = now.getTime();
+                    } else {
+                        realTime = System.currentTimeMillis();
                     }
-                    Date now = m_trueTime.now();
-                    long realTime = now.getTime();
                     long systemTime = System.currentTimeMillis();
 
                     // Check the expedite boolean under lock
