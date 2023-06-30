@@ -150,6 +150,9 @@ public class ActivityRulesList extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (adapter != null) {
+            adapter.changeCursor(null);
+        }
         adapter = null;
         super.onDestroy();
     }

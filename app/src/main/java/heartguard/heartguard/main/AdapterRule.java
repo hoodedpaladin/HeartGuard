@@ -692,6 +692,10 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         // Show access rules
         if (rule.expanded) {
             // Access the database when expanded only
+            AdapterAccess old_badapter = (AdapterAccess)holder.lvAccess.getAdapter();
+            if (old_badapter != null) {
+                old_badapter.changeCursor(null);
+            }
             final AdapterAccess badapter = new AdapterAccess(context,
                     DatabaseHelper.getInstance(context).getAccess(rule.uid));
             holder.lvAccess.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -797,6 +801,10 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
 
             holder.lvAccess.setAdapter(badapter);
         } else {
+            AdapterAccess badapter = (AdapterAccess)holder.lvAccess.getAdapter();
+            if (badapter != null) {
+                badapter.changeCursor(null);
+            }
             holder.lvAccess.setAdapter(null);
             holder.lvAccess.setOnItemClickListener(null);
         }
@@ -851,7 +859,6 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
 
         CursorAdapter adapter = (CursorAdapter) holder.lvAccess.getAdapter();
         if (adapter != null) {
-            Log.i(TAG, "Closing access cursor");
             adapter.changeCursor(null);
             holder.lvAccess.setAdapter(null);
         }

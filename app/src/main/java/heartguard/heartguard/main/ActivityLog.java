@@ -284,6 +284,10 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
     @Override
     protected void onDestroy() {
         running = false;
+        if (adapter != null) {
+            // Closes the Cursor
+            adapter.changeCursor(null);
+        }
         adapter = null;
         PreferenceManager.getDefaultSharedPreferences(this).unregisterOnSharedPreferenceChangeListener(this);
         super.onDestroy();
