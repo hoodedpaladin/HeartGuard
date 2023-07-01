@@ -137,9 +137,6 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
 
         // Wi-Fi home
         MultiSelectListPreference pref_wifi_homes = (MultiSelectListPreference) screen.findPreference("wifi_homes");
-
-        // HeartGuard change - no network options screen
-        screen.removePreference(screen.findPreference("screen_network_options"));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             //cat_network.removePreference(pref_wifi_homes);
         } else {
@@ -355,6 +352,31 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
         });
 
         pref_rcode.setTitle(getString(R.string.setting_rcode, prefs.getString("rcode", "3")));
+
+        // HeartGuard change - programmatically remove prefs
+        cat_options.removePreference(screen.findPreference("auto_enable"));
+        cat_options.removePreference(screen.findPreference("screen_delay"));
+        cat_advanced.removePreference(screen.findPreference("vpn4"));
+        cat_advanced.removePreference(screen.findPreference("rcode"));
+        cat_advanced.removePreference(screen.findPreference("vpn6"));
+        cat_advanced.removePreference(screen.findPreference("dns"));
+        cat_advanced.removePreference(screen.findPreference("dns2"));
+        cat_advanced.removePreference(screen.findPreference("validate"));
+        cat_advanced.removePreference(screen.findPreference("ttl"));
+        cat_advanced.removePreference(screen.findPreference("socks5_enabled"));
+        cat_advanced.removePreference(screen.findPreference("socks5_addr"));
+        cat_advanced.removePreference(screen.findPreference("socks5_port"));
+        cat_advanced.removePreference(screen.findPreference("socks5_username"));
+        cat_advanced.removePreference(screen.findPreference("socks5_password"));
+        cat_advanced.removePreference(screen.findPreference("pcap_record_size"));
+        cat_advanced.removePreference(screen.findPreference("pcap_file_size"));
+        cat_advanced.removePreference(screen.findPreference("reset_usage"));
+        cat_advanced.removePreference(screen.findPreference("track_usage"));
+
+        // HeartGuard change - remove screens
+        screen.removePreference(screen.findPreference("screen_network_options"));
+        screen.removePreference(screen.findPreference("screen_stats"));
+        screen.removePreference(screen.findPreference("screen_backup"));
 
         if (Util.isPlayStoreInstall(this) || !Util.hasValidFingerprint(this))
             cat_options.removePreference(screen.findPreference("update_check"));
