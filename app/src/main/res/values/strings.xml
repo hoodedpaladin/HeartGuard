@@ -393,4 +393,5 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="secret_key">Secret key</string>
     <string name="add_expedite_partner">Add expedite partner...</string>
     <string name="secret_key_rules">Secret keys are only made of the characters A-Z and 2-7</string>
+    <string name="setting_reset_app_notifications">Reset all app notify checkboxes</string>
 </resources>
