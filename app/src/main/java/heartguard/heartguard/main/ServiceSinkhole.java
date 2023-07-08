@@ -144,8 +144,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     private ServiceSinkhole.Builder last_builder = null;
     private ParcelFileDescriptor vpn = null;
     private boolean temporarilyStopped = false;
-    private long time_of_last_state_change = System.currentTimeMillis();
-    private long current_watchdog_setting = 0;
+    private long time_watchdog_last_set = 0;
 
     private long last_hosts_modified = 0;
     private Map<String, Boolean> mapHostsBlocked = new HashMap<>();
@@ -400,7 +399,6 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
             // Watchdog
             if (cmd == Command.start || cmd == Command.reload) {
-                time_of_last_state_change = System.currentTimeMillis();
                 setWatchdog(true);
             } else if (cmd == Command.stop) {
                 setWatchdog(false);
@@ -506,7 +504,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     Log.d(TAG, "Stop foreground state=" + state.toString());
                     stopForeground(true);
                 }
-                startForeground(NOTIFY_ENFORCING, getEnforcingNotification(-1, -1, -1));
+                startForeground(NOTIFY_ENFORCING, getEnforcingNotification(-1, -1, -1, 0));
                 state = State.enforcing;
                 Log.d(TAG, "Start foreground state=" + state.toString());
 
@@ -552,7 +550,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     Log.d(TAG, "Stop foreground state=" + state.toString());
                     stopForeground(true);
                 }
-                startForeground(NOTIFY_ENFORCING, getEnforcingNotification(-1, -1, -1));
+                startForeground(NOTIFY_ENFORCING, getEnforcingNotification(-1, -1, -1, 0));
                 state = State.enforcing;
                 Log.d(TAG, "Start foreground state=" + state.toString());
             }
@@ -681,9 +679,15 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 start();
             }
 
-            // If not enabled, you probably shouldn't be here, but remove the watchdog anyway
-            // If enabled, set the watchdog here so that the interval can change when we want it to become slow
-            setWatchdog(enabled);
+            // Make the notification bar update (will this keep it alive?)
+            if (enabled) {
+                updateEnforcingNotificationWithTime(System.currentTimeMillis());
+            }
+
+            // Do it all the time! Don' trust the system to maintain the alarm forever
+            if ((System.currentTimeMillis() - time_watchdog_last_set) > 10 * 60 * 1000) {
+                setWatchdog(enabled);
+            }
         }
 
         // HeartGuard change - use this to make the VPN running or not, based on the rule
@@ -2750,7 +2754,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 stopForeground(true);
             }
             if (state == State.enforcing)
-                startForeground(NOTIFY_ENFORCING, getEnforcingNotification(-1, -1, -1));
+                startForeground(NOTIFY_ENFORCING, getEnforcingNotification(-1, -1, -1, 0));
             else if (state != State.none)
                 startForeground(NOTIFY_WAITING, getWaitingNotification());
             Log.d(TAG, "Start foreground state=" + state.toString());
@@ -2760,7 +2764,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (state == State.enforcing)
-            startForeground(NOTIFY_ENFORCING, getEnforcingNotification(-1, -1, -1));
+            startForeground(NOTIFY_ENFORCING, getEnforcingNotification(-1, -1, -1, 0));
         else
             startForeground(NOTIFY_WAITING, getWaitingNotification());
 
@@ -2947,7 +2951,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         cm.unregisterNetworkCallback((ConnectivityManager.NetworkCallback) networkCallback);
     }
 
-    private Notification getEnforcingNotification(int allowed, int blocked, int hosts) {
+    private Notification getEnforcingNotification(int allowed, int blocked, int hosts, long time) {
         Intent main = new Intent(this, ActivityMain.class);
         PendingIntent pi = PendingIntent.getActivity(this, 0, main, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
 
@@ -2986,18 +2990,40 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         if (allowed >= 0 || blocked >= 0 || hosts >= 0) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                if (Util.isPlayStoreInstall(this))
-                    builder.setContentText(getString(R.string.msg_packages, allowed, blocked));
-                else
-                    builder.setContentText(getString(R.string.msg_hosts, allowed, blocked, hosts));
+                String message;
+                // HeartGuard change - counts don't matter, but add a time string,
+                // to make sure the notification changes
+                // Maybe that will help the service not get killed sometimes?
+                if (time > 0) {
+                    SimpleDateFormat x = new SimpleDateFormat("HH:mm:ss");
+                    message = x.format(new Date(time));
+                } else {
+                    if (Util.isPlayStoreInstall(this)) {
+                        message = getString(R.string.msg_packages, allowed, blocked);
+                    } else {
+                        message = getString(R.string.msg_hosts, allowed, blocked, hosts);
+                    }
+                }
+                builder.setContentText(message);
                 return builder.build();
             } else {
                 NotificationCompat.BigTextStyle notification = new NotificationCompat.BigTextStyle(builder);
                 notification.bigText(getString(R.string.msg_started));
-                if (Util.isPlayStoreInstall(this))
-                    notification.setSummaryText(getString(R.string.msg_packages, allowed, blocked));
-                else
-                    notification.setSummaryText(getString(R.string.msg_hosts, allowed, blocked, hosts));
+                String message;
+                // HeartGuard change - counts don't matter, but add a time string,
+                // to make sure the notification changes
+                // Maybe that will help the service not get killed sometimes?
+                if (time > 0) {
+                    SimpleDateFormat x = new SimpleDateFormat("HH:mm:ss");
+                    message = x.format(new Date(time));
+                } else {
+                    if (Util.isPlayStoreInstall(this)) {
+                        message = getString(R.string.msg_packages, allowed, blocked);
+                    } else {
+                        message = getString(R.string.msg_hosts, allowed, blocked, hosts);
+                    }
+                }
+                notification.setSummaryText(message);
                 return notification.build();
             }
         } else
@@ -3006,7 +3032,14 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     private void updateEnforcingNotification(int allowed, int total) {
         // Update notification
-        Notification notification = getEnforcingNotification(allowed, total - allowed, mapHostsBlocked.size());
+        Notification notification = getEnforcingNotification(allowed, total - allowed, mapHostsBlocked.size(), 0);
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.notify(NOTIFY_ENFORCING, notification);
+    }
+
+    private void updateEnforcingNotificationWithTime(long time) {
+        // Update notification
+        Notification notification = getEnforcingNotification(0, 0, 0, time);
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         nm.notify(NOTIFY_ENFORCING, notification);
     }
@@ -3508,6 +3541,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         am.cancel(pi);
 
         if (interval_in_ms > 0) {
+            Log.w(TAG, "Setting alarm for " + interval_in_ms + " ms");
             am.setInexactRepeating(AlarmManager.RTC, SystemClock.elapsedRealtime() + interval_in_ms, interval_in_ms, pi);
         }
     }
@@ -3519,21 +3553,15 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         long interval_in_ms;
 
         if (enabled) {
-            // Set a quick watchdog if we are just booting up, or slow if we have been steady for a while
-            long time_since = System.currentTimeMillis() - time_of_last_state_change;
-
-            if (time_since > 2 * 60 * 1000) {
-                interval_in_ms = 2 * 60 * 1000;
-            } else {
-                interval_in_ms = 10 * 1000;
-            }
+            interval_in_ms = 5 * 60 * 1000;
         } else {
             interval_in_ms = 0;
         }
 
-        if (interval_in_ms != current_watchdog_setting) {
-            enactWatchdog(interval_in_ms);
-            current_watchdog_setting = interval_in_ms;
-        }
+        // Do it all the time! Don' trust the system to maintain the alarm forever
+        enactWatchdog(interval_in_ms);
+
+        // Remember this so we don't set it too often
+        time_watchdog_last_set = System.currentTimeMillis();
     }
 }
