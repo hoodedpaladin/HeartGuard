@@ -396,6 +396,50 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             }
         });
 
+        // HeartGuard change -
+        // Click listener for the capture_all_rules preference so that we can hook it up to the rules system
+        final SwitchPreference pref_capture_all_traffic = (SwitchPreference)screen.findPreference(Rule.PREFERENCE_STRING_CAPTURE_ALL_TRAFFIC);
+        pref_capture_all_traffic.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                final RulesManager rm = RulesManager.getInstance(ActivitySettings.this);
+                boolean isChecked = pref_capture_all_traffic.isChecked();
+                final boolean capture_all_traffic = rm.getPreferenceCaptureAllTraffic(ActivitySettings.this);
+                Log.w(TAG, String.format("pref_capture_all_traffic checked = %s", isChecked));
+
+                // Set the prefererence, for the time being, back to the master setting
+                // RulesManager will change it later when it approves the change
+                pref_capture_all_traffic.setChecked(capture_all_traffic);
+
+                if (isChecked != capture_all_traffic) {
+                    // If the switch state doesn't match the set state, then that means the user touched it
+
+                    String enable_disable;
+                    if (isChecked) {
+                        enable_disable = "enable";
+                    } else {
+                        enable_disable = "disable";
+                    }
+
+                    String message = ActivitySettings.this.getString(R.string.change_capture_all_traffic, enable_disable);
+
+                    Util.areYouSure(ActivitySettings.this, message, new Util.DoubtListener() {
+                        @Override
+                        public void onSure() {
+                            String ruletext;
+                            if (capture_all_traffic) {
+                                ruletext = "- feature capture_all_traffic";
+                            } else {
+                                ruletext = "feature capture_all_traffic";
+                            }
+                            rm.queueRuleText(ActivitySettings.this, ruletext);
+                        }
+                    });
+                }
+                return true;
+            }
+        });
+
         pref_rcode.setTitle(getString(R.string.setting_rcode, prefs.getString("rcode", "3")));
 
         // HeartGuard change - programmatically remove prefs
@@ -1057,11 +1101,17 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
     // HeartGuard change - update UI to keep in sync with rules changes
     private void updateMainUi() {
         // Update the preferences that are actually controlled by RulesManager
+        RulesManager rm = RulesManager.getInstance(ActivitySettings.this);
 
         // Manage system
         final SwitchPreference pref_manage_system = (SwitchPreference)getPreferenceScreen().findPreference(Rule.PREFERENCE_STRING_MANAGE_SYSTEM);
-        boolean manage_system = RulesManager.getInstance(ActivitySettings.this).getPreferenceManageSystem(ActivitySettings.this);
+        boolean manage_system = rm.getPreferenceManageSystem(ActivitySettings.this);
         pref_manage_system.setChecked(manage_system);
+
+        // Capture all traffic
+        final SwitchPreference pref_capture_all_traffic = (SwitchPreference)getPreferenceScreen().findPreference(Rule.PREFERENCE_STRING_CAPTURE_ALL_TRAFFIC);
+        boolean capture_all_traffic = rm.getPreferenceCaptureAllTraffic(ActivitySettings.this);
+        pref_capture_all_traffic.setChecked(capture_all_traffic);
     }
 
     // HeartGuard change - receive rules updates while we are active

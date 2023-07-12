@@ -13,6 +13,11 @@
                 android:title="@string/setting_system" />
             <heartguard.heartguard.main.SwitchPreference
                 android:defaultValue="false"
+                android:key="capture_all_traffic"
+                android:summary="@string/summary_capture_all_traffic"
+                android:title="@string/setting_capture_all_traffic" />
+            <heartguard.heartguard.main.SwitchPreference
+                android:defaultValue="false"
                 android:key="notify_access"
                 android:summary="@string/summary_access"
                 android:title="@string/setting_access" />

@@ -56,6 +56,7 @@ public class RulesManager {
     // always be updated based on its contents
     private List<UniversalRule> m_allCurrentRules = new ArrayList<UniversalRule>();
     private boolean m_enabled = true;
+    private boolean m_capture_all_traffic = false;
     private int m_delay = 0;
     private Map<String, Boolean> m_allowedPackages;
     private boolean m_manage_system = false;
@@ -329,6 +330,16 @@ public class RulesManager {
 
     public boolean getPreferenceFilterUdp(Context context) {
         return true;
+    }
+
+    // "feature capture_all_traffic" means that even whitelisted apps will use the VPN.
+    // If this is off, whitelisted apps are excluded from the VPN.
+    // When capture_all_traffic is enabled, "Block connections without VPN" can be turned on so
+    // that traffic can't flow at all except for through HeartGuard.
+    // When capture_all_traffic is disabled, "Block connections without VPN" should NOT be turned on,
+    // otherwise whitelisted apps will not work.
+    public boolean getPreferenceCaptureAllTraffic(Context context) {
+        return m_capture_all_traffic;
     }
 
     // Note: by NetGuard terminology, this boolean value is wifiBlocked, not wifiEnabled
@@ -775,6 +786,7 @@ public class RulesManager {
         int newDelay = 0;
         boolean newEnabled = false;
         boolean newManageSystem = false;
+        boolean newCaptureAllTraffic = false;
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
         Map<String, Integer> newPackageDelays = new HashMap<>();
         Map<Integer, Boolean> newAllowedUids = new HashMap<>();
@@ -805,6 +817,9 @@ public class RulesManager {
                 if ("manage_system".equals(featureName)) {
                     newManageSystem = true;
                 }
+                if ("capture_all_traffic".equals(featureName)) {
+                    newCaptureAllTraffic = true;
+                }
             } else if (rule.type == AllowedPackageRule.class) {
                 String packageName = ((AllowedPackageRule)rule.rule).getPackageName();
 
@@ -830,6 +845,10 @@ public class RulesManager {
             m_manage_system = newManageSystem;
 
             updateManageSystem(context);
+        }
+        if (m_capture_all_traffic != newCaptureAllTraffic) {
+            Log.w(TAG, "Capture_all_traffic changed from " + Boolean.toString(m_capture_all_traffic) + " to " + Boolean.toString(newCaptureAllTraffic));
+            m_capture_all_traffic = newCaptureAllTraffic;
         }
         m_allowedPackages = newAllowedPackages;
         m_packageDelays = newPackageDelays;
@@ -1275,9 +1294,11 @@ class AllowedUidRule extends RuleWithDelayClassification {
 
 class FeatureRule extends RuleWithDelayClassification {
     private String m_featurename;
-    private enum FeatureType {feature_restrictive, feature_permissive};
+    private enum FeatureType {feature_restrictive, feature_permissive, feature_both};
     private FeatureType m_featuretype;
-    private static final String[] restrictive_features = {"enabled", "manage_system"};
+    private static final String[] restrictive_features = {"enabled",
+                                                          "manage_system",
+                                                          "capture_all_traffic"};
 
     private static FeatureType getClassificationForName(String featurename) {
         for (String restrictive_feature : restrictive_features) {
@@ -1301,7 +1322,7 @@ class FeatureRule extends RuleWithDelayClassification {
     public int getDelayToAdd(Context context, int main_delay) {
         if (m_featuretype == FeatureType.feature_restrictive) {
             return 0;
-        } else if (m_featuretype == FeatureType.feature_permissive) {
+        } else if ((m_featuretype == FeatureType.feature_permissive) || (m_featuretype == FeatureType.feature_both)) {
             return main_delay;
         } else {
             throw new AssertionError("Problem here");
@@ -1309,7 +1330,7 @@ class FeatureRule extends RuleWithDelayClassification {
     }
 
     public int getDelayToRemove(Context context, int main_delay) {
-        if (m_featuretype == FeatureType.feature_restrictive) {
+        if ((m_featuretype == FeatureType.feature_restrictive) || (m_featuretype == FeatureType.feature_both)) {
             return main_delay;
         } else if (m_featuretype == FeatureType.feature_permissive) {
             return 0;

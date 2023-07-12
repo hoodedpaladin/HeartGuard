@@ -151,12 +151,13 @@ Java_heartguard_heartguard_main_ServiceSinkhole_jni_1start(
 
 }
 
+// HeartGuard change - pass capture_all_traffic
 JNIEXPORT void JNICALL
 Java_heartguard_heartguard_main_ServiceSinkhole_jni_1run(
-        JNIEnv *env, jobject instance, jlong context, jint tun, jboolean fwd53, jint rcode) {
+        JNIEnv *env, jobject instance, jlong context, jint tun, jboolean fwd53, jboolean capture_all_traffic, jint rcode) {
     struct context *ctx = (struct context *) context;
 
-    log_android(ANDROID_LOG_WARN, "Running tun %d fwd53 %d level %d", tun, fwd53, loglevel);
+    log_android(ANDROID_LOG_WARN, "Running tun %d fwd53 %d capture_all_traffic %d level %d", tun, fwd53, capture_all_traffic, loglevel);
 
     // Set blocking
     int flags = fcntl(tun, F_GETFL, 0);
@@ -170,6 +171,7 @@ Java_heartguard_heartguard_main_ServiceSinkhole_jni_1run(
     args->instance = instance;
     args->tun = tun;
     args->fwd53 = fwd53;
+    args->capture_all_traffic = capture_all_traffic;
     args->rcode = rcode;
     args->ctx = ctx;
     handle_events(args);

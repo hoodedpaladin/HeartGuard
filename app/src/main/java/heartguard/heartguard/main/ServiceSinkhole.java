@@ -204,7 +204,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     private native void jni_start(long context, int loglevel);
 
-    private native void jni_run(long context, int tun, boolean fwd53, int rcode);
+    // HeartGuard change - pass capture_all_traffic
+    private native void jni_run(long context, int tun, boolean fwd53, boolean capture_all_traffic, int rcode);
 
     private native void jni_stop(long context);
 
@@ -325,6 +326,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         private void handleIntent(Intent intent) {
             final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
+            RulesManager rm = RulesManager.getInstance(ServiceSinkhole.this);
 
             Command cmd = (Command) intent.getSerializableExtra(EXTRA_COMMAND);
             String reason = intent.getStringExtra(EXTRA_REASON);
@@ -446,10 +448,14 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         Log.e(TAG, "Unknown command=" + cmd);
                 }
 
+                // HeartGuard change - if we are capturing all traffic, the "Block connections without VPN"
+                // setting is okay, which makes this warning irrelevant
                 if (cmd == Command.start || cmd == Command.reload) {
+
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
-                        if (filter && isLockdownEnabled())
+                        boolean filter = rm.getPreferenceFilter(ServiceSinkhole.this);
+                        boolean capture_all_traffic = rm.getPreferenceCaptureAllTraffic(ServiceSinkhole.this);
+                        if (filter && !capture_all_traffic && isLockdownEnabled())
                             showLockdownNotification();
                         else
                             removeLockdownNotification();
@@ -1288,12 +1294,16 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             }
 
             // Set underlying network
+            RulesManager rm = RulesManager.getInstance(this);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
-                Network active = (cm == null ? null : cm.getActiveNetwork());
-                if (active != null) {
-                    Log.i(TAG, "Setting underlying network=" + cm.getNetworkInfo(active));
-                    setUnderlyingNetworks(new Network[]{active});
+                // HeartGuard change - when we capture all traffic, we don't know which networks are connected, so don't specify
+                if (rm.getPreferenceCaptureAllTraffic(this)) {
+                    ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+                    Network active = (cm == null ? null : cm.getActiveNetwork());
+                    if (active != null) {
+                        Log.i(TAG, "Setting underlying network=" + cm.getNetworkInfo(active));
+                        setUnderlyingNetworks(new Network[]{active});
+                    }
                 }
             }
 
@@ -1485,22 +1495,28 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             } catch (PackageManager.NameNotFoundException ex) {
                 Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
             }
-            if (last_connected && !filter)
-                for (Rule rule : listAllowed)
-                    try {
-                        builder.addDisallowedApplication(rule.packageName);
-                    } catch (PackageManager.NameNotFoundException ex) {
-                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                    }
-            else if (filter)
-                for (Rule rule : listRule)
-                    if (!rule.apply || (!system && rule.system))
+
+            //HeartGuard change - if we are capturing all traffic, don't exclude programs
+            RulesManager rm = RulesManager.getInstance(this);
+            if (!rm.getPreferenceCaptureAllTraffic(this)) {
+                if (last_connected && !filter)
+                    for (Rule rule : listAllowed)
                         try {
-                            Log.i(TAG, "Not routing " + rule.packageName);
                             builder.addDisallowedApplication(rule.packageName);
                         } catch (PackageManager.NameNotFoundException ex) {
                             Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                         }
+                else if (filter) {
+                    for (Rule rule : listRule)
+                        if (!rule.apply || (!system && rule.system))
+                            try {
+                                Log.i(TAG, "Not routing " + rule.packageName);
+                                builder.addDisallowedApplication(rule.packageName);
+                            } catch (PackageManager.NameNotFoundException ex) {
+                                Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                            }
+                }
+            }
         }
 
         // Build configure intent
@@ -1566,7 +1582,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     @Override
                     public void run() {
                         Log.i(TAG, "Running tunnel context=" + jni_context);
-                        jni_run(jni_context, vpn.getFd(), mapForward.containsKey(53), rcode);
+                        // HeartGuard change - pass capture_all_traffic
+                        boolean capture_all_traffic = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceCaptureAllTraffic(ServiceSinkhole.this);
+                        jni_run(jni_context, vpn.getFd(), mapForward.containsKey(53), capture_all_traffic, rcode);
                         Log.i(TAG, "Tunnel exited");
                         tunnelThread = null;
                     }
@@ -1622,6 +1640,12 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         mapUidAllowed.clear();
         for (Rule rule : listAllowed)
             mapUidAllowed.put(rule.uid, true);
+
+        // HeartGuard change - if we are capturing all traffic, then traffic from our own app will be
+        // allowed via UID
+        if (RulesManager.getInstance(this).getPreferenceCaptureAllTraffic(this)) {
+            mapUidAllowed.put(Process.myUid(), true);
+        }
 
         mapUidKnown.clear();
         for (Rule rule : listRule)
@@ -1901,6 +1925,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     private List<Rule> getAllowedRules(List<Rule> listRule) {
         List<Rule> listAllowed = new ArrayList<>();
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        RulesManager rm = RulesManager.getInstance(ServiceSinkhole.this);
+        boolean capture_all_traffic = rm.getPreferenceCaptureAllTraffic(ServiceSinkhole.this);
 
         // Check state
         boolean wifi = Util.isWifiActive(this);
@@ -1916,7 +1942,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         boolean national = prefs.getBoolean("national_roaming", false);
         boolean eu = prefs.getBoolean("eu_roaming", false);
         boolean tethering = prefs.getBoolean("tethering", false);
-        boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
+        boolean filter = rm.getPreferenceFilter(ServiceSinkhole.this);
 
         // Update connected state
         last_connected = Util.isConnected(ServiceSinkhole.this);
@@ -1965,7 +1991,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 " filter=" + filter +
                 " lockdown=" + lockdown);
 
-        if (last_connected)
+        if (last_connected || capture_all_traffic)
             for (Rule rule : listRule) {
                 boolean blocked = (metered ? rule.other_blocked : rule.wifi_blocked);
                 boolean screen = (metered ? rule.screen_other : rule.screen_wifi);
@@ -2055,13 +2081,18 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     // Called from native code
     private Allowed isAddressAllowed(Packet packet) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        RulesManager rm = RulesManager.getInstance(ServiceSinkhole.this);
+        boolean capture_all_traffic = rm.getPreferenceCaptureAllTraffic(ServiceSinkhole.this);
 
         lock.readLock().lock();
 
         packet.allowed = false;
-        if (RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this)) {
+        if (rm.getPreferenceFilter(ServiceSinkhole.this)) {
             // https://android.googlesource.com/platform/system/core/+/master/include/private/android_filesystem_config.h
-            if (packet.protocol == 17 /* UDP */ && !RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilterUdp(ServiceSinkhole.this)) {
+            if (capture_all_traffic && mapUidAllowed.containsKey(packet.uid) && mapUidAllowed.get(packet.uid)) {
+                // HeartGuard change - if we are capturing all traffic, accept based on the allowed UID list
+                packet.allowed = true;
+            } else if (packet.protocol == 17 /* UDP */ && !rm.getPreferenceFilterUdp(ServiceSinkhole.this)) {
                 // Allow unfiltered UDP
                 packet.allowed = true;
                 Log.i(TAG, "Allowing UDP " + packet);
@@ -2131,9 +2162,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         lock.readLock().unlock();
 
-        if (prefs.getBoolean("log", false) || RulesManager.getInstance(this).getPreferenceLogApp(this))
+        if (prefs.getBoolean("log", false) || rm.getPreferenceLogApp(this))
             if (packet.protocol != 6 /* TCP */ || !"".equals(packet.flags))
-                if (packet.uid != Process.myUid())
+                // HeartGuard change - don't log for whitelisted programs while we are capturing all traffic
+                if (packet.uid != Process.myUid() && !(capture_all_traffic && mapUidAllowed.containsKey(packet.uid)))
                     logPacket(packet);
 
         return allowed;
@@ -2332,6 +2364,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 try {
                     TrafficStats.setThreadStatsTag((int)Thread.currentThread().getId());
                     socket = network.getSocketFactory().createSocket();
+                    // HeartGuard change - protect this socket if we are capturing all traffic
+                    if (RulesManager.getInstance(ServiceSinkhole.this).getPreferenceCaptureAllTraffic(ServiceSinkhole.this)) {
+                        ServiceSinkhole.this.protect(socket);
+                    }
                     socket.connect(new InetSocketAddress(host, 443), 10000);
                     Log.i(TAG, "Validated " + network + " " + ni + " host=" + host);
                     synchronized (validated) {

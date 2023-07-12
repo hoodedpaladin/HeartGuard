@@ -88,6 +88,7 @@ struct arguments {
     jobject instance;
     int tun;
     jboolean fwd53;
+    jboolean capture_all_traffic;
     jint rcode;
     struct context *ctx;
 };

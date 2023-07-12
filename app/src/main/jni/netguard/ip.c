@@ -299,7 +299,12 @@ void handle_ip(const struct arguments *args,
     // Check if allowed
     int allowed = 0;
     struct allowed *redirect = NULL;
-    if (protocol == IPPROTO_UDP && has_udp_session(args, pkt, payload))
+    // HeartGuard change - when we are capturing all traffic, simply allow DNS traffic and unidentified traffic
+    if (args->capture_all_traffic && dport == 53)
+        allowed = 1;
+    else if (args->capture_all_traffic && uid == -1)
+        allowed = 1;
+    else if (protocol == IPPROTO_UDP && has_udp_session(args, pkt, payload))
         allowed = 1; // could be a lingering/blocked session
     else if (protocol == IPPROTO_TCP && (!syn || (uid == 0 && dport == 53)))
         allowed = 1; // assume existing session

@@ -95,6 +95,7 @@
 
     <string name="setting_advanced_options">Advanced options</string>
     <string name="setting_system">Manage system apps</string>
+    <string name="setting_capture_all_traffic">Capture all traffic</string>
     <string name="setting_log_app">Log internet access</string>
     <string name="setting_access">Notify on internet access</string>
     <string name="setting_filter">Filter traffic</string>
@@ -160,6 +161,7 @@
     <string name="summary_call">Disable HeartGuard on incoming or outgoing telephone call. This can be used to work around IP/Wi-Fi calling problems.</string>
 
     <string name="summary_system">Define rules for system apps (for experts)</string>
+    <string name="summary_capture_all_traffic">Whitelisted apps still run traffic through the VPN. Use in combination with \"Block connections without VPN\" in your VPN settings.</string>
     <string name="summary_log_app">Log attempts to access the internet for apps. This might result in extra battery usage.</string>
     <string name="summary_access">Show a status bar notification when an app attempts to access a new internet address (when filtering is disabled, only blocked internet access attempts will be notified)</string>
     <string name="summary_filter">Filter IP packets going out of the VPN tunnel. This might result in extra battery usage.</string>
@@ -369,6 +371,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="change_manage_system">Are you sure you want to %s manage_system?</string>
     <string name="change_enabled">Are you sure you want to %s HeartGuard?</string>
     <string name="change_allow_package">Are you sure you want to %s %s?</string>
+    <string name="change_capture_all_traffic">Are you sure you want to %s capture_all_traffic?</string>
     <string name="menu_abandon">Abandon</string>
     <string name="menu_clipboard">Copy to clipboard</string>
     <string name="confirm_delete_rule">Are you sure you want to remove the rule \"%s\"?</string>
