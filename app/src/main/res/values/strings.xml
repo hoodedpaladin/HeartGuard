@@ -210,7 +210,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="msg_filter4">Android 4 requires filtering to be enabled</string>
     <string name="msg_log_disabled">Traffic logging is disabled, use the switch above to enable logging. Traffic logging might result in extra battery usage.</string>
     <string name="msg_clear_rules">This will reset the rules and conditions to their default values</string>
-    <string name="msg_reset_access">This will delete access attempt log lines without allow/block rules</string>
+    <string name="msg_reset_access">This will delete all access entries (but not any rules)</string>
     <string name="msg_import_last">Last import: %s</string>
     <string name="msg_downloading">Downloading\n%1s</string>
     <string name="msg_downloaded">Hosts file downloaded</string>
