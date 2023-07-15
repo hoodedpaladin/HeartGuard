@@ -1508,6 +1508,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         PendingIntent pi = PendingIntent.getActivity(this, 0, configure, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
         builder.setConfigureIntent(pi);
 
+        // Set to not metered, since this is not a paid VPN
+        builder.setMetered(false);
+
         return builder;
     }
 
