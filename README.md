@@ -8,6 +8,7 @@ HeartGuard controls internet access per app based on rules with a configurable s
 <br>
 
 Please read the user guide [here](https://github.com/hoodedpaladin/HeartGuard/wiki/User-Guide)
+
 Many limitations/caveats/FAQs from NetGuard also apply, so the information there may be helpful as well: [NetGuard](https://github.com/M66B/NetGuard/tree/master)
 
 <br>
