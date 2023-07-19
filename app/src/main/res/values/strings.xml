@@ -142,7 +142,7 @@
     <string name="setting_technical_networks">Networks</string>
     <string name="setting_technical_subscription">Subscriptions</string>
 
-    <string name="summary_install">Show status bar notification to directly configure newly installed apps (pro feature)</string>
+    <string name="summary_install">Show status bar notification to directly configure newly installed apps</string>
     <string name="summary_auto">After disabling using the widget, automatically enable HeartGuard again after the selected number of minutes (enter zero to disable this option)</string>
     <string name="summary_delay">After turning the screen off, keep screen on rules active for the selected number of minutes (enter zero to disable this option)</string>
     <string name="summary_update">Check for new releases on GitHub twice daily</string>
@@ -160,10 +160,10 @@
     <string name="summary_eu_roaming">Do not apply roaming rules when the SIM and mobile network country are within the EU (roam like at home)</string>
     <string name="summary_call">Disable HeartGuard on incoming or outgoing telephone call. This can be used to work around IP/Wi-Fi calling problems.</string>
 
-    <string name="summary_system">Define rules for system apps (for experts)</string>
+    <string name="summary_system">Manage rules for system apps</string>
     <string name="summary_capture_all_traffic">Whitelisted apps still run traffic through the VPN. Use in combination with \"Block connections without VPN\" in your VPN settings.</string>
     <string name="summary_log_app">Log attempts to access the internet for apps. This might result in extra battery usage.</string>
-    <string name="summary_access">Show a status bar notification when an app attempts to access a new internet address (when filtering is disabled, only blocked internet access attempts will be notified)</string>
+    <string name="summary_access">Show a status bar notification when an app is denied access to a new internet address</string>
     <string name="summary_filter">Filter IP packets going out of the VPN tunnel. This might result in extra battery usage.</string>
     <string name="summary_track_usage">Track the number of bytes sent and received for each app and address. This might result in extra battery usage.</string>
     <string name="summary_block_domains">Respond with the configured DNS response code for blocked domain names. This switch is disabled when no hosts file is available.</string>
@@ -390,7 +390,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="cancel_button">Cancel</string>
     <string name="setting_reset_access">Reset all access records</string>
     <string name="add_new_partner">Add New Partner</string>
-    <string name="add_new_partner_explanation">Have your partner add this secret code to their authenticator app, or vice versa. Then forget it. (This password is not stored securely! Don\'t use this for any other reason!)</string>
+    <string name="add_new_partner_explanation">Have your partner add this secret key to their authenticator app, or type their secret key here. Then forget it. (The secret key is not stored securely! Don\'t reuse it anywhere!)\n\nLater on, they\'ll be able to tell you a 6-digit passcode to expedite your changes.</string>
     <string name="partner_name">Partner nickname (to remember this expedite by)</string>
     <string name="accountability_partner_nickname">accountability_partner</string>
     <string name="secret_key">Secret key</string>
