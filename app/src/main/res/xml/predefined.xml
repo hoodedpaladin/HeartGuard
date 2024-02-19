@@ -18,21 +18,6 @@
 
     <wifi
         blocked="false"
-        package="com.google.android.apps.adm" />
-    <other
-        blocked="false"
-        package="com.google.android.apps.adm"
-        roaming="false" />
-
-    <wifi
-        blocked="false"
-        package="com.google.android.backuptransport" />
-    <other
-        blocked="false"
-        package="com.google.android.backuptransport" />
-
-    <wifi
-        blocked="false"
         package="com.google.android.gms" />
     <other
         blocked="false"
