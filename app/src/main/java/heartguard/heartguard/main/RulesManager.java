@@ -45,7 +45,8 @@ public class RulesManager {
 
     public static final String ACTION_RULES_UPDATE = "eu.faircode.netguard.RULES_UPDATE";
 
-    public static final int MAX_DELAY = 3600*12;
+    // Max delay = 1 week
+    public static final int MAX_DELAY = 7 * 3600 * 24;
 
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
