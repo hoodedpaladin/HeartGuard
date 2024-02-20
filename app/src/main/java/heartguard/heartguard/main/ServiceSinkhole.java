@@ -1507,14 +1507,15 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                             Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                         }
                 else if (filter) {
-                    for (Rule rule : listRule)
-                        if (!rule.apply || (!system && rule.system))
+                    for (Rule rule : listRule) {
+                        if (!rule.apply || !rule.wifi_blocked || (!system && rule.system))
                             try {
                                 Log.i(TAG, "Not routing " + rule.packageName);
                                 builder.addDisallowedApplication(rule.packageName);
                             } catch (PackageManager.NameNotFoundException ex) {
                                 Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                             }
+                    }
                 }
             }
         }
