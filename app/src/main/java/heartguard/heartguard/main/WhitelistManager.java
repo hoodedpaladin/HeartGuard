@@ -381,7 +381,7 @@ public class WhitelistManager {
                     // The package doesn't exist, so, no access rules must match
                     continue;
                 }
-                if ((rule_uid != RuleAndPackage.UID_GLOBAL) && (uid != uid)) {
+                if ((rule_uid != RuleAndPackage.UID_GLOBAL) && (rule_uid != uid)) {
                     continue;
                 }
 
