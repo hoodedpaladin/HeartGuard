@@ -234,16 +234,17 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
                                 return true;
                             }
 
-                            case R.id.menu_allow:
-                                if (IAB.isPurchased(ActivityPro.SKU_FILTER, ActivityLog.this)) {
-                                    DatabaseHelper.getInstance(ActivityLog.this).updateAccess(ActivityLog.this, packet, dname, 0);
-                                    ServiceSinkhole.reload("allow host", ActivityLog.this, false);
-                                    Intent main = new Intent(ActivityLog.this, ActivityMain.class);
-                                    main.putExtra(ActivityMain.EXTRA_SEARCH, Integer.toString(uid));
-                                    startActivity(main);
-                                } else
-                                    startActivity(new Intent(ActivityLog.this, ActivityPro.class));
-                                return true;
+                            // Heartguard change - comment out
+                            //case R.id.menu_allow:
+                            //    if (IAB.isPurchased(ActivityPro.SKU_FILTER, ActivityLog.this)) {
+                            //        DatabaseHelper.getInstance(ActivityLog.this).updateAccess(ActivityLog.this, packet, dname, 0);
+                            //        ServiceSinkhole.reload("allow host", ActivityLog.this, false);
+                            //        Intent main = new Intent(ActivityLog.this, ActivityMain.class);
+                            //        main.putExtra(ActivityMain.EXTRA_SEARCH, Integer.toString(uid));
+                            //        startActivity(main);
+                            //    } else
+                            //        startActivity(new Intent(ActivityLog.this, ActivityPro.class));
+                            //    return true;
 
                             case R.id.menu_copy:
                                 ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
