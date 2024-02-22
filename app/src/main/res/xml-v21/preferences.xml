@@ -22,7 +22,7 @@
                 android:summary="@string/summary_access"
                 android:title="@string/setting_access" />
             <heartguard.heartguard.main.SwitchPreference
-                android:defaultValue="true"
+                android:defaultValue="false"
                 android:key="install"
                 android:summary="@string/summary_install"
                 android:title="@string/setting_install" />
