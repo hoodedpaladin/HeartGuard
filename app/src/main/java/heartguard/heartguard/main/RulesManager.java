@@ -231,7 +231,7 @@ public class RulesManager {
                 return null;
             }
 
-            return new RuleAndPackage(context, new DomainRule(data_bundle.getString("host"), 1), sticky, packagename);
+            return new RuleAndPackage(context, new DomainRule(text, data_bundle.getString("host"), 1), sticky, packagename);
         }
 
         if (data_bundle.containsKey("ip"))
@@ -244,7 +244,7 @@ public class RulesManager {
                 Log.e(TAG, "Rule string " + text + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndPackage(context, new IPRule(data_bundle.getString("ip"), 1), sticky, packagename);
+            return new RuleAndPackage(context, new IPRule(text, data_bundle.getString("ip"), 1), sticky, packagename);
         }
 
         if (directip) {
@@ -257,7 +257,7 @@ public class RulesManager {
                 return null;
             }
 
-            return new RuleAndPackage(context, new DirectIPRule(), sticky, packagename);
+            return new RuleAndPackage(context, new DirectIPRule(text), sticky, packagename);
         }
 
         // No rule found

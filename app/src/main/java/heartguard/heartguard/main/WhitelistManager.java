@@ -15,9 +15,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+class RuleAllowData {
+    String ruletext;
+    String input_daddr;
+    String relevant_daddr;
+    int allowed;
+}
+
 interface RuleForApp {
-    int isAllowed(String daddr, List<String> dnames);
+    RuleAllowData isAllowed(String daddr, List<String> dnames);
     boolean matchesAddr(String dname);
+    String getRuletext();
 }
 
 // AKA an Allow rule that specifies a host or ipv4, and may or may not specify a package
@@ -133,10 +141,12 @@ class RuleAndPackage extends RuleWithDelayClassification {
 class DomainRule implements RuleForApp {
     private String domain;
     private int allowed;
+    private String m_ruletext;
 
-    DomainRule(String domain, int allowed) {
+    DomainRule(String ruletext, String domain, int allowed) {
         this.domain = domain;
         this.allowed = allowed;
+        this.m_ruletext = ruletext;
     }
 
     public boolean matchesAddr(String dname) {
@@ -150,13 +160,22 @@ class DomainRule implements RuleForApp {
         return false;
     }
 
-    public int isAllowed(String daddr, List<String> dnames) {
+    public RuleAllowData isAllowed(String daddr, List<String> dnames) {
         for (String dname : dnames) {
             if (matchesAddr(dname)) {
-                return this.allowed;
+                RuleAllowData result = new RuleAllowData();
+                result.ruletext = this.m_ruletext;
+                result.allowed = this.allowed;
+                result.input_daddr = daddr;
+                result.relevant_daddr = dname;
+                return result;
             }
         }
-        return -1;
+        return null;
+    }
+
+    public String getRuletext() {
+        return m_ruletext;
     }
 }
 
@@ -170,11 +189,13 @@ class IPRule implements RuleForApp {
     private int m_subnet_ip;
     private int m_subnetmask;
     private int m_type;
+    private String m_ruletext;
 
-    IPRule(String ip, int allowed) {
+    IPRule(String ruletext, String ip, int allowed) {
         m_ip = ip;
         m_allowed = allowed;
         m_type = TYPE_SINGLE;
+        m_ruletext = ruletext;
 
         try {
             Matcher m = Pattern.compile("(\\d+.\\d+.\\d+.\\d+)/(\\d+)").matcher(ip);
@@ -217,10 +238,15 @@ class IPRule implements RuleForApp {
         return ip;
     }
 
-    public int isAllowed(String daddr, List<String> dnames) {
-        if (matchesAddr(daddr))
-            return this.m_allowed;
-        return -1;
+    public RuleAllowData isAllowed(String daddr, List<String> dnames) {
+        if (matchesAddr(daddr)) {
+            RuleAllowData result = new RuleAllowData();
+            result.ruletext = this.m_ruletext;
+            result.allowed = this.m_allowed;
+            result.input_daddr = daddr;
+            result.relevant_daddr = this.m_ip;
+        }
+        return null;
     }
 
     public boolean matchesAddr(String dname) {
@@ -245,19 +271,31 @@ class IPRule implements RuleForApp {
             return false;
         }
     }
+
+    public String getRuletext() {
+        return m_ruletext;
+    }
 }
 
 class DirectIPRule implements RuleForApp {
-    DirectIPRule() {
+    String m_ruletext;
+    DirectIPRule(String ruletext) {
+        m_ruletext = ruletext;
     }
 
-    public int isAllowed(String daddr, List<String> dnames) {
+    public RuleAllowData isAllowed(String daddr, List<String> dnames) {
         if (!dnames.isEmpty()) {
-            return -1;
+            return null;
         }
-        if (matchesAddr(daddr))
-            return 1;
-        return -1;
+        if (matchesAddr(daddr)) {
+            RuleAllowData result = new RuleAllowData();
+            result.ruletext = this.m_ruletext;
+            result.allowed = 1;
+            result.input_daddr = daddr;
+            result.relevant_daddr = daddr;
+            return result;
+        }
+        return null;
     }
 
     public boolean matchesAddr(String dname) {
@@ -265,6 +303,10 @@ class DirectIPRule implements RuleForApp {
             return true;
         }
         return false;
+    }
+
+    public String getRuletext() {
+        return m_ruletext;
     }
 }
 
@@ -315,9 +357,11 @@ public class WhitelistManager {
         }
     }
 
-    public boolean isAllowed(Context context, String daddr, int uid) {
+    public RuleAllowData isAllowed(Context context, String daddr, int uid) {
         lock.readLock().lock();
 
+        List<String> onedname = new LinkedList<>();
+        onedname.add(daddr);
         List<String> alldnames = new LinkedList<>();
         try (Cursor cursor = DatabaseHelper.getInstance(context).getAllQNames(daddr)) {
             while (cursor.moveToNext()) {
@@ -329,20 +373,22 @@ public class WhitelistManager {
             List<RuleForApp> rules = this.app_specific_rules.get(uid);
             if (rules != null) {
                 for (RuleForApp rule : rules) {
-                    int allowed = rule.isAllowed(daddr, alldnames);
-                    if (allowed >= 0)
-                        return allowed == 1;
+                    RuleAllowData result = rule.isAllowed(daddr, alldnames);
+                    if (result != null && result.allowed == 1) {
+                        return result;
+                    }
                 }
             }
 
             rules = this.global_rules;
             for (RuleForApp rule : rules) {
-                int allowed = rule.isAllowed(daddr, alldnames);
-                if (allowed >= 0)
-                    return allowed == 1;
+                RuleAllowData result = rule.isAllowed(daddr, alldnames);
+                if (result != null && result.allowed == 1) {
+                    return result;
+                }
             }
 
-            return false;
+            return null;
         } finally {
             lock.readLock().unlock();
         }
@@ -408,7 +454,18 @@ public class WhitelistManager {
 
                         if (access_block != block) {
                             Log.w(TAG, String.format("Setting access ID %d to %d because uid %d daddr %s is a match", id, block, uid, match));
-                            dh.setAccess(id, block);
+                            RuleAllowData ruleAllowData;
+                            if (block == 0)
+                            {
+                                ruleAllowData = new RuleAllowData();
+                                ruleAllowData.ruletext = addedrule.rule.getRuletext();
+                                ruleAllowData.allowed = 1;
+                                ruleAllowData.input_daddr = daddr;
+                                ruleAllowData.relevant_daddr = match;
+                            } else {
+                                ruleAllowData = null;
+                            }
+                            dh.setAccess(id, ruleAllowData, "writeAccessRulesForAddition, rule_uid = " + rule_uid);
                             uids_to_reload.add(uid);
                         }
                     }

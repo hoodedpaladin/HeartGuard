@@ -48,7 +48,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "Netguard";
     // HeartGuard change - version 22 adds rules table
-    private static final int DB_VERSION = 22;
+    private static final int DB_VERSION = 23;
 
     private static boolean once = true;
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
@@ -184,6 +184,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", sent INTEGER" +
                 ", received INTEGER" +
                 ", connections INTEGER" +
+                ", ruletext TEXT" +
+                ", input_daddr TEXT" +
+                ", relevant_daddr TEXT" +
+                ", comment TEXT" +
                 ");");
         db.execSQL("CREATE UNIQUE INDEX idx_access ON access(uid, version, protocol, daddr, dport)");
         db.execSQL("CREATE INDEX idx_access_daddr ON access(daddr)");
@@ -373,10 +377,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             }
 
             // HeartGuard change - version 22 adds a rules table
-            if (oldVersion < DB_VERSION) {
+            if (oldVersion < 22) {
                 db.execSQL("DROP TABLE rules");
                 createTableRules(db);
-                oldVersion = DB_VERSION;
+                oldVersion = 22;
+            }
+
+            if (oldVersion < 23) {
+                db.execSQL("DROP TABLE access");
+                createTableAccess(db);
+                oldVersion = 23;
             }
 
             if (oldVersion == DB_VERSION) {
@@ -545,7 +555,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // Access
 
-    public boolean updateAccess(Context context, Packet packet, String dname, int block) {
+    public boolean updateAccess(Context context, Packet packet, String dname) {
         int rows;
         // HeartGuard change - notify of whitelist changes
         boolean changed_whitelist = false;
@@ -558,8 +568,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ContentValues cv = new ContentValues();
                 cv.put("time", packet.time);
                 cv.put("allowed", packet.allowed ? 1 : 0);
-                if (block >= 0)
-                    cv.put("block", block);
 
                 // There is a segmented index on uid, version, protocol, daddr and dport
                 rows = db.update("access", cv, "uid = ? AND version = ? AND protocol = ? AND daddr = ? AND dport = ?",
@@ -576,16 +584,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     cv.put("protocol", packet.protocol);
                     cv.put("daddr", dname == null ? packet.daddr : dname);
                     cv.put("dport", packet.dport);
-                    if (block < 0) {
-                        // HeartGuard change - simple whitelist feature
-                        WhitelistManager wm = WhitelistManager.getInstance(context);
-                        if (wm.isAllowed(context, packet.daddr, packet.uid))
-                        {
-                            Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
-                            block = 0;
-                            changed_whitelist = true;
-                        }
-                        cv.put("block", block);
+
+                    // HeartGuard change - simple whitelist feature
+                    WhitelistManager wm = WhitelistManager.getInstance(context);
+
+                    RuleAllowData match = wm.isAllowed(context, packet.daddr, packet.uid);
+                    if (match != null && match.allowed == 1)
+                    {
+                        Log.w(TAG, "Allowing whitelisted domain " + dname + "for UID " + packet.uid);
+                        changed_whitelist = true;
+                        cv.put("ruletext", match.ruletext);
+                        cv.put("input_daddr", match.input_daddr);
+                        cv.put("relevant_daddr", match.relevant_daddr);
+                        cv.put("block", 0);
+                        cv.put("comment", "unblocked in updateAccess");
+                    } else {
+                        cv.put("block", 1);
+                        cv.put("comment", "blocked in updateAccess");
                     }
 
                     if (db.insert("access", null, cv) == -1)
@@ -662,15 +677,23 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         notifyAccessChanged();
     }
 
-    public void setAccess(long id, int block) {
+    public void setAccess(long id, RuleAllowData ruleAllowData, String comment) {
         lock.writeLock().lock();
         try {
             SQLiteDatabase db = this.getWritableDatabase();
             db.beginTransactionNonExclusive();
             try {
                 ContentValues cv = new ContentValues();
-                cv.put("block", block);
+                if (ruleAllowData != null && ruleAllowData.allowed == 1) {
+                    cv.put("block", 0);
+                    cv.put("ruletext", ruleAllowData.ruletext);
+                    cv.put("relevant_daddr", ruleAllowData.relevant_daddr);
+                    cv.put("input_daddr", ruleAllowData.input_daddr);
+                } else {
+                    cv.put("block", 1);
+                }
                 cv.put("allowed", -1);
+                cv.put("comment", comment);
 
                 if (db.update("access", cv, "ID = ?", new String[]{Long.toString(id)}) != 1)
                     Log.e(TAG, "Set access failed");

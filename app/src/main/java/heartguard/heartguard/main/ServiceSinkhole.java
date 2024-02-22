@@ -868,7 +868,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     !(packet.uid == 0 && (packet.protocol == 6 || packet.protocol == 17) && packet.dport == 53)) {
                 if (!(packet.protocol == 6 /* TCP */ || packet.protocol == 17 /* UDP */))
                     packet.dport = 0;
-                if (dh.updateAccess(ServiceSinkhole.this, packet, dname, -1)) {
+                if (dh.updateAccess(ServiceSinkhole.this, packet, dname)) {
                     lock.readLock().lock();
                     if (!mapNotify.containsKey(packet.uid) || mapNotify.get(packet.uid))
                         if (!packet.allowed)
@@ -2140,7 +2140,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     //    Log.i(TAG, "No rules for " + packet);
                 if (!packet.allowed) {
                     // Check for allowed rules here, so that we can approve the socket immediately
-                    if (WhitelistManager.getInstance(this).isAllowed(this, packet.daddr, packet.uid)) {
+                    RuleAllowData result = WhitelistManager.getInstance(this).isAllowed(this, packet.daddr, packet.uid);
+                    if (result != null && result.allowed == 1)
+                    {
                         packet.allowed = true;
                     }
                 }
