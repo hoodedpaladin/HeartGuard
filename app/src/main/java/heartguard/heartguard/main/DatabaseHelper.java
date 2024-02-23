@@ -1430,9 +1430,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         try {
             SQLiteDatabase db = this.getReadableDatabase();
 
-            String query = "SELECT * FROM ( SELECT * FROM rules WHERE enacted = 1 ORDER BY major_category, minor_category, ruletext, _id )";
+            String query = "SELECT * FROM ( SELECT * FROM rules WHERE enacted = 0 ORDER BY enact_time, major_category, minor_category, ruletext, _id )";
             query += " UNION ALL";
-            query += " SELECT * FROM ( SELECT * FROM rules WHERE enacted = 0 ORDER BY enact_time, major_category, minor_category, ruletext, _id )";
+            query += " SELECT * FROM ( SELECT * FROM rules WHERE enacted = 1 ORDER BY major_category, minor_category, ruletext, _id )";
             return db.rawQuery(query, new String[]{});
         } finally {
             lock.readLock().unlock();
