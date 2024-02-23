@@ -139,9 +139,6 @@
             <Preference
                 android:key="reset_access"
                 android:title="@string/setting_reset_access" />
-            <Preference
-                android:key="reset_app_notifications"
-                android:title="@string/setting_reset_app_notifications" />
             <EditTextPreference
                 android:inputType="number"
                 android:key="rcode"

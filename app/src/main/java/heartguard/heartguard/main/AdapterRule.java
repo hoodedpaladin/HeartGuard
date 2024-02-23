@@ -771,6 +771,11 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                                     ClipData clip = ClipData.newPlainText("netguard", daddr);
                                     clipboard.setPrimaryClip(clip);
                                     return true;
+
+                                case R.id.menu_ignore:
+                                    launchIgnoreUrlPage(context, rule.packageName, daddr);
+                                    result = true;
+                                    break;
                             }
 
                             // HeartGuard change - R.id.menu_reset removed
@@ -834,8 +839,19 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         holder.cbNotify.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
-                rule.notify = isChecked;
-                updateRule(context, rule, true, listAll);
+                boolean notify = isChecked;
+                RulesManager rm = RulesManager.getInstance(context);
+                boolean rm_notify = rm.getPreferenceNotifyApp(context, rule.packageName);
+                if (notify != rm_notify) {
+                    String ruletext;
+
+                    if (!notify) {
+                        ruletext = "ignore package:" + rule.packageName;
+                    } else {
+                        ruletext = "- ignore package:" + rule.packageName;
+                    }
+                    rm.queueRuleText(context, ruletext);
+                }
             }
         });
 
@@ -882,7 +898,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         //SharedPreferences screen_other = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_SCREEN_OTHER, Context.MODE_PRIVATE);
         SharedPreferences roaming = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE);
         SharedPreferences lockdown = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE);
-        SharedPreferences notify = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
+        //SharedPreferences notify = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
 
         //if (rule.wifi_blocked == rule.wifi_default)
         //    wifi.edit().remove(rule.packageName).apply();
@@ -919,10 +935,10 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         else
             lockdown.edit().remove(rule.packageName).apply();
 
-        if (rule.notify)
-            notify.edit().remove(rule.packageName).apply();
-        else
-            notify.edit().putBoolean(rule.packageName, rule.notify).apply();
+        //if (rule.notify != )
+        //    notify.edit().remove(rule.packageName).apply();
+        //else
+        //    notify.edit().putBoolean(rule.packageName, rule.notify).apply();
 
         rule.updateChanged(context);
         Log.i(TAG, "Updated " + rule);
@@ -1060,6 +1076,68 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                                 RulesManager.getInstance(context).queueRuleText(context, newruletext);
                             }
                         }
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton(android.R.string.no, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialogInterface) {
+                    }
+                })
+                .create();
+        dialog.show();
+    }
+
+    // HeartGuard change - launch a dialog to ignore a URL (package specific or not)
+    private void launchIgnoreUrlPage(final Context context, String packagename, String daddr) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.ignorehost, null, false);
+        final EditText etDAddr = view.findViewById(R.id.ignore_access_daddr);
+        final EditText etPackageName = view.findViewById(R.id.ignore_access_package_name);
+        etDAddr.setText(daddr);
+        etPackageName.setText(packagename);
+
+        AlertDialog dialog;
+        dialog = new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String newpackagename = etPackageName.getText().toString().trim();
+                        String newdaddr = etDAddr.getText().toString().trim();
+                        Log.w(TAG, String.format("yes ignore: newpackagename=\"%s\" newdaddr=\"%s\"", newpackagename, newdaddr));
+
+                        // Make sure that the text doesn't have whitespaces.
+                        // The package name can be empty, but the daddr can't (if they want to allow a whole package, they click on the app wifi logo)
+
+                        String ruletext;
+                        if (!newdaddr.matches("\\S+") || !newpackagename.matches("\\S+")) {
+                            Log.w(TAG, "Contains whitespace");
+                            dialog.dismiss();
+                            return;
+                        }
+                        if (newdaddr.length() == 0 && newpackagename.length() == 0)
+                        {
+                            Log.w(TAG, "Ignore rules can't be empty");
+                            dialog.dismiss();
+                            return;
+                        } else if (newpackagename.length() > 0) {
+                            if (newdaddr.length() > 0) {
+                                ruletext = String.format("ignore package:%s host:%s", newpackagename, newdaddr);
+                            } else {
+                                ruletext = String.format("ignore package:%s", newpackagename);
+                            }
+                        } else {
+                            ruletext = String.format("ignore host:%s", newdaddr);
+                        }
+                        RulesManager.getInstance(context).queueRuleText(context, ruletext);
                         dialog.dismiss();
                     }
                 })

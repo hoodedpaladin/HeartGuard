@@ -79,7 +79,7 @@ public class Rule {
     public static final String PREFERENCE_STRING_PERAPP_ROAMING = "roaming";
     public static final String PREFERENCE_STRING_PERAPP_LOCKDOWN = "lockdown";
     public static final String PREFERENCE_STRING_PERAPP_APPLY = "apply";
-    public static final String PREFERENCE_STRING_PERAPP_NOTIFY = "notify";
+    //public static final String PREFERENCE_STRING_PERAPP_NOTIFY = "notify";
 
     public static final String PREDEFINED_XML_WIFI = "wifi";
     public static final String PREDEFINED_XML_OTHER = "other";
@@ -247,7 +247,7 @@ public class Rule {
         SharedPreferences roaming = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE);
         SharedPreferences lockdown = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE);
         SharedPreferences apply = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_APPLY, Context.MODE_PRIVATE);
-        SharedPreferences notify = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
+        //SharedPreferences notify = context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
 
         // Get settings
         boolean default_wifi = rm.getPreferenceWhitelistWifi(context);
@@ -406,7 +406,7 @@ public class Rule {
                     rule.lockdown = lockdown.getBoolean(info.packageName, false);
 
                     rule.apply = apply.getBoolean(info.packageName, true);
-                    rule.notify = notify.getBoolean(info.packageName, true);
+                    rule.notify = rm.getPreferenceNotifyApp(context, info.packageName);
 
                     // Related packages
                     List<String> listPkg = new ArrayList<>();

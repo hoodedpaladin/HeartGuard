@@ -233,51 +233,6 @@ public class ActivitySettings extends AppCompatActivity implements SharedPrefere
             }
         });
 
-        // HeartGuard change - reset all app notification checkboxes
-        Preference pref_reset_app_notifications = screen.findPreference("reset_app_notifications");
-        pref_reset_app_notifications.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-            @Override
-            public boolean onPreferenceClick(Preference preference) {
-                Util.areYouSure(ActivitySettings.this, R.string.setting_reset_app_notifications, new Util.DoubtListener() {
-                    @Override
-                    public void onSure() {
-                        new AsyncTask<Object, Object, Throwable>() {
-                            @Override
-                            protected Throwable doInBackground(Object... objects) {
-                                try {
-                                    List<Rule> list = Rule.getRules(true, ActivitySettings.this);
-                                    int count = 0;
-                                    SharedPreferences notify = getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE);
-                                    for (Rule rule : list) {
-                                        if (!rule.notify) {
-                                            notify.edit().remove(rule.packageName).apply();
-                                            count += 1;
-                                        }
-                                    }
-                                    if (count > 0) {
-                                        Rule.clearCache(ActivitySettings.this);
-                                        ServiceSinkhole.reload("rule changed", ActivitySettings.this, false);
-                                    }
-                                    return null;
-                                } catch (Throwable ex) {
-                                    return ex;
-                                }
-                            }
-
-                            @Override
-                            protected void onPostExecute(Throwable ex) {
-                                if (ex == null)
-                                    Toast.makeText(ActivitySettings.this, R.string.msg_completed, Toast.LENGTH_LONG).show();
-                                else
-                                    Toast.makeText(ActivitySettings.this, ex.toString(), Toast.LENGTH_LONG).show();
-                            }
-                        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-                    }
-                });
-                return false;
-            }
-        });
-
         // HeartGuard change - no network options screen
         //if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         //    TwoStatePreference pref_reload_onconnectivity =

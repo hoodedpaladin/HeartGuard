@@ -63,6 +63,8 @@ public class RulesManager {
     private boolean m_manage_system = false;
     private Map<String, Integer> m_packageDelays;
     private Map<Integer, Boolean> m_allowedUids;
+    private Map<String, Boolean> m_ignoredApps;
+    private List<IgnoreRule> m_specificIgnoreRules;
 
     private TrueTime m_trueTime;
     private final boolean useTrueTime = false;
@@ -343,6 +345,13 @@ public class RulesManager {
         return m_capture_all_traffic;
     }
 
+    public boolean getPreferenceNotifyApp(Context context, String packageName)
+    {
+        if (m_ignoredApps.containsKey(packageName) && m_ignoredApps.get(packageName) == true) {
+            return false;
+        }
+        return true;
+    }
     // Note: by NetGuard terminology, this boolean value is wifiBlocked, not wifiEnabled
     // False = package is whitelisted!
     public boolean getWifiEnabledForApp(Context context, String packagename, int uid, boolean defaultVal) {
@@ -791,6 +800,8 @@ public class RulesManager {
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
         Map<String, Integer> newPackageDelays = new HashMap<>();
         Map<Integer, Boolean> newAllowedUids = new HashMap<>();
+        Map<String, Boolean> newIgnoredApps = new HashMap<>();
+        List<IgnoreRule> newSpecificIgnoreRules = new LinkedList<>();
 
         for (UniversalRule rule : m_allCurrentRules) {
             if (rule.type == DelayRule.class) {
@@ -830,6 +841,13 @@ public class RulesManager {
                 int uid = ((AllowedUidRule)rule.rule).getUid();
 
                 newAllowedUids.put(uid, false);
+            } else if (rule.type == IgnoreRule.class) {
+                IgnoreRule ignore = (IgnoreRule)rule.rule;
+                if ((ignore.getPackageName() != null) && (ignore.getHostName() == null)) {
+                    newIgnoredApps.put(ignore.getPackageName(), true);
+                } else {
+                    newSpecificIgnoreRules.add(ignore);
+                }
             }
         }
 
@@ -854,6 +872,8 @@ public class RulesManager {
         m_allowedPackages = newAllowedPackages;
         m_packageDelays = newPackageDelays;
         m_allowedUids = newAllowedUids;
+        m_ignoredApps = newIgnoredApps;
+        m_specificIgnoreRules = newSpecificIgnoreRules;
     }
 
     public static String getStringOfRuleDbEntry(Cursor cursor) {
@@ -1047,6 +1067,35 @@ public class RulesManager {
         ruletext = ruletext.replaceAll("totp:\\S+", "totp:******");
         ruletext = ruletext.replaceAll("password:\\S+", "password:******");
         return ruletext;
+    }
+
+    boolean shouldNotifyOnPacket(Context context, Packet packet, String dname) {
+        if (dname == null)
+            return true;
+
+        String packageName = context.getPackageManager().getNameForUid(packet.uid);
+        List<String> alldnames = DatabaseHelper.getInstance(context).getListAlternateQNames(dname);
+
+        for (IgnoreRule ignore : m_specificIgnoreRules) {
+            if ((ignore.getPackageName() != null) && (!ignore.getPackageName().equals(packageName))) {
+                continue;
+            }
+            if (ignore.getHostName() != null) {
+                boolean matched = false;
+
+                for (String dname2 : alldnames) {
+                    if (Util.isAddressInsideDomain(dname2, ignore.getHostName())) {
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched) {
+                    continue;
+                }
+            }
+            return false;
+        }
+        return true;
     }
 }
 
@@ -1463,6 +1512,76 @@ class PartnerRule extends RuleWithDelayClassification {
     }
 }
 
+class IgnoreRule extends RuleWithDelayClassification {
+    private static final String TAG = "NetGuard.IgnoreRule";
+    private String m_packageName;
+    private String m_hostName;
+
+    public IgnoreRule(String packageName, String hostName) {
+        m_packageName = packageName;
+        m_hostName = hostName;
+    }
+
+    public int getDelayToAdd(Context context, int main_delay) {
+        return 0;
+    }
+    public int getDelayToRemove(Context context, int main_delay) {
+        return 0;
+    }
+
+    public static UniversalRule parseRule(String ruletext) {
+        Pattern p = Pattern.compile("ignore (.*)");
+        Matcher m = p.matcher(ruletext);
+        if (!m.matches())
+            return null;
+        String constraints = m.group(1);
+
+        String[] separated = constraints.split(" ");
+
+        String packageName = null;
+        String hostName = null;
+        for (String phrase : separated) {
+            m = Pattern.compile("package:(.*)").matcher(phrase);
+            if (m.matches()) {
+                packageName = m.group(1);
+                continue;
+            }
+
+            m = Pattern.compile("host:(.+)").matcher(phrase);
+            if (m.matches()) {
+                hostName = m.group(1);
+                continue;
+            }
+
+            Log.e(TAG, "\"" + ruletext + "\" didn't contain any recognized phrases");
+            return null;
+        }
+
+        if (!((packageName != null) || (hostName != null))) {
+            return null;
+        }
+        IgnoreRule ignoreRule = new IgnoreRule(packageName, hostName);
+        return new UniversalRule(ignoreRule, ruletext);
+
+    }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_IGNORE;
+    }
+
+    public int getMinorCategory() {
+        return 0;
+    }
+
+    public String getPackageName() {
+        return m_packageName;
+    }
+
+    public String getHostName() {
+        return m_hostName;
+    }
+}
+
 class UniversalRule {
     private static final String TAG = "NetGuard.UniversalRule";
 
@@ -1470,6 +1589,7 @@ class UniversalRule {
     public static final int MAJOR_CATEGORY_FEATURE = 200;
     public static final int MAJOR_CATEGORY_PARTNER = 300;
     public static final int MAJOR_CATEGORY_ALLOW = 400;
+    public static final int MAJOR_CATEGORY_IGNORE = 500;
 
     public RuleWithDelayClassification rule;
     public Class type;
@@ -1493,6 +1613,8 @@ class UniversalRule {
             type = PartnerRule.class;
         } else if (rule instanceof AllowedUidRule) {
             type = AllowedUidRule.class;
+        } else if (rule instanceof IgnoreRule) {
+            type = IgnoreRule.class;
         }
 
         if (type == null)
@@ -1519,6 +1641,8 @@ class UniversalRule {
             therule = FeatureRule.parseRule(ruletext);
         } else if (category.equals("partner")) {
             therule = PartnerRule.parseRule(ruletext);
+        } else if (category.equals("ignore")) {
+            therule = IgnoreRule.parseRule(ruletext);
         }
 
         if (therule == null) {

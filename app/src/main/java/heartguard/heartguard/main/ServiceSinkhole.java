@@ -850,9 +850,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         private void log(Packet packet, int connection, boolean interactive) {
             // Get settings
+            RulesManager rm = RulesManager.getInstance(ServiceSinkhole.this);
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
             boolean log = prefs.getBoolean("log", false);
-            boolean log_app = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceLogApp(ServiceSinkhole.this);
+            boolean log_app = rm.getPreferenceLogApp(ServiceSinkhole.this);
 
             DatabaseHelper dh = DatabaseHelper.getInstance(ServiceSinkhole.this);
 
@@ -871,8 +872,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 if (dh.updateAccess(ServiceSinkhole.this, packet, dname)) {
                     lock.readLock().lock();
                     if (!mapNotify.containsKey(packet.uid) || mapNotify.get(packet.uid))
-                        if (!packet.allowed)
+                        if (!packet.allowed && rm.shouldNotifyOnPacket(ServiceSinkhole.this, packet, dname)) {
                             showAccessNotification(packet.uid);
+                        }
                     lock.readLock().unlock();
                 }
             }
@@ -2456,7 +2458,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_ROAMING, Context.MODE_PRIVATE).edit().remove(packageName).apply();
                         context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_LOCKDOWN, Context.MODE_PRIVATE).edit().remove(packageName).apply();
                         context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_APPLY, Context.MODE_PRIVATE).edit().remove(packageName).apply();
-                        context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE).edit().remove(packageName).apply();
+                        //context.getSharedPreferences(Rule.PREFERENCE_STRING_PERAPP_NOTIFY, Context.MODE_PRIVATE).edit().remove(packageName).apply();
 
                         int uid = intent.getIntExtra(Intent.EXTRA_UID, 0);
                         if (uid > 0) {

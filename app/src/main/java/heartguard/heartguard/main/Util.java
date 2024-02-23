@@ -1082,4 +1082,15 @@ public class Util {
         }
         return builder;
     }
+
+    public static boolean isAddressInsideDomain(String addr, String domain) {
+        boolean result = false;
+
+        if (addr.equals(domain))
+            result =  true;
+        if (addr.endsWith("." + domain))
+            result =  true;
+
+        return result;
+    }
 }
