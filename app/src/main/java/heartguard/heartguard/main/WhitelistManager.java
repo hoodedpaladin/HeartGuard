@@ -245,6 +245,7 @@ class IPRule implements RuleForApp {
             result.allowed = this.m_allowed;
             result.input_daddr = daddr;
             result.relevant_daddr = this.m_ip;
+            return result;
         }
         return null;
     }
