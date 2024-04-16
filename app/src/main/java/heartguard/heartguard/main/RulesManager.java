@@ -61,6 +61,7 @@ public class RulesManager {
     private int m_delay = 0;
     private Map<String, Boolean> m_allowedPackages;
     private boolean m_manage_system = false;
+    private boolean m_allow_logging = false;
     private Map<String, Integer> m_packageDelays;
     private Map<Integer, Boolean> m_allowedUids;
     private Map<String, Boolean> m_ignoredApps;
@@ -344,6 +345,7 @@ public class RulesManager {
     public boolean getPreferenceCaptureAllTraffic(Context context) {
         return m_capture_all_traffic;
     }
+    public boolean getPreferenceAllowLogging(Context context) { return m_allow_logging;}
 
     public boolean getPreferenceNotifyApp(Context context, String packageName)
     {
@@ -797,6 +799,7 @@ public class RulesManager {
         boolean newEnabled = false;
         boolean newManageSystem = false;
         boolean newCaptureAllTraffic = false;
+        boolean newAllowLogging = false;
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
         Map<String, Integer> newPackageDelays = new HashMap<>();
         Map<Integer, Boolean> newAllowedUids = new HashMap<>();
@@ -831,6 +834,9 @@ public class RulesManager {
                 }
                 if ("capture_all_traffic".equals(featureName)) {
                     newCaptureAllTraffic = true;
+                }
+                if ("allow_logging".equals(featureName)) {
+                    newAllowLogging = true;
                 }
             } else if (rule.type == AllowedPackageRule.class) {
                 String packageName = ((AllowedPackageRule)rule.rule).getPackageName();
@@ -869,11 +875,21 @@ public class RulesManager {
             Log.w(TAG, "Capture_all_traffic changed from " + Boolean.toString(m_capture_all_traffic) + " to " + Boolean.toString(newCaptureAllTraffic));
             m_capture_all_traffic = newCaptureAllTraffic;
         }
+        if (m_allow_logging != newAllowLogging) {
+            Log.w(TAG, "Allow Logging changed from " + Boolean.toString(m_allow_logging) + " to " + Boolean.toString(newAllowLogging));
+            m_allow_logging = newAllowLogging;
+        }
         m_allowedPackages = newAllowedPackages;
         m_packageDelays = newPackageDelays;
         m_allowedUids = newAllowedUids;
         m_ignoredApps = newIgnoredApps;
         m_specificIgnoreRules = newSpecificIgnoreRules;
+
+        // Make sure to turn the logging toggle switch off if you're not allow to reach it
+        if (!getPreferenceAllowLogging(context)) {
+            final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOG, false).apply();
+        }
     }
 
     public static String getStringOfRuleDbEntry(Cursor cursor) {
@@ -1349,11 +1365,18 @@ class FeatureRule extends RuleWithDelayClassification {
     private static final String[] restrictive_features = {"enabled",
                                                           "manage_system",
                                                           "capture_all_traffic"};
+    private static final String[] permissive_features = {"allow_logging"};
 
     private static FeatureType getClassificationForName(String featurename) {
         for (String restrictive_feature : restrictive_features) {
             if (restrictive_feature.equals(featurename)) {
                 return FeatureType.feature_restrictive;
+            }
+        }
+
+        for (String permissive_feature : permissive_features) {
+            if (permissive_feature.equals(featurename)) {
+                return FeatureType.feature_permissive;
             }
         }
 

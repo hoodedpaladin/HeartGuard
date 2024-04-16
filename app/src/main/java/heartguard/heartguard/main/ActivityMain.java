@@ -359,7 +359,10 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                         iab.updatePurchases();
 
                         if (!IAB.isPurchased(ActivityPro.SKU_LOG, ActivityMain.this))
-                            prefs.edit().putBoolean("log", false).apply();
+                            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOG, false).apply();
+                        if (!RulesManager.getInstance(ActivityMain.this).getPreferenceAllowLogging(ActivityMain.this)) {
+                            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOG, false).apply();
+                        }
                         if (!IAB.isPurchased(ActivityPro.SKU_THEME, ActivityMain.this)) {
                             if (!"teal".equals(prefs.getString("theme", "teal")))
                                 prefs.edit().putString("theme", "teal").apply();
@@ -812,6 +815,10 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             submenu.removeItem(R.id.menu_app_system);
         }
 
+        if (!RulesManager.getInstance(this).getPreferenceAllowLogging(this)) {
+            menu.removeItem(R.id.menu_log);
+        }
+
         // HeartGuard change - don't show no internet by default
         menu.findItem(R.id.menu_app_nointernet).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_NOINTERNET, false));
         menu.findItem(R.id.menu_app_disabled).setChecked(prefs.getBoolean(Rule.PREFERENCE_STRING_SHOW_DISABLED, true));
@@ -874,13 +881,15 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             //    return true;
 
             case R.id.menu_log:
-                if (Util.canFilter(this))
-                    if (IAB.isPurchased(ActivityPro.SKU_LOG, this))
-                        startActivity(new Intent(this, ActivityLog.class));
+                if (RulesManager.getInstance(this).getPreferenceAllowLogging(this)) {
+                    if (Util.canFilter(this))
+                        if (IAB.isPurchased(ActivityPro.SKU_LOG, this))
+                            startActivity(new Intent(this, ActivityLog.class));
+                        else
+                            startActivity(new Intent(this, ActivityPro.class));
                     else
-                        startActivity(new Intent(this, ActivityPro.class));
-                else
-                    Toast.makeText(this, R.string.msg_unavailable, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, R.string.msg_unavailable, Toast.LENGTH_SHORT).show();
+                }
                 return true;
 
             case R.id.menu_settings:

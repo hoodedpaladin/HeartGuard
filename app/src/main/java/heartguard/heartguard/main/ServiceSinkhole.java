@@ -852,7 +852,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             // Get settings
             RulesManager rm = RulesManager.getInstance(ServiceSinkhole.this);
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-            boolean log = prefs.getBoolean("log", false);
+            boolean log = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG, false) && rm.getPreferenceAllowLogging(ServiceSinkhole.this);
             boolean log_app = rm.getPreferenceLogApp(ServiceSinkhole.this);
 
             DatabaseHelper dh = DatabaseHelper.getInstance(ServiceSinkhole.this);
@@ -1535,7 +1535,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     private void startNative(final ParcelFileDescriptor vpn, List<Rule> listAllowed, List<Rule> listRule) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-        boolean log = prefs.getBoolean("log", false);
+        boolean log = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG, false) && RulesManager.getInstance(ServiceSinkhole.this).getPreferenceAllowLogging(ServiceSinkhole.this);
         boolean log_app = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceLogApp(ServiceSinkhole.this);
         boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
 
@@ -2167,7 +2167,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         lock.readLock().unlock();
 
-        if (prefs.getBoolean("log", false) || rm.getPreferenceLogApp(this))
+        if (prefs.getBoolean(Rule.PREFERENCE_STRING_LOG, false) || rm.getPreferenceLogApp(this))
             if (packet.protocol != 6 /* TCP */ || !"".equals(packet.flags))
                 // HeartGuard change - don't log for whitelisted programs while we are capturing all traffic
                 if (packet.uid != Process.myUid() && !(capture_all_traffic && mapUidAllowed.containsKey(packet.uid)))

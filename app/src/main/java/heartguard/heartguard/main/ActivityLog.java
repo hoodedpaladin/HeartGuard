@@ -112,7 +112,7 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         resolve = prefs.getBoolean("resolve", false);
         organization = prefs.getBoolean("organization", false);
-        boolean log = prefs.getBoolean("log", false);
+        boolean log = prefs.getBoolean(Rule.PREFERENCE_STRING_LOG, false);
 
         // Show disabled message
         TextView tvDisabled = findViewById(R.id.tvDisabled);
@@ -122,7 +122,7 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
         swEnabled.setChecked(log);
         swEnabled.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                prefs.edit().putBoolean("log", isChecked).apply();
+                prefs.edit().putBoolean(Rule.PREFERENCE_STRING_LOG, isChecked).apply();
             }
         });
 
@@ -297,7 +297,7 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
     @Override
     public void onSharedPreferenceChanged(SharedPreferences prefs, String name) {
         Log.i(TAG, "Preference " + name + "=" + prefs.getAll().get(name));
-        if ("log".equals(name)) {
+        if (Rule.PREFERENCE_STRING_LOG.equals(name)) {
             // Get enabled
             boolean log = prefs.getBoolean(name, false);
 
@@ -310,7 +310,7 @@ public class ActivityLog extends AppCompatActivity implements SharedPreferences.
             if (swEnabled.isChecked() != log)
                 swEnabled.setChecked(log);
 
-            ServiceSinkhole.reload("changed " + name, ActivityLog.this, false);
+            //ServiceSinkhole.reload("changed " + name, ActivityLog.this, false);
         }
     }
 
