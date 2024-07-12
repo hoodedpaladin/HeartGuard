@@ -48,7 +48,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "Netguard";
     // HeartGuard change - version 22 adds rules table
-    private static final int DB_VERSION = 23;
+    private static final int DB_VERSION = 24;
 
     private static boolean once = true;
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
@@ -387,6 +387,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 db.execSQL("DROP TABLE access");
                 createTableAccess(db);
                 oldVersion = 23;
+            }
+
+            if (oldVersion < 24) {
+                db.execSQL("INSERT INTO rules (ruletext,create_time,enact_time,enacted,major_category,minor_category) VALUES (\"allow package:com.google.android.gms\",0, 0, 0, " + UniversalRule.MAJOR_CATEGORY_ALLOW + ", 0);");
+                db.execSQL("INSERT INTO rules (ruletext,create_time,enact_time,enacted,major_category,minor_category) VALUES (\"allow package:com.google.android.gcs\",0, 0, 0, " + UniversalRule.MAJOR_CATEGORY_ALLOW + ", 0);");
+                oldVersion = 24;
             }
 
             if (oldVersion == DB_VERSION) {

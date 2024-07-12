@@ -16,21 +16,6 @@
         package="heartguard.heartguard.main"
         roaming="false" />
 
-    <wifi
-        blocked="false"
-        package="com.google.android.gms" />
-    <other
-        blocked="false"
-        package="com.google.android.gms" />
-
-    <wifi
-        blocked="false"
-        package="com.google.android.apps.gcs" />
-    <other
-        blocked="false"
-        package="com.google.android.apps.gcs"
-        roaming="false" />
-
     <relation
         package="com.android.vending"
         related="com.google.android.gms,com.android.providers.downloads" />
