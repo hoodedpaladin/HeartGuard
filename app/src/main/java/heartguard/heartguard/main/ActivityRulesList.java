@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -27,6 +29,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
@@ -36,6 +40,8 @@ import java.util.Random;
 
 public class ActivityRulesList extends AppCompatActivity {
     private static final String TAG = "NetGuard.ActRulesList";
+
+    private static final int REQUEST_LOGFILE = 1;
 
     private ListView lvRulesList;
     private AdapterRulesList adapter;
@@ -173,6 +179,9 @@ public class ActivityRulesList extends AppCompatActivity {
             case R.id.copy_all_to_clipboard:
                 allRulesToClipboard();
                 return true;
+            case R.id.copy_all_to_text:
+                allRulesToText();
+                return true;
             case R.id.enter_expedite_password:
                 launchExpeditePage(this);
                 return true;
@@ -267,7 +276,7 @@ public class ActivityRulesList extends AppCompatActivity {
         dialog.show();
     }
 
-    private void allRulesToClipboard() {
+    private String allRulesToString() {
         int num = 0;
         String message = "";
         try (Cursor cursor = DatabaseHelper.getInstance(this).getAllRulesSorted()) {
@@ -281,9 +290,71 @@ public class ActivityRulesList extends AppCompatActivity {
             }
         }
 
+        return message;
+    }
+
+    private void allRulesToClipboard() {
+        String message = allRulesToString();
         ClipboardManager clipboard = (ClipboardManager) ActivityRulesList.this.getSystemService(Context.CLIPBOARD_SERVICE);
         ClipData clip = ClipData.newPlainText("netguard", message);
         clipboard.setPrimaryClip(clip);
+    }
+
+    private Intent getIntentOutputRules() {
+        Intent intent;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            if (Util.isPackageInstalled("org.openintents.filemanager", this)) {
+                intent = new Intent("org.openintents.action.PICK_DIRECTORY");
+            } else {
+                intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse("https://play.google.com/store/apps/details?id=org.openintents.filemanager"));
+            }
+        } else {
+            intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_TITLE, "heartguard_rules.txt");
+        }
+        return intent;
+    }
+
+    private void allRulesToText() {
+        Intent intent = getIntentOutputRules();
+        if (intent.resolveActivity(getPackageManager()) != null)
+            startActivityForResult(intent, REQUEST_LOGFILE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
+        Log.i(TAG, "onActivityResult request=" + requestCode + " result=" + requestCode + " ok=" + (resultCode == RESULT_OK));
+
+        if (requestCode == REQUEST_LOGFILE) {
+            // Write rules to file
+            if (resultCode == RESULT_OK) {
+                Uri target = data.getData();
+                if (data.hasExtra("org.openintents.extra.DIR_PATH"))
+                    target = Uri.parse(target + "/logcat.txt");
+                Log.i(TAG, "Export URI=" + target);
+                //Util.sendLogcat(target, this);
+                OutputStream out = null;
+                try {
+                    Log.i(TAG, "Writing logcat URI=" + target);
+                    out = getContentResolver().openOutputStream(target);
+                    out.write(allRulesToString().getBytes());
+                } catch (Throwable ex) {
+                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                } finally {
+                    if (out != null)
+                        try {
+                            out.close();
+                        } catch (IOException ignored) {
+                        }
+                }
+            }
+        } else {
+            Log.w(TAG, "Unknown activity result request=" + requestCode);
+            super.onActivityResult(requestCode, resultCode, data);
+        }
     }
 
     // Translate stored ruletext into displayable ruletext

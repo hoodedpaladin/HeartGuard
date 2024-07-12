@@ -366,6 +366,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="rules_list_pref">See all rules...</string>
     <string name="rules_list">Rules List</string>
     <string name="copy_all_to_clipboard">Copy all to clipboard</string>
+    <string name="copy_all_to_text">Write all to text file</string>
     <string name="add_new_rule">Add New Rule</string>
     <string name="rule_text">Rule Text</string>
     <string name="change_manage_system">Are you sure you want to %s manage_system?</string>
