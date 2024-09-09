@@ -1630,15 +1630,19 @@ class IgnoreRule extends RuleWithDelayClassification {
 
 class BlockedDomainRule extends RuleWithDelayClassification {
     private String m_domainName;
+    private boolean m_try;
 
-    BlockedDomainRule(String domainName) {
+    BlockedDomainRule(String domainName, boolean bTry) {
         this.m_domainName = domainName;
+        this.m_try = bTry;
     }
 
     public int getDelayToAdd(Context context, int main_delay) {
         return 0;
     }
     public int getDelayToRemove(Context context, int main_delay) {
+        if (m_try)
+            return 0;
         return main_delay;
     }
 
@@ -1656,12 +1660,38 @@ class BlockedDomainRule extends RuleWithDelayClassification {
 
     public static UniversalRule parseRule(String ruletext)
     {
-        Pattern p = Pattern.compile("blockdomain (\\S*)");
+        Pattern p = Pattern.compile("blockdomain (.+)");
         Matcher m = p.matcher(ruletext);
         if (!m.matches())
             return null;
-        String domainName = m.group(1);
-        return new UniversalRule(new BlockedDomainRule(domainName), ruletext);
+        String[] params = m.group(1).trim().split("\\s+");
+        String domainName = null;
+        boolean bTry = false;
+
+        for (String param : params)
+        {
+            if (param.equals("try"))
+            {
+                bTry = true;
+            }
+            else
+            {
+                if (domainName != null)
+                {
+                    return null;
+                }
+                else
+                {
+                    domainName = param;
+                }
+            }
+        }
+
+        if ((domainName == null ) || (domainName == ""))
+        {
+            return null;
+        }
+        return new UniversalRule(new BlockedDomainRule(domainName, bTry), ruletext);
     }
 
     public Set<String> getActionsAfterAdd(Context context) {
