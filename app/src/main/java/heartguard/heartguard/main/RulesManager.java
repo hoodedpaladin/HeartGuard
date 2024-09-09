@@ -659,6 +659,8 @@ public class RulesManager {
     public void queueRuleText(Context context, String ruletext) {
         lock.writeLock().lock();
 
+        ruletext = ruletext.replaceAll("\\s+", " ");
+        ruletext = ruletext.trim();
         // Add to the commit waiting list
         try {
             m_rulesToCommit.add(ruletext);
