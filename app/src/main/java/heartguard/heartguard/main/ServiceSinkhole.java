@@ -1658,61 +1658,16 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     }
 
     private void prepareHostsBlocked() {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-        boolean use_hosts = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this) && prefs.getBoolean(Rule.PREFERENCE_STRING_USE_HOSTS, false);
-        File hosts = new File(getFilesDir(), "hosts.txt");
-        if (!use_hosts || !hosts.exists() || !hosts.canRead()) {
-            Log.i(TAG, "Hosts file use=" + use_hosts + " exists=" + hosts.exists());
-            lock.writeLock().lock();
-            mapHostsBlocked.clear();
-            lock.writeLock().unlock();
-            return;
-        }
-
-        boolean changed = (hosts.lastModified() != last_hosts_modified);
-        if (!changed && mapHostsBlocked.size() > 0) {
-            Log.i(TAG, "Hosts file unchanged");
-            return;
-        }
-        last_hosts_modified = hosts.lastModified();
-
         lock.writeLock().lock();
-
-        mapHostsBlocked.clear();
-
-        int count = 0;
-        BufferedReader br = null;
         try {
-            br = new BufferedReader(new FileReader(hosts));
-            String line;
-            while ((line = br.readLine()) != null) {
-                int hash = line.indexOf('#');
-                if (hash >= 0)
-                    line = line.substring(0, hash);
-                line = line.trim();
-                if (line.length() > 0) {
-                    String[] words = line.split("\\s+");
-                    if (words.length == 2) {
-                        count++;
-                        mapHostsBlocked.put(words[1], true);
-                    } else
-                        Log.i(TAG, "Invalid hosts file line: " + line);
-                }
+            mapHostsBlocked.clear();
+            RulesManager rm = RulesManager.getInstance(this);
+            for (String domain : rm.getBlockedDomains()) {
+                mapHostsBlocked.put(domain, true);
             }
-            mapHostsBlocked.put("test.netguard.me", true);
-            Log.i(TAG, count + " hosts read");
-        } catch (IOException ex) {
-            Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
         } finally {
-            if (br != null)
-                try {
-                    br.close();
-                } catch (IOException exex) {
-                    Log.e(TAG, exex.toString() + "\n" + Log.getStackTraceString(exex));
-                }
+            lock.writeLock().unlock();
         }
-
-        lock.writeLock().unlock();
     }
 
     private void prepareUidIPFilters(String dname) {
@@ -2049,10 +2004,21 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     // Called from native code
     private boolean isDomainBlocked(String name) {
+        boolean found = false;
+        boolean blocked = false;
         lock.readLock().lock();
-        boolean blocked = (mapHostsBlocked.containsKey(name) && mapHostsBlocked.get(name));
+        if (mapHostsBlocked.containsKey(name)) {
+            found = true;
+            blocked = mapHostsBlocked.get(name);
+        }
+        //boolean blocked = (mapHostsBlocked.containsKey(name) && mapHostsBlocked.get(name));
         lock.readLock().unlock();
-        return blocked;
+        if (found)
+            return blocked;
+        if (name.contains(".")) {
+            return isDomainBlocked(name.substring(name.indexOf(".") + 1));
+        }
+        return false;
     }
 
     // Called from native code

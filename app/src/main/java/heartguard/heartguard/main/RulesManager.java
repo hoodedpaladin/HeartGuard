@@ -66,6 +66,7 @@ public class RulesManager {
     private Map<Integer, Boolean> m_allowedUids;
     private Map<String, Boolean> m_ignoredApps;
     private List<IgnoreRule> m_specificIgnoreRules;
+    private List<String> m_blockedDomains;
 
     private TrueTime m_trueTime;
     private final boolean useTrueTime = false;
@@ -469,10 +470,17 @@ public class RulesManager {
                 }
 
                 boolean reload = false;
+                boolean clear_dns = false;
                 List<Integer> uids_to_reload = new LinkedList<>();
 
                 for (String action : actions) {
                     if (action == "reload") {
+                        reload = true;
+                        continue;
+                    }
+
+                    if (action == "clear_dns") {
+                        clear_dns = true;
                         reload = true;
                         continue;
                     }
@@ -490,6 +498,9 @@ public class RulesManager {
                     break;
                 }
 
+                if (clear_dns) {
+                    DatabaseHelper.getInstance(context).clearDns();
+                }
                 // Just reload the service if we have to reload or if there are a lot of UIDs to reload
                 if (reload || (uids_to_reload.size() > 4)) {
                     // Now, reload the ServiceSinkhole
@@ -805,6 +816,7 @@ public class RulesManager {
         Map<Integer, Boolean> newAllowedUids = new HashMap<>();
         Map<String, Boolean> newIgnoredApps = new HashMap<>();
         List<IgnoreRule> newSpecificIgnoreRules = new LinkedList<>();
+        List<String> newBlockedDomains = new ArrayList<>();
 
         for (UniversalRule rule : m_allCurrentRules) {
             if (rule.type == DelayRule.class) {
@@ -854,6 +866,9 @@ public class RulesManager {
                 } else {
                     newSpecificIgnoreRules.add(ignore);
                 }
+            } else if (rule.type == BlockedDomainRule.class) {
+                BlockedDomainRule blockedDomainRule = (BlockedDomainRule)rule.rule;
+                newBlockedDomains.add(blockedDomainRule.getDomainName());
             }
         }
 
@@ -884,6 +899,7 @@ public class RulesManager {
         m_allowedUids = newAllowedUids;
         m_ignoredApps = newIgnoredApps;
         m_specificIgnoreRules = newSpecificIgnoreRules;
+        m_blockedDomains = newBlockedDomains;
 
         // Make sure to turn the logging toggle switch off if you're not allow to reach it
         if (!getPreferenceAllowLogging(context)) {
@@ -1112,6 +1128,11 @@ public class RulesManager {
             return false;
         }
         return true;
+    }
+
+    public List<String> getBlockedDomains()
+    {
+        return m_blockedDomains;
     }
 }
 
@@ -1605,6 +1626,54 @@ class IgnoreRule extends RuleWithDelayClassification {
     }
 }
 
+class BlockedDomainRule extends RuleWithDelayClassification {
+    private String m_domainName;
+
+    BlockedDomainRule(String domainName) {
+        this.m_domainName = domainName;
+    }
+
+    public int getDelayToAdd(Context context, int main_delay) {
+        return 0;
+    }
+    public int getDelayToRemove(Context context, int main_delay) {
+        return main_delay;
+    }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_BLOCK;
+    }
+
+    public int getMinorCategory() {
+        return 0;
+    }
+
+    public String getDomainName() {
+        return m_domainName;
+    }
+
+    public static UniversalRule parseRule(String ruletext)
+    {
+        Pattern p = Pattern.compile("blockdomain (\\S*)");
+        Matcher m = p.matcher(ruletext);
+        if (!m.matches())
+            return null;
+        String domainName = m.group(1);
+        return new UniversalRule(new BlockedDomainRule(domainName), ruletext);
+    }
+
+    public Set<String> getActionsAfterAdd(Context context) {
+
+        Set<String> results = new HashSet<>();
+        results.add("reload");
+        results.add("clear_dns");
+        return results;
+    }
+    public Set<String> getActionsAfterRemove(Context context) {
+        return getActionsAfterAdd(context);
+    }
+}
+
 class UniversalRule {
     private static final String TAG = "NetGuard.UniversalRule";
 
@@ -1612,6 +1681,7 @@ class UniversalRule {
     public static final int MAJOR_CATEGORY_FEATURE = 200;
     public static final int MAJOR_CATEGORY_PARTNER = 300;
     public static final int MAJOR_CATEGORY_ALLOW = 400;
+    public static final int MAJOR_CATEGORY_BLOCK = 450;
     public static final int MAJOR_CATEGORY_IGNORE = 500;
 
     public RuleWithDelayClassification rule;
@@ -1638,6 +1708,8 @@ class UniversalRule {
             type = AllowedUidRule.class;
         } else if (rule instanceof IgnoreRule) {
             type = IgnoreRule.class;
+        } else if (rule instanceof BlockedDomainRule) {
+            type = BlockedDomainRule.class;
         }
 
         if (type == null)
@@ -1666,6 +1738,8 @@ class UniversalRule {
             therule = PartnerRule.parseRule(ruletext);
         } else if (category.equals("ignore")) {
             therule = IgnoreRule.parseRule(ruletext);
+        } else if (category.equals("blockdomain")) {
+            therule = BlockedDomainRule.parseRule(ruletext);
         }
 
         if (therule == null) {
