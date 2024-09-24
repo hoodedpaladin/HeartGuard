@@ -1118,7 +1118,17 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                         // The package name can be empty, but the daddr can't (if they want to allow a whole package, they click on the app wifi logo)
 
                         String ruletext;
-                        if (!newdaddr.matches("\\S+") || !newpackagename.matches("\\S+")) {
+                        boolean bWhitespace = false;
+                        if ((newdaddr.length() > 0) && (!newdaddr.matches("\\S+")))
+                        {
+                            bWhitespace = true;
+                        }
+                        if ((newpackagename.length() > 0) && (!newpackagename.matches("\\S+")))
+                        {
+                            bWhitespace = true;
+                        }
+                        if (bWhitespace)
+                        {
                             Log.w(TAG, "Contains whitespace");
                             dialog.dismiss();
                             return;
