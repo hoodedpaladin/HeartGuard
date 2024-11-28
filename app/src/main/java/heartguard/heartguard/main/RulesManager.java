@@ -67,6 +67,7 @@ public class RulesManager {
     private Map<String, Boolean> m_ignoredApps;
     private List<IgnoreRule> m_specificIgnoreRules;
     private List<String> m_blockedDomains;
+    private List<String> m_dnses;
 
     private TrueTime m_trueTime;
     private final boolean useTrueTime = false;
@@ -581,6 +582,23 @@ public class RulesManager {
                 }
             }
         }
+        if (rule.type == DNSRule.class) {
+            try (Cursor cursor = dh.getEnactedRules()) {
+                int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+                int col_id = cursor.getColumnIndexOrThrow("_id");
+
+                while (cursor.moveToNext()) {
+                    Long otherid = cursor.getLong(col_id);
+
+                    if (otherid != id) {
+                        String otherruletext = cursor.getString(col_ruletext);
+                        if (otherruletext.matches("dns .+")) {
+                            dh.removeRulesById(new Long[]{otherid});
+                        }
+                    }
+                }
+            }
+        }
 
         return true;
     }
@@ -819,6 +837,7 @@ public class RulesManager {
         Map<String, Boolean> newIgnoredApps = new HashMap<>();
         List<IgnoreRule> newSpecificIgnoreRules = new LinkedList<>();
         List<String> newBlockedDomains = new ArrayList<>();
+        List<String> newDNSes = new ArrayList<>();
 
         for (UniversalRule rule : m_allCurrentRules) {
             if (rule.type == DelayRule.class) {
@@ -871,7 +890,13 @@ public class RulesManager {
             } else if (rule.type == BlockedDomainRule.class) {
                 BlockedDomainRule blockedDomainRule = (BlockedDomainRule)rule.rule;
                 newBlockedDomains.add(blockedDomainRule.getDomainName());
+            } else if (rule.type == DNSRule.class) {
+                DNSRule dnsrule = (DNSRule)rule.rule;
+                for (String name : dnsrule.getDomains()) {
+                    newDNSes.add(name);
+                }
             }
+
         }
 
         if (m_delay != newDelay) {
@@ -902,6 +927,7 @@ public class RulesManager {
         m_ignoredApps = newIgnoredApps;
         m_specificIgnoreRules = newSpecificIgnoreRules;
         m_blockedDomains = newBlockedDomains;
+        m_dnses = newDNSes;
 
         // Make sure to turn the logging toggle switch off if you're not allow to reach it
         if (!getPreferenceAllowLogging(context)) {
@@ -1135,6 +1161,11 @@ public class RulesManager {
     public List<String> getBlockedDomains()
     {
         return m_blockedDomains;
+    }
+
+    public List<String> getDNSs()
+    {
+        return m_dnses;
     }
 }
 
@@ -1706,11 +1737,61 @@ class BlockedDomainRule extends RuleWithDelayClassification {
     }
 }
 
+class DNSRule extends RuleWithDelayClassification {
+    private List<String> m_dnses;
+
+    DNSRule(String dns1, String dns2) {
+        m_dnses = new ArrayList<>();
+        m_dnses.add(dns1);
+        m_dnses.add(dns2);
+    }
+
+    public int getDelayToAdd(Context context, int main_delay) {
+        return main_delay;
+    }
+    public int getDelayToRemove(Context context, int main_delay) {
+        return main_delay;
+    }
+
+    public int getMajorCategory() {
+        return UniversalRule.MAJOR_CATEGORY_DNS;
+    }
+
+    public int getMinorCategory() {
+        return 0;
+    }
+
+    public static UniversalRule parseRule(String ruletext)
+    {
+        Pattern p = Pattern.compile("dns (\\S+) (\\S+)");
+        Matcher m = p.matcher(ruletext);
+        if (!m.matches())
+            return null;
+        return new UniversalRule(new DNSRule(m.group(1), m.group(2)), ruletext);
+    }
+
+    public Set<String> getActionsAfterAdd(Context context) {
+
+        Set<String> results = new HashSet<>();
+        results.add("reload");
+        results.add("clear_dns");
+        return results;
+    }
+    public Set<String> getActionsAfterRemove(Context context) {
+        return getActionsAfterAdd(context);
+    }
+
+    public List<String> getDomains() {
+        return m_dnses;
+    }
+}
+
 class UniversalRule {
     private static final String TAG = "NetGuard.UniversalRule";
 
     public static final int MAJOR_CATEGORY_DELAY = 100;
     public static final int MAJOR_CATEGORY_FEATURE = 200;
+    public static final int MAJOR_CATEGORY_DNS = 250;
     public static final int MAJOR_CATEGORY_PARTNER = 300;
     public static final int MAJOR_CATEGORY_ALLOW = 400;
     public static final int MAJOR_CATEGORY_BLOCK = 450;
@@ -1742,6 +1823,8 @@ class UniversalRule {
             type = IgnoreRule.class;
         } else if (rule instanceof BlockedDomainRule) {
             type = BlockedDomainRule.class;
+        } else if (rule instanceof DNSRule) {
+            type = DNSRule.class;
         }
 
         if (type == null)
@@ -1772,6 +1855,8 @@ class UniversalRule {
             therule = IgnoreRule.parseRule(ruletext);
         } else if (category.equals("blockdomain")) {
             therule = BlockedDomainRule.parseRule(ruletext);
+        } else if (category.equals("dns")) {
+            therule = DNSRule.parseRule(ruletext);
         }
 
         if (therule == null) {

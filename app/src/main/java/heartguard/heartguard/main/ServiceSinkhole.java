@@ -1185,11 +1185,21 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         List<String> sysDns = Util.getDefaultDNS(context);
 
         // Get custom DNS servers
+        RulesManager rm = RulesManager.getInstance(context);
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         boolean ip6 = prefs.getBoolean("ip6", true);
-        boolean filter = RulesManager.getInstance(context).getPreferenceFilter(context);
+        boolean filter = rm.getPreferenceFilter(context);
+        List<String> dnses = rm.getDNSs();
         String vpnDns1 = prefs.getString("dns", null);
         String vpnDns2 = prefs.getString("dns2", null);
+        if (dnses.size() >= 1)
+        {
+            vpnDns1 = dnses.get(0);
+        }
+        if (dnses.size() >= 2)
+        {
+            vpnDns2 = dnses.get(1);
+        }
         Log.i(TAG, "DNS system=" + TextUtils.join(",", sysDns) + " config=" + vpnDns1 + "," + vpnDns2);
 
         if (vpnDns1 != null)
