@@ -843,6 +843,8 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         switch (item.getItemId()) {
             // HeartGuard change - option to show rules list window
             case R.id.menu_show_rules_list:
+                // Updating the rules at this time, in case the alarm hasn't gone off
+                RulesManager.getInstance(this).startTrueTimeRequest(this);
                 startActivity(new Intent(this, ActivityRulesList.class));
                 return true;
 
