@@ -390,8 +390,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             }
 
             if (oldVersion < 24) {
-                db.execSQL("INSERT INTO rules (ruletext,create_time,enact_time,enacted,major_category,minor_category) VALUES (\"allow package:com.google.android.gms\",0, 0, 0, " + UniversalRule.MAJOR_CATEGORY_ALLOW + ", 0);");
-                db.execSQL("INSERT INTO rules (ruletext,create_time,enact_time,enacted,major_category,minor_category) VALUES (\"allow package:com.google.android.gcs\",0, 0, 0, " + UniversalRule.MAJOR_CATEGORY_ALLOW + ", 0);");
+                db.execSQL("INSERT INTO rules (ruletext,create_time,enact_time,enacted,major_category,minor_category) VALUES (\"allow package:com.google.android.gms\",0, 0, 0, " + MyRule.MAJOR_CATEGORY_ALLOW + ", 0);");
+                db.execSQL("INSERT INTO rules (ruletext,create_time,enact_time,enacted,major_category,minor_category) VALUES (\"allow package:com.google.android.gcs\",0, 0, 0, " + MyRule.MAJOR_CATEGORY_ALLOW + ", 0);");
                 oldVersion = 24;
             }
 
@@ -1402,6 +1402,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    public Map<Long, String> getEnactedRulesMap() {
+        Map<Long, String> enacted_rules = new HashMap<>();
+
+        try (Cursor cursor = dh.getEnactedRules()) {
+            int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+            int col_id = cursor.getColumnIndexOrThrow("_id");
+
+            while (cursor.moveToNext()) {
+                enacted_rules.put(cursor.getLong(col_id), cursor.getString(col_ruletext));
+            }
+        }
+
+        return enacted_rules;
     }
 
     // HeartGuard change - get cursor of pending rules

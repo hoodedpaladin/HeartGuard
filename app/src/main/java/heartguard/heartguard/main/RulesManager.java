@@ -55,19 +55,16 @@ public class RulesManager {
     // Members that contain the current state of rules
     // m_allCurrentRules being the master list, and the rest of these should
     // always be updated based on its contents
-    private List<UniversalRule> m_allCurrentRules = new ArrayList<UniversalRule>();
-    private boolean m_enabled = true;
-    private boolean m_capture_all_traffic = false;
+    private List<MyRule> m_allCurrentRules = new ArrayList<>();
     private int m_delay = 0;
     private Map<String, Boolean> m_allowedPackages;
-    private boolean m_manage_system = false;
-    private boolean m_allow_logging = false;
     private Map<String, Integer> m_packageDelays;
     private Map<Integer, Boolean> m_allowedUids;
     private Map<String, Boolean> m_ignoredApps;
     private List<IgnoreRule> m_specificIgnoreRules;
     private List<String> m_blockedDomains;
     private List<String> m_dnses;
+    private Map<String, FeatureRule> m_featureRules = new HashMap<>();
 
     private TrueTime m_trueTime;
     private final boolean useTrueTime = false;
@@ -135,7 +132,7 @@ public class RulesManager {
     }
 
     // Somewhat general function to parse an allow rule into a bundle of all phrases
-    public static Bundle parseAllowTextToBundle(Context context, String text) {
+    public static Bundle parseAllowTextToBundle(String text) {
         Bundle data_bundle = new Bundle();
 
         Pattern p = Pattern.compile("allow (.*)");
@@ -202,8 +199,8 @@ public class RulesManager {
     // Returns a RuleAndUid for whitelist rules
     // (Only applies to a rule which allows a hostname/IP and optionally a package name.
     // Does not apply to rules which enable a package unconditionally.)
-    public static RuleAndPackage parseTextToWhitelistRule(Context context, String text) {
-        Bundle data_bundle = parseAllowTextToBundle(context, text);
+    public static RuleAndPackage parseTextToWhitelistRule(Context context, String ruletext) {
+        Bundle data_bundle = parseAllowTextToBundle(ruletext);
 
         if (data_bundle == null)
             return null;
@@ -225,58 +222,62 @@ public class RulesManager {
             directip = data_bundle.getBoolean("directip");
         }
 
+        RuleForApp apprule = null;
+
         if (data_bundle.containsKey("host"))
         {
             if (directip) {
-                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                Log.e(TAG, "Rule string " + ruletext + " has invalid combination of types");
                 return null;
             }
             if (data_bundle.containsKey("ip")) {
-                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                Log.e(TAG, "Rule string " + ruletext + " has invalid combination of types");
                 return null;
             }
 
-            return new RuleAndPackage(context, new DomainRule(text, data_bundle.getString("host"), 1), sticky, packagename);
+            apprule = new DomainRule(ruletext, data_bundle.getString("host"), 1);
         }
-
-        if (data_bundle.containsKey("ip"))
+        else if (data_bundle.containsKey("ip"))
         {
             if (directip) {
-                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                Log.e(TAG, "Rule string " + ruletext + " has invalid combination of types");
                 return null;
             }
             if (data_bundle.containsKey("host")) {
-                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                Log.e(TAG, "Rule string " + ruletext + " has invalid combination of types");
                 return null;
             }
-            return new RuleAndPackage(context, new IPRule(text, data_bundle.getString("ip"), 1), sticky, packagename);
+            apprule = new IPRule(ruletext, data_bundle.getString("ip"), 1);
         }
-
-        if (directip) {
+        else if (directip) {
             if (data_bundle.containsKey("ip")) {
-                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                Log.e(TAG, "Rule string " + ruletext + " has invalid combination of types");
                 return null;
             }
             if (data_bundle.containsKey("host")) {
-                Log.e(TAG, "Rule string " + text + " has invalid combination of types");
+                Log.e(TAG, "Rule string " + ruletext + " has invalid combination of types");
                 return null;
             }
 
-            return new RuleAndPackage(context, new DirectIPRule(text), sticky, packagename);
+            apprule = new DirectIPRule(ruletext);
         }
 
-        // No rule found
-        return null;
+        if (apprule == null)
+            return null;
+        return new RuleAndPackage(ruletext, context, apprule, sticky, packagename);
     }
 
     // Give a copy of the current whitelist rules
     public List<RuleAndPackage> getCurrentRules(Context context) {
+        if (hasFeatureRule(FeatureRule.FEATURE_NAME_LOCKDOWN)) {
+            return Collections.EMPTY_LIST;
+        }
         lock.readLock().lock();
         List<RuleAndPackage> results = new ArrayList<>();
 
-        for (UniversalRule rule : m_allCurrentRules) {
-            if (rule.type == RuleAndPackage.class) {
-                results.add((RuleAndPackage)rule.rule);
+        for (MyRule rule : m_allCurrentRules) {
+            if (rule instanceof RuleAndPackage) {
+                results.add((RuleAndPackage)rule);
             }
         }
         lock.readLock().unlock();
@@ -289,7 +290,7 @@ public class RulesManager {
     }
 
     public boolean getPreferenceEnabled(Context context) {
-        return m_enabled;
+        return hasFeatureRule(FeatureRule.FEATURE_NAME_ENABLED);
     }
 
     public boolean getPreferenceLogApp(Context context) {
@@ -345,9 +346,9 @@ public class RulesManager {
     // When capture_all_traffic is disabled, "Block connections without VPN" should NOT be turned on,
     // otherwise whitelisted apps will not work.
     public boolean getPreferenceCaptureAllTraffic(Context context) {
-        return m_capture_all_traffic;
+        return hasFeatureRule(FeatureRule.FEATURE_NAME_CAPTURE_ALL_TRAFFIC);
     }
-    public boolean getPreferenceAllowLogging(Context context) { return m_allow_logging;}
+    public boolean getPreferenceAllowLogging(Context context) { return hasFeatureRule(FeatureRule.FEATURE_NAME_ALLOW_LOGGING);}
 
     public boolean getPreferenceNotifyApp(Context context, String packageName)
     {
@@ -359,6 +360,9 @@ public class RulesManager {
     // Note: by NetGuard terminology, this boolean value is wifiBlocked, not wifiEnabled
     // False = package is whitelisted!
     public boolean getWifiEnabledForApp(Context context, String packagename, int uid, boolean defaultVal) {
+        if (hasFeatureRule(FeatureRule.FEATURE_NAME_LOCKDOWN)) {
+            return true;
+        }
         if (m_allowedUids.containsKey(uid)) {
             return m_allowedUids.get(uid);
         }
@@ -381,7 +385,7 @@ public class RulesManager {
     }
 
     public boolean getPreferenceManageSystem(Context context) {
-        return m_manage_system;
+        return getFeatureRule(FeatureRule.FEATURE_NAME_MANAGE_SYSTEM) != null;
     }
 
     private void setAlarmForTime(Context context, long time) {
@@ -525,11 +529,11 @@ public class RulesManager {
     private Set<String> postAddActionsForRuletext(Context context, String ruletext) {
         if (ruletext.matches("- .*")) {
             String neg_ruletext = ruletext.substring(2);
-            UniversalRule rule = UniversalRule.getRuleFromText(context, neg_ruletext);
-            return rule.rule.getActionsAfterRemove(context);
+            MyRule rule = MyRule.getRuleFromText(context, neg_ruletext);
+            return rule.getActionsAfterRemove(context);
         } else {
-            UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
-            return rule.rule.getActionsAfterAdd(context);
+            MyRule rule = MyRule.getRuleFromText(context, ruletext);
+            return rule.getActionsAfterAdd(context);
         }
     }
 
@@ -553,51 +557,20 @@ public class RulesManager {
             lock.writeLock().unlock();
         }
 
-        UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
+        MyRule rule = MyRule.getRuleFromText(context, ruletext);
         if (rule == null) {
             Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't make a rule");
             return false;
         }
 
-        if (rule.type == DelayRule.class) {
-            try (Cursor cursor = dh.getEnactedRules()) {
-                DelayRule delayRule = (DelayRule) rule.rule;
-
-                int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-                int col_id = cursor.getColumnIndexOrThrow("_id");
-
-                while (cursor.moveToNext()) {
-                    Long otherid = cursor.getLong(col_id);
-
-                    if (otherid != id) {
-                        String otherruletext = cursor.getString(col_ruletext);
-                        if (otherruletext.matches("delay .+")) {
-                            DelayRule otherRule = (DelayRule) (DelayRule.parseRule(otherruletext).rule);
-                            if (delayRule.sameAs(otherRule)) {
-                                Log.w(TAG, String.format("Removing rule %d because it's also a delay rule", otherid));
-                                dh.removeRulesById(new Long[]{otherid});
-                            }
-                        }
-                    }
-                }
+        Map<Long, String> rulesToRemove = rule.getRulesToRemoveAfterAdd(context);
+        if (rulesToRemove.size() > 0){
+            List<Long> idsToRemove = new ArrayList<>();
+            for (Long removalId : rulesToRemove.keySet()) {
+                Log.i(TAG, "Remove rule " + removalId + ": \"" + rulesToRemove.get(removalId) + "\"");
+                idsToRemove.add(removalId);
             }
-        }
-        if (rule.type == DNSRule.class) {
-            try (Cursor cursor = dh.getEnactedRules()) {
-                int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
-                int col_id = cursor.getColumnIndexOrThrow("_id");
-
-                while (cursor.moveToNext()) {
-                    Long otherid = cursor.getLong(col_id);
-
-                    if (otherid != id) {
-                        String otherruletext = cursor.getString(col_ruletext);
-                        if (otherruletext.matches("dns .+")) {
-                            dh.removeRulesById(new Long[]{otherid});
-                        }
-                    }
-                }
-            }
+            dh.removeRulesById(idsToRemove.toArray(new Long[0]));
         }
 
         return true;
@@ -739,12 +712,12 @@ public class RulesManager {
                     return;
                 }
             }
-            UniversalRule ruleToDelete = UniversalRule.getRuleFromText(context, ruletext_to_remove);
+            MyRule ruleToDelete = MyRule.getRuleFromText(context, ruletext_to_remove);
             if (ruleToDelete == null) {
                 Log.e(TAG, "Rule to delete, \"" + ruletext_to_remove + "\" isn't a rule?? Guess we can delete it instantly");
                 delay = 0;
             } else {
-                delay = ruleToDelete.rule.getDelayToRemove(context, m_delay);
+                delay = ruleToDelete.getDelayToRemove(context, m_delay);
             }
 
             // Category numbers don't matter for this
@@ -757,16 +730,16 @@ public class RulesManager {
             major_category = 0;
             minor_category = 0;
         }else {
-            // Parse to UniversalRule to get stats on it
-            UniversalRule newrule = UniversalRule.getRuleFromText(context, ruletext);
+            // Parse to a rule to get stats on it
+            MyRule newrule = MyRule.getRuleFromText(context, ruletext);
 
             if (newrule == null) {
                 Log.e(TAG, "Tried to queue rule \"" + ruletext + "\" but it isn't a rule");
                 return;
             }
 
-            if (newrule.type == DelayRule.class) {
-                if ( ((DelayRule)newrule.rule).getDelay() > MAX_DELAY) {
+            if (newrule instanceof DelayRule) {
+                if ( ((DelayRule)newrule).getDelay() > MAX_DELAY) {
                     Log.e(TAG, "Max delay is " + MAX_DELAY);
                     String message = context.getString(R.string.maximum_delay, MAX_DELAY);
                     Toast.makeText(context, message, Toast.LENGTH_LONG).show();
@@ -775,7 +748,7 @@ public class RulesManager {
             }
 
             // Choose delay based on stats
-            delay = newrule.rule.getDelayToAdd(context, m_delay);
+            delay = newrule.getDelayToAdd(context, m_delay);
 
             major_category = newrule.getMajorCategory();
             minor_category = newrule.getMinorCategory();
@@ -804,10 +777,10 @@ public class RulesManager {
             int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
 
             // Read all rules from DB into list
-            List<UniversalRule> allrules = new ArrayList<UniversalRule>();
+            List<MyRule> allrules = new ArrayList<>();
             while (cursor.moveToNext()) {
                 String ruletext = cursor.getString(col_ruletext);
-                UniversalRule rule = UniversalRule.getRuleFromText(context, ruletext);
+                MyRule rule = MyRule.getRuleFromText(context, ruletext);
                 if (rule == null) {
                     Log.e(TAG, "Rule \"" + ruletext + "\" isn't a rule");
                 } else {
@@ -827,10 +800,6 @@ public class RulesManager {
     private void updateFieldsFromCurrentRules(Context context) {
         // If there are no delay rules, delay will be 0
         int newDelay = 0;
-        boolean newEnabled = false;
-        boolean newManageSystem = false;
-        boolean newCaptureAllTraffic = false;
-        boolean newAllowLogging = false;
         Map<String, Boolean> newAllowedPackages = new HashMap<>();
         Map<String, Integer> newPackageDelays = new HashMap<>();
         Map<Integer, Boolean> newAllowedUids = new HashMap<>();
@@ -838,16 +807,17 @@ public class RulesManager {
         List<IgnoreRule> newSpecificIgnoreRules = new LinkedList<>();
         List<String> newBlockedDomains = new ArrayList<>();
         List<String> newDNSes = new ArrayList<>();
+        Map<String, FeatureRule> newFeatureRules = new HashMap<>();
 
-        for (UniversalRule rule : m_allCurrentRules) {
-            if (rule.type == DelayRule.class) {
-                DelayRule delayRule = (DelayRule)rule.rule;
+        for (MyRule rule : m_allCurrentRules) {
+            if (rule instanceof DelayRule) {
+                DelayRule delayRule = (DelayRule)rule;
                 String packageName = delayRule.getPackageName();
                 int delay = delayRule.getDelay();
 
                 if (packageName == null) {
                     // Global delay rule
-                    newDelay = max(newDelay, ((DelayRule)rule.rule).getDelay());
+                    newDelay = max(newDelay, ((DelayRule)rule).getDelay());
                 } else {
                     // Package-specific delay rule
                     if (!newPackageDelays.containsKey(packageName)) {
@@ -856,42 +826,32 @@ public class RulesManager {
                         newPackageDelays.put(packageName, max(delay, newPackageDelays.get(packageName)));
                     }
                 }
-            } else if (rule.type == FeatureRule.class) {
-                String featureName = ((FeatureRule)rule.rule).getFeatureName();
+            } else if (rule instanceof FeatureRule) {
+                FeatureRule featureRule = (FeatureRule)rule;
 
-                if ("enabled".equals(featureName)) {
-                    newEnabled = true;
-                }
-                if ("manage_system".equals(featureName)) {
-                    newManageSystem = true;
-                }
-                if ("capture_all_traffic".equals(featureName)) {
-                    newCaptureAllTraffic = true;
-                }
-                if ("allow_logging".equals(featureName)) {
-                    newAllowLogging = true;
-                }
-            } else if (rule.type == AllowedPackageRule.class) {
-                String packageName = ((AllowedPackageRule)rule.rule).getPackageName();
+                String featureName = ((FeatureRule)rule).getFeatureName();
+                newFeatureRules.put(featureName, featureRule);
+            } else if (rule instanceof AllowedPackageRule) {
+                String packageName = ((AllowedPackageRule)rule).getPackageName();
 
                 // False = not filtered i.e. allowed
                 newAllowedPackages.put(packageName, false);
-            } else if (rule.type == AllowedUidRule.class) {
-                int uid = ((AllowedUidRule)rule.rule).getUid();
+            } else if (rule instanceof AllowedUidRule) {
+                int uid = ((AllowedUidRule)rule).getUid();
 
                 newAllowedUids.put(uid, false);
-            } else if (rule.type == IgnoreRule.class) {
-                IgnoreRule ignore = (IgnoreRule)rule.rule;
+            } else if (rule instanceof IgnoreRule) {
+                IgnoreRule ignore = (IgnoreRule)rule;
                 if ((ignore.getPackageName() != null) && (ignore.getHostName() == null)) {
                     newIgnoredApps.put(ignore.getPackageName(), true);
                 } else {
                     newSpecificIgnoreRules.add(ignore);
                 }
-            } else if (rule.type == BlockedDomainRule.class) {
-                BlockedDomainRule blockedDomainRule = (BlockedDomainRule)rule.rule;
+            } else if (rule instanceof BlockedDomainRule) {
+                BlockedDomainRule blockedDomainRule = (BlockedDomainRule)rule;
                 newBlockedDomains.add(blockedDomainRule.getDomainName());
-            } else if (rule.type == DNSRule.class) {
-                DNSRule dnsrule = (DNSRule)rule.rule;
+            } else if (rule instanceof DNSRule) {
+                DNSRule dnsrule = (DNSRule)rule;
                 for (String name : dnsrule.getDomains()) {
                     newDNSes.add(name);
                 }
@@ -903,24 +863,15 @@ public class RulesManager {
             Log.w(TAG, "Delay changed from " + Integer.toString(m_delay) + " to " + Integer.toString(newDelay));
             m_delay = newDelay;
         }
-        if (m_enabled != newEnabled) {
-            Log.w(TAG, "Enabled changed from " + Boolean.toString(m_enabled) + " to " + Boolean.toString(newEnabled));
-            m_enabled = newEnabled;
-        }
-        if (m_manage_system != newManageSystem) {
-            Log.w(TAG, "Manage_system changed from " + Boolean.toString(m_manage_system) + " to " + Boolean.toString(newManageSystem));
-            m_manage_system = newManageSystem;
 
-            updateManageSystem(context);
+        for (String featureName : FeatureRule.FEATURE_NAMES) {
+            boolean currently_enabled = getFeatureRule(featureName) != null;
+            boolean newEnabled = newFeatureRules.containsKey(featureName);
+            if (currently_enabled != newEnabled) {
+                Log.w(TAG, featureName + " changed from " + Boolean.toString(currently_enabled) + " to " + Boolean.toString(newEnabled));
+            }
         }
-        if (m_capture_all_traffic != newCaptureAllTraffic) {
-            Log.w(TAG, "Capture_all_traffic changed from " + Boolean.toString(m_capture_all_traffic) + " to " + Boolean.toString(newCaptureAllTraffic));
-            m_capture_all_traffic = newCaptureAllTraffic;
-        }
-        if (m_allow_logging != newAllowLogging) {
-            Log.w(TAG, "Allow Logging changed from " + Boolean.toString(m_allow_logging) + " to " + Boolean.toString(newAllowLogging));
-            m_allow_logging = newAllowLogging;
-        }
+
         m_allowedPackages = newAllowedPackages;
         m_packageDelays = newPackageDelays;
         m_allowedUids = newAllowedUids;
@@ -928,6 +879,7 @@ public class RulesManager {
         m_specificIgnoreRules = newSpecificIgnoreRules;
         m_blockedDomains = newBlockedDomains;
         m_dnses = newDNSes;
+        m_featureRules = newFeatureRules;
 
         // Make sure to turn the logging toggle switch off if you're not allow to reach it
         if (!getPreferenceAllowLogging(context)) {
@@ -968,13 +920,13 @@ public class RulesManager {
         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
 
         // Set the internal setting the same
-        if (prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false) != m_manage_system) {
-            Log.w(TAG, "Had to update the preference system to set manage_system = " + Boolean.toString(m_manage_system));
-            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, m_manage_system).apply();
+        if (prefs.getBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, false) != hasFeatureRule(FeatureRule.FEATURE_NAME_MANAGE_SYSTEM)) {
+            Log.w(TAG, "Had to update the preference system to set manage_system = " + Boolean.toString(hasFeatureRule(FeatureRule.FEATURE_NAME_MANAGE_SYSTEM)));
+            prefs.edit().putBoolean(Rule.PREFERENCE_STRING_MANAGE_SYSTEM, hasFeatureRule(FeatureRule.FEATURE_NAME_MANAGE_SYSTEM)).apply();
         }
 
         prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_USER, true).apply();
-        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, m_manage_system).apply();
+        prefs.edit().putBoolean(Rule.PREFERENCE_STRING_SHOW_SYSTEM, hasFeatureRule(FeatureRule.FEATURE_NAME_MANAGE_SYSTEM)).apply();
     }
 
     boolean m_pleaseExpedite = false;
@@ -984,13 +936,13 @@ public class RulesManager {
         // Try all enacted rules for password success
         lock.readLock().lock();
         try {
-            for (UniversalRule rule : m_allCurrentRules) {
-                if (rule.type != PartnerRule.class)
-                    continue;
-                PartnerRule partnerRule = (PartnerRule) rule.rule;
-                if (partnerRule.tryToUnlock(password)) {
-                    success = true;
-                    break;
+            for (MyRule rule : m_allCurrentRules) {
+                if (rule instanceof PartnerRule) {
+                    PartnerRule partnerRule = (PartnerRule) rule;
+                    if (partnerRule.tryToUnlock(password)) {
+                        success = true;
+                        break;
+                    }
                 }
             }
         } finally {
@@ -1053,13 +1005,12 @@ public class RulesManager {
         // Check all current rules to see if they apply
         lock.readLock().lock();
         try {
-            for (UniversalRule rule : m_allCurrentRules) {
-                if (rule.type != RuleAndPackage.class) {
-                    continue;
-                }
-                RuleAndPackage rap = (RuleAndPackage)rule.rule;
-                if (rap.appliesToAccess(uid, daddrs)) {
-                    ruletexts.add("- " + rule.getRuletext());
+            for (MyRule rule : m_allCurrentRules) {
+                if (rule instanceof RuleAndPackage) {
+                    RuleAndPackage rap = (RuleAndPackage)rule;
+                    if (rap.appliesToAccess(uid, daddrs)) {
+                        ruletexts.add("- " + rule.getRuleText());
+                    }
                 }
             }
         } finally {
@@ -1167,13 +1118,62 @@ public class RulesManager {
     {
         return m_dnses;
     }
+
+    public FeatureRule getFeatureRule(String featureName) {
+        if (!m_featureRules.containsKey(featureName))
+            return null;
+        return m_featureRules.get(featureName);
+    }
+
+    public boolean hasFeatureRule(String featureName) {
+        return m_featureRules.containsKey(featureName);
+    }
 }
 
-abstract class RuleWithDelayClassification {
-    public abstract int getDelayToAdd(Context context, int main_delay);
-    public abstract int getDelayToRemove(Context context, int main_delay);
-    public abstract int getMajorCategory();
-    public abstract int getMinorCategory();
+class MyRule {
+    private static final String TAG = "NetGuard.Rule";
+    public static final int MAJOR_CATEGORY_DELAY = 100;
+    public static final int MAJOR_CATEGORY_FEATURE = 200;
+    public static final int MAJOR_CATEGORY_DNS = 250;
+    public static final int MAJOR_CATEGORY_PARTNER = 300;
+    public static final int MAJOR_CATEGORY_ALLOW = 400;
+    public static final int MAJOR_CATEGORY_BLOCK = 450;
+    public static final int MAJOR_CATEGORY_IGNORE = 500;
+    public static final int MAJOR_CATEGORY_COMMENT = 600;
+
+    private String m_ruletext;
+    private int m_major_category;
+    private int m_minor_category;
+
+    public MyRule(String ruletext,
+                  int major_category,
+                  int minor_category) {
+        m_ruletext = ruletext;
+        m_major_category = major_category;
+        m_minor_category = minor_category;
+    }
+    public MyRule(String ruletext,
+                  int major_category) {
+        this(ruletext, major_category, 0);
+    }
+    public int getDelayToAdd(Context context, int main_delay) {
+        return main_delay;
+    }
+    public int getDelayToRemove(Context context, int main_delay) {
+        return main_delay;
+    }
+    public int getMajorCategory() {
+        return m_major_category;
+    }
+    public int getMinorCategory() {
+        return m_minor_category;
+    }
+    protected void setMinorCategory(int minor_category) {
+        m_minor_category = minor_category;
+    }
+    public String getRuleText() {
+        return m_ruletext;
+    }
 
     public Set<String> getActionsAfterAdd(Context context) {
         return null;
@@ -1181,17 +1181,87 @@ abstract class RuleWithDelayClassification {
     public Set<String> getActionsAfterRemove(Context context) {
         return null;
     }
+
+    public Map<Long, String> getRulesToRemoveAfterAdd(Context context) {
+        return new HashMap<Long,String>();
+    }
+    public static MyRule getRuleFromText(Context context, String ruletext) {
+        if (ruletext.startsWith("#")) {
+            // Comments can start even without a space ... yeah sure why not
+            return new CommentRule(ruletext);
+        }
+        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+
+        if (!m.matches()) {
+            return null;
+        }
+
+        String category = m.group(1);
+
+        MyRule therule = null;
+        try {
+            if (category.equals("delay")) {
+                therule = new DelayRule(ruletext);
+            } else if (category.equals("allow")) {
+                therule = AllowedPackageRule.parseRule(context, ruletext);
+            } else if (category.equals("feature")) {
+                therule = FeatureRule.parseRule(ruletext);
+            } else if (category.equals("partner")) {
+                therule = PartnerRule.parseRule(ruletext);
+            } else if (category.equals("ignore")) {
+                therule = IgnoreRule.parseRule(ruletext);
+            } else if (category.equals("blockdomain")) {
+                therule = BlockedDomainRule.parseRule(ruletext);
+            } else if (category.equals("dns")) {
+                therule = DNSRule.parseRule(ruletext);
+            }
+        } catch (RuleParseNoMatchException e) {
+            therule = null;
+        } catch (AssertionError e) {
+            Log.e(TAG, "Ruletext \"" + ruletext + "\" got an assertion " + e);
+            therule = null;
+        } catch (Throwable e) {
+            Log.e(TAG, "Ruletext \"" + ruletext + "\" got an exception " + e);
+            therule = null;
+        }
+
+        if (therule == null) {
+            Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't get a rule");
+        }
+        return therule;
+    }
 }
 
-class DelayRule extends RuleWithDelayClassification {
-    private int m_delay;
-    private String m_packageName;
+class DelayRule extends MyRule {
+    private final int m_delay;
+    private final String m_packageName;
     private static final int MINOR_CATEGORY_GLOBAL_DELAY = 100;
     private static final int MINOR_CATEGORY_PACKAGE_DELAY = 200;
 
-    public DelayRule(int delay, String packageName) {
-        m_delay = delay;
-        m_packageName = packageName;
+    public DelayRule(String ruletext) {
+        super(ruletext, MAJOR_CATEGORY_DELAY);
+
+        Matcher m = Pattern.compile("delay (\\d+)").matcher(ruletext);
+        if (m.matches()) {
+            String rest = m.group(1);
+
+            m_delay = Integer.parseInt(rest);
+            m_packageName = null;
+            super.setMinorCategory(MINOR_CATEGORY_GLOBAL_DELAY);
+            return;
+        }
+
+        // Ruletext match for a package delay rule
+        m = Pattern.compile("delay package:(\\S+) (\\d+)").matcher(ruletext);
+        if (m.matches()) {
+            m_packageName = m.group(1);
+            m_delay = Integer.parseInt(m.group(2));
+            super.setMinorCategory(MINOR_CATEGORY_PACKAGE_DELAY);
+            return;
+        }
+
+        throw new RuleParseNoMatchException();
+
     }
 
     public int getDelay() {
@@ -1225,50 +1295,29 @@ class DelayRule extends RuleWithDelayClassification {
         }
     }
 
-    public static UniversalRule parseRule(String ruletext) {
-        // Ruletext match for a global delay rule
-        Matcher m = Pattern.compile("delay (\\d+)").matcher(ruletext);
-        if (m.matches()) {
-            String rest = m.group(1);
+    @Override
+    public Map<Long, String> getRulesToRemoveAfterAdd(Context context) {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        Map<Long, String> enacted_rules = dh.getEnactedRulesMap();
+        Map<Long, String> removals = new HashMap<>();
 
-            int delay;
-            try {
-                delay = Integer.parseInt(rest);
-            } catch (NumberFormatException e) {
-                return null;
+        for (Long id : enacted_rules.keySet())
+        {
+            String ruletext = enacted_rules.get(id);
+            if (ruletext.equals(this.getRuleText()))
+                continue;
+            if (ruletext.matches("delay .+"))
+            {
+                DelayRule otherRule = new DelayRule(ruletext);
+                if (otherRule.sameAs(this)) {
+                    removals.put(id, ruletext);
+                }
             }
-            return new UniversalRule(new DelayRule(delay, null), ruletext);
         }
-
-        // Ruletext match for a package delay rule
-        m = Pattern.compile("delay package:(\\S+) (\\d+)").matcher(ruletext);
-        if (m.matches()) {
-            String packageName = m.group(1);
-            int delay;
-            try {
-                delay = Integer.parseInt(m.group(2));
-            } catch (NumberFormatException e) {
-                return null;
-            }
-            return new UniversalRule(new DelayRule(delay, packageName), ruletext);
-        }
-
-        return null;
+        return removals;
     }
 
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_DELAY;
-    }
-
-    public int getMinorCategory() {
-        if (m_packageName == null) {
-            return MINOR_CATEGORY_GLOBAL_DELAY;
-        } else {
-            return MINOR_CATEGORY_PACKAGE_DELAY;
-        }
-    }
-
-    public String getPackageName() {
+    protected String getPackageName() {
         return m_packageName;
     }
 
@@ -1282,17 +1331,27 @@ class DelayRule extends RuleWithDelayClassification {
     }
 }
 
-class AllowedPackageRule extends RuleWithDelayClassification {
+class AllowedPackageRule extends MyRule {
     private static final String TAG = "Netguard.APRule";
-    private String m_packagename;
-    private boolean m_sticky;
+    private final String m_packagename;
+    private final boolean m_sticky;
 
-    public AllowedPackageRule(String packagename, boolean sticky) {
-        m_packagename = packagename;
-        m_sticky = sticky;
+    public AllowedPackageRule(String ruletext) {
+        super(ruletext, MAJOR_CATEGORY_ALLOW, 0);
+
+        Bundle bundle = RulesManager.parseAllowTextToBundle(ruletext);
+
+        if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ip") && !bundle.containsKey("directip")) {
+            // This is an allowed package
+            m_packagename = bundle.getString("package");
+            m_sticky = bundle.getBoolean("sticky", false);
+            return;
+        }
+        // other types aren't handles here
+        throw new RuleParseNoMatchException();
     }
 
-    public String getPackageName() {
+    protected String getPackageName() {
         return m_packagename;
     }
 
@@ -1313,55 +1372,30 @@ class AllowedPackageRule extends RuleWithDelayClassification {
         }
     }
 
-    public static UniversalRule parseRule(Context context, String ruletext) {
-        try {
-            Bundle bundle = RulesManager.parseAllowTextToBundle(context, ruletext);
+    public static MyRule parseRule(Context context, String ruletext) {
+        Bundle bundle = RulesManager.parseAllowTextToBundle(ruletext);
 
-            if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ip") && !bundle.containsKey("directip")) {
-                // This is an allowed package
-                String packagename = bundle.getString("package");
-                boolean sticky = false;
-
-                if (bundle.containsKey("sticky")) {
-                    sticky = bundle.getBoolean("sticky");
-                }
-
-                return new UniversalRule(new AllowedPackageRule(packagename, sticky), ruletext);
-            } else if (bundle.containsKey("uid") && !bundle.containsKey("host") && !bundle.containsKey("ip")) {
-                int uid;
-                try {
-                    uid = Integer.parseInt(bundle.getString("uid"));
-                } catch (NumberFormatException e) {
-                    return null;
-                }
-
-                boolean sticky = false;
-
-                if (bundle.containsKey("sticky")) {
-                    sticky = bundle.getBoolean("sticky");
-                }
-                return new UniversalRule(new AllowedUidRule(uid, sticky), ruletext);
-            } else if (bundle.containsKey("host") || bundle.containsKey("ip") || bundle.containsKey("directip")) {
-                // This is a whitelisted URL
-                RuleAndPackage newrule = RulesManager.parseTextToWhitelistRule(context, ruletext);
-                if (newrule == null)
-                    return null;
-                return new UniversalRule(newrule, ruletext);
+        if (bundle.containsKey("package") && !bundle.containsKey("host") && !bundle.containsKey("ip") && !bundle.containsKey("directip")) {
+            return new AllowedPackageRule(ruletext);
+        } else if (bundle.containsKey("uid") && !bundle.containsKey("host") && !bundle.containsKey("ip")) {
+            int uid;
+            try {
+                uid = Integer.parseInt(bundle.getString("uid"));
+            } catch (NumberFormatException e) {
+                return null;
             }
-        } catch (AssertionError e) {
-            Log.e(TAG, "Got assertion error " + e);
-            return null;
+
+            boolean sticky = false;
+
+            if (bundle.containsKey("sticky")) {
+                sticky = bundle.getBoolean("sticky");
+            }
+            return new AllowedUidRule(ruletext, uid, sticky);
+        } else if (bundle.containsKey("host") || bundle.containsKey("ip") || bundle.containsKey("directip")) {
+            // This is a whitelisted URL
+            return RulesManager.parseTextToWhitelistRule(context, ruletext);
         }
-
-        return null;
-    }
-
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_ALLOW;
-    }
-
-    public int getMinorCategory() {
-        return 0;
+        throw new RuleParseNoMatchException();
     }
 
     public Set<String> getActionsAfterAdd(Context context) {
@@ -1372,11 +1406,12 @@ class AllowedPackageRule extends RuleWithDelayClassification {
     }
 }
 
-class AllowedUidRule extends RuleWithDelayClassification {
+class AllowedUidRule extends MyRule {
     private int m_uid;
     private boolean m_sticky;
 
-    public AllowedUidRule(int uid, boolean sticky) {
+    public AllowedUidRule(String ruletext, int uid, boolean sticky) {
+        super(ruletext, MAJOR_CATEGORY_ALLOW);
         m_uid = uid;
         m_sticky = sticky;
     }
@@ -1385,23 +1420,13 @@ class AllowedUidRule extends RuleWithDelayClassification {
         return m_uid;
     }
 
-    public int getDelayToAdd(Context context, int main_delay) {
-        return main_delay;
-    }
+    @Override
     public int getDelayToRemove(Context context, int main_delay) {
         if (m_sticky) {
             return main_delay;
         } else {
             return 0;
         }
-    }
-
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_ALLOW;
-    }
-
-    public int getMinorCategory() {
-        return 0;
     }
 
     public Set<String> getActionsAfterAdd(Context context) {
@@ -1412,14 +1437,28 @@ class AllowedUidRule extends RuleWithDelayClassification {
     }
 }
 
-class FeatureRule extends RuleWithDelayClassification {
+class FeatureRule extends MyRule {
+    public static final String FEATURE_NAME_ENABLED = "enabled";
+    public static final String FEATURE_NAME_MANAGE_SYSTEM = "manage_system";
+    public static final String FEATURE_NAME_LOCKDOWN = "lockdown";
+    public static final String FEATURE_NAME_CAPTURE_ALL_TRAFFIC = "capture_all_traffic";
+    public static final String FEATURE_NAME_ALLOW_LOGGING = "allow_logging";
+    public static final String[] FEATURE_NAMES = {
+            FEATURE_NAME_ENABLED,
+            FEATURE_NAME_MANAGE_SYSTEM,
+            FEATURE_NAME_LOCKDOWN,
+            FEATURE_NAME_CAPTURE_ALL_TRAFFIC,
+            FEATURE_NAME_ALLOW_LOGGING,
+    };
     private String m_featurename;
     private enum FeatureType {feature_restrictive, feature_permissive, feature_both};
     private FeatureType m_featuretype;
-    private static final String[] restrictive_features = {"enabled",
-                                                          "manage_system",
-                                                          "capture_all_traffic"};
-    private static final String[] permissive_features = {"allow_logging"};
+    private static final String[] restrictive_features = {FEATURE_NAME_ENABLED,
+                                                          FEATURE_NAME_MANAGE_SYSTEM,
+                                                          FEATURE_NAME_LOCKDOWN,
+                                                          FEATURE_NAME_CAPTURE_ALL_TRAFFIC};
+    private static final String[] permissive_features = {FEATURE_NAME_ALLOW_LOGGING};
+    private static final String[] both_features = {};
 
     private static FeatureType getClassificationForName(String featurename) {
         for (String restrictive_feature : restrictive_features) {
@@ -1434,10 +1473,17 @@ class FeatureRule extends RuleWithDelayClassification {
             }
         }
 
+        for (String permissive_feature : both_features) {
+            if (permissive_feature.equals(featurename)) {
+                return FeatureType.feature_both;
+            }
+        }
+
         throw new AssertionError("feature name \"" + featurename + "\" not present");
     }
 
-    public FeatureRule(String featurename) {
+    public FeatureRule(String ruletext, String featurename) {
+        super(ruletext, MAJOR_CATEGORY_FEATURE);
         m_featurename = featurename;
         m_featuretype = getClassificationForName(featurename);
     }
@@ -1466,23 +1512,21 @@ class FeatureRule extends RuleWithDelayClassification {
         }
     }
 
-    public static UniversalRule parseRule(String ruletext) {
+    public static FeatureRule parseRule(String ruletext) {
         Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
 
-        if (!m.matches()) {
-            throw new AssertionError("no category");
+        if (m.matches()) {
+            String[] fields = m.group(2).split(" ");
+
+            if (fields[0].equals(FEATURE_NAME_LOCKDOWN)) {
+                return LockdownRule.parseRule(ruletext);
+            }
+            if (fields.length == 1) {
+                return new FeatureRule(ruletext, fields[0]);
+            }
         }
 
-        String rest = m.group(2);
-        return new UniversalRule(new FeatureRule(rest), ruletext);
-    }
-
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_FEATURE;
-    }
-
-    public int getMinorCategory() {
-        return 0;
+        throw new RuleParseNoMatchException();
     }
 
     public Set<String> getActionsAfterAdd(Context context) {
@@ -1491,10 +1535,95 @@ class FeatureRule extends RuleWithDelayClassification {
     public Set<String> getActionsAfterRemove(Context context) {
         return Collections.singleton("reload");
     }
+
+    @Override
+    public Map<Long, String> getRulesToRemoveAfterAdd(Context context) {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        Map<Long, String> enacted_rules = dh.getEnactedRulesMap();
+        Map<Long, String> removals = new HashMap<>();
+
+        for (Long id : enacted_rules.keySet())
+        {
+            String ruletext = enacted_rules.get(id);
+            if (ruletext.equals(this.getRuleText()))
+                continue;
+            if (ruletext.matches("feature .+"))
+            {
+                FeatureRule otherRule = FeatureRule.parseRule(ruletext);
+                if (otherRule.getFeatureName().equals(getFeatureName())) {
+                    removals.put(id, ruletext);
+                }
+            }
+        }
+        return removals;
+    }
+}
+
+class LockdownRule extends FeatureRule {
+    private int m_delay;
+    public LockdownRule(String ruletext, String featurename, int delay) throws RuleParseNoMatchException {
+        super(ruletext, featurename);
+        m_delay = delay;
+        if (delay < 0) {
+            throw new RuleParseNoMatchException();
+        }
+    }
+
+    public static LockdownRule parseRule(String ruletext) {
+        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+
+        if (m.matches()) {
+            String[] fields = m.group(2).split(" ");
+
+            if (!fields[0].equals(FEATURE_NAME_LOCKDOWN)) {
+                throw new RuleParseNoMatchException();
+            }
+            if (fields.length == 1) {
+                return new LockdownRule(ruletext, fields[0], 0);
+            }
+            if (fields.length == 2) {
+                try {
+                    int delay = Integer.parseInt(fields[1]);
+                    return new LockdownRule(ruletext, fields[0], delay);
+                } catch (NumberFormatException e) {
+                    throw new RuleParseNoMatchException();
+                }
+            }
+        }
+
+        throw new RuleParseNoMatchException();
+    }
+
+    private int getSpecificDelay(int main_delay) {
+        if (m_delay == 0) {
+            return main_delay;
+        }
+        return m_delay;
+    }
+
+    @Override
+    public int getDelayToAdd(Context context, int main_delay) {
+        RulesManager rm = RulesManager.getInstance(context);
+        FeatureRule otherLockdown = rm.getFeatureRule(FEATURE_NAME_LOCKDOWN);
+        if (otherLockdown == null)
+            return 0;
+        int other_delay = otherLockdown.getDelayToRemove(context, main_delay);
+        if (getSpecificDelay(main_delay) >= other_delay)
+            return 0;
+        return other_delay - getSpecificDelay(main_delay);
+    }
+
+    @Override
+    public int getDelayToRemove(Context context, int main_delay) {
+        if (getSpecificDelay(main_delay) < main_delay) {
+            return getSpecificDelay(main_delay);
+        }
+        return main_delay;
+    }
 }
 
 // Rule class for partners who can expedite your rules
-class PartnerRule extends RuleWithDelayClassification {
+class PartnerRule extends MyRule {
     public static int TYPE_TOTP = 1;
     public static int TYPE_PASSWORD = 2;
 
@@ -1502,20 +1631,18 @@ class PartnerRule extends RuleWithDelayClassification {
     private String m_key;
     private String m_name;
 
-    public PartnerRule(int type, String key, String name) {
+    public PartnerRule(String ruletext, int type, String key, String name) {
+        super(ruletext, MAJOR_CATEGORY_PARTNER);
         m_type = type;
         m_key = key;
         m_name = name;
     }
 
-    public int getDelayToAdd(Context context, int main_delay) {
-        return main_delay;
-    }
     public int getDelayToRemove(Context context, int main_delay) {
         return 0;
     }
 
-    public static UniversalRule parseRule(String ruletext) {
+    public static MyRule parseRule(String ruletext) {
         Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
 
         if (!m.matches()) {
@@ -1530,20 +1657,16 @@ class PartnerRule extends RuleWithDelayClassification {
         if (m.matches()) {
             String name = m.group(1);
             String key = m.group(2);
-            partnerRule = new PartnerRule(TYPE_TOTP, key, name);
+            return new PartnerRule(ruletext, TYPE_TOTP, key, name);
         }
         m = Pattern.compile("name:(\\S+) password:(\\S+)").matcher(rest);
         if (m.matches()) {
             String name = m.group(1);
             String password = m.group(2);
-            partnerRule = new PartnerRule(TYPE_PASSWORD, password, name);
+            return new PartnerRule(ruletext, TYPE_PASSWORD, password, name);
         }
 
-        if (partnerRule == null) {
-            return null;
-        }
-
-        return new UniversalRule(partnerRule, ruletext);
+        throw new RuleParseNoMatchException();
     }
 
     // Check an incoming passcode to see if it matches (password or TOTP)
@@ -1579,22 +1702,15 @@ class PartnerRule extends RuleWithDelayClassification {
 
         return false;
     }
-
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_PARTNER;
-    }
-
-    public int getMinorCategory() {
-        return 0;
-    }
 }
 
-class IgnoreRule extends RuleWithDelayClassification {
+class IgnoreRule extends MyRule {
     private static final String TAG = "NetGuard.IgnoreRule";
     private String m_packageName;
     private String m_hostName;
 
-    public IgnoreRule(String packageName, String hostName) {
+    public IgnoreRule(String ruletext, String packageName, String hostName) {
+        super(ruletext, MAJOR_CATEGORY_IGNORE);
         m_packageName = packageName;
         m_hostName = hostName;
     }
@@ -1606,7 +1722,7 @@ class IgnoreRule extends RuleWithDelayClassification {
         return 0;
     }
 
-    public static UniversalRule parseRule(String ruletext) {
+    public static MyRule parseRule(String ruletext) {
         Pattern p = Pattern.compile("ignore (.*)");
         Matcher m = p.matcher(ruletext);
         if (!m.matches())
@@ -1637,17 +1753,7 @@ class IgnoreRule extends RuleWithDelayClassification {
         if (!((packageName != null) || (hostName != null))) {
             return null;
         }
-        IgnoreRule ignoreRule = new IgnoreRule(packageName, hostName);
-        return new UniversalRule(ignoreRule, ruletext);
-
-    }
-
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_IGNORE;
-    }
-
-    public int getMinorCategory() {
-        return 0;
+        return new IgnoreRule(ruletext, packageName, hostName);
     }
 
     public String getPackageName() {
@@ -1659,11 +1765,12 @@ class IgnoreRule extends RuleWithDelayClassification {
     }
 }
 
-class BlockedDomainRule extends RuleWithDelayClassification {
+class BlockedDomainRule extends MyRule {
     private String m_domainName;
     private boolean m_try;
 
-    BlockedDomainRule(String domainName, boolean bTry) {
+    BlockedDomainRule(String ruletext, String domainName, boolean bTry) {
+        super(ruletext, MAJOR_CATEGORY_BLOCK);
         this.m_domainName = domainName;
         this.m_try = bTry;
     }
@@ -1677,19 +1784,11 @@ class BlockedDomainRule extends RuleWithDelayClassification {
         return main_delay;
     }
 
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_BLOCK;
-    }
-
-    public int getMinorCategory() {
-        return 0;
-    }
-
     public String getDomainName() {
         return m_domainName;
     }
 
-    public static UniversalRule parseRule(String ruletext)
+    public static MyRule parseRule(String ruletext)
     {
         Pattern p = Pattern.compile("blockdomain (.+)");
         Matcher m = p.matcher(ruletext);
@@ -1722,7 +1821,7 @@ class BlockedDomainRule extends RuleWithDelayClassification {
         {
             return null;
         }
-        return new UniversalRule(new BlockedDomainRule(domainName, bTry), ruletext);
+        return new BlockedDomainRule(ruletext, domainName, bTry);
     }
 
     public Set<String> getActionsAfterAdd(Context context) {
@@ -1737,37 +1836,22 @@ class BlockedDomainRule extends RuleWithDelayClassification {
     }
 }
 
-class DNSRule extends RuleWithDelayClassification {
+class DNSRule extends MyRule {
     private List<String> m_dnses;
 
-    DNSRule(String dns1, String dns2) {
+    DNSRule(String ruletext, String dns1, String dns2) {
+        super(ruletext, MAJOR_CATEGORY_DNS);
         m_dnses = new ArrayList<>();
         m_dnses.add(dns1);
         m_dnses.add(dns2);
     }
-
-    public int getDelayToAdd(Context context, int main_delay) {
-        return main_delay;
-    }
-    public int getDelayToRemove(Context context, int main_delay) {
-        return main_delay;
-    }
-
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_DNS;
-    }
-
-    public int getMinorCategory() {
-        return 0;
-    }
-
-    public static UniversalRule parseRule(String ruletext)
+    public static MyRule parseRule(String ruletext)
     {
         Pattern p = Pattern.compile("dns (\\S+) (\\S+)");
         Matcher m = p.matcher(ruletext);
         if (!m.matches())
             return null;
-        return new UniversalRule(new DNSRule(m.group(1), m.group(2)), ruletext);
+        return new DNSRule(ruletext, m.group(1), m.group(2));
     }
 
     public Set<String> getActionsAfterAdd(Context context) {
@@ -1784,96 +1868,39 @@ class DNSRule extends RuleWithDelayClassification {
     public List<String> getDomains() {
         return m_dnses;
     }
+
+    @Override
+    public Map<Long, String> getRulesToRemoveAfterAdd(Context context) {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+        Map<Long, String> enacted_rules = dh.getEnactedRulesMap();
+        Map<Long, String> removals = new HashMap<>();
+
+        for (Long id : enacted_rules.keySet())
+        {
+            String ruletext = enacted_rules.get(id);
+            if (ruletext.equals(this.getRuleText()))
+                continue;
+            if (ruletext.matches("dns .+"))
+            {
+                removals.put(id, ruletext);
+            }
+        }
+        return removals;
+    }
+
 }
 
-class UniversalRule {
-    private static final String TAG = "NetGuard.UniversalRule";
-
-    public static final int MAJOR_CATEGORY_DELAY = 100;
-    public static final int MAJOR_CATEGORY_FEATURE = 200;
-    public static final int MAJOR_CATEGORY_DNS = 250;
-    public static final int MAJOR_CATEGORY_PARTNER = 300;
-    public static final int MAJOR_CATEGORY_ALLOW = 400;
-    public static final int MAJOR_CATEGORY_BLOCK = 450;
-    public static final int MAJOR_CATEGORY_IGNORE = 500;
-
-    public RuleWithDelayClassification rule;
-    public Class type;
-    private String m_ruletext;
-
-    public UniversalRule(RuleWithDelayClassification newrule, String ruletext) {
-        if (newrule == null)
-            throw new AssertionError("Got a null rule for \"" + ruletext + "\"");
-        rule = newrule;
-
-        type = null;
-        if (rule instanceof RuleAndPackage) {
-            type = RuleAndPackage.class;
-        } else if (rule instanceof DelayRule) {
-            type = DelayRule.class;
-        } else if (rule instanceof AllowedPackageRule) {
-            type = AllowedPackageRule.class;
-        } else if (rule instanceof FeatureRule) {
-            type = FeatureRule.class;
-        } else if (rule instanceof PartnerRule) {
-            type = PartnerRule.class;
-        } else if (rule instanceof AllowedUidRule) {
-            type = AllowedUidRule.class;
-        } else if (rule instanceof IgnoreRule) {
-            type = IgnoreRule.class;
-        } else if (rule instanceof BlockedDomainRule) {
-            type = BlockedDomainRule.class;
-        } else if (rule instanceof DNSRule) {
-            type = DNSRule.class;
-        }
-
-        if (type == null)
-            throw new AssertionError("Unknown type for \"" + ruletext + "\"");
-
-        m_ruletext = ruletext;
+class CommentRule extends MyRule {
+    CommentRule(String ruletext) {
+        super(ruletext, MAJOR_CATEGORY_COMMENT);
     }
 
-    public static UniversalRule getRuleFromText(Context context, String ruletext) {
-        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
-
-        if (!m.matches()) {
-            return null;
-        }
-
-        String category = m.group(1);
-
-        UniversalRule therule = null;
-        if (category.equals("delay")) {
-            therule = DelayRule.parseRule(ruletext);
-        } else if (category.equals("allow")) {
-            therule = AllowedPackageRule.parseRule(context, ruletext);
-        } else if (category.equals("feature")) {
-            therule = FeatureRule.parseRule(ruletext);
-        } else if (category.equals("partner")) {
-            therule = PartnerRule.parseRule(ruletext);
-        } else if (category.equals("ignore")) {
-            therule = IgnoreRule.parseRule(ruletext);
-        } else if (category.equals("blockdomain")) {
-            therule = BlockedDomainRule.parseRule(ruletext);
-        } else if (category.equals("dns")) {
-            therule = DNSRule.parseRule(ruletext);
-        }
-
-        if (therule == null) {
-            Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't get a rule");
-        }
-        return therule;
+    public int getDelayToAdd(Context context, int main_delay) {
+        return 0;
     }
-
-    public int getMajorCategory() {
-        return rule.getMajorCategory();
-    }
-
-    public int getMinorCategory() {
-        return rule.getMinorCategory();
-    }
-
-    public String getRuletext() {
-        return m_ruletext;
+    public int getDelayToRemove(Context context, int main_delay) {
+        return 0;
     }
 }
+
+class RuleParseNoMatchException extends AssertionError{};

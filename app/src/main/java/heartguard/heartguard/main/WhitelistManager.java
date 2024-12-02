@@ -31,7 +31,7 @@ interface RuleForApp {
 // AKA an Allow rule that specifies a host or ipv4, and may or may not specify a package
 // The package may be unspecified (UID_GLOBAL) or may not exist (UID_NOT_FOUND)
 // Contains a RuleForApp which either matches domain names or IP addresses
-class RuleAndPackage extends RuleWithDelayClassification {
+class RuleAndPackage extends MyRule {
     public final static int UID_GLOBAL = -1;
     public final static int UID_NOT_FOUND = -2;
 
@@ -40,7 +40,8 @@ class RuleAndPackage extends RuleWithDelayClassification {
     private String m_packagename;
     private int m_uid;
 
-    RuleAndPackage(Context context, RuleForApp rule, boolean sticky, String packagename) {
+    RuleAndPackage(String ruletext, Context context, RuleForApp rule, boolean sticky, String packagename) {
+        super(ruletext, MAJOR_CATEGORY_ALLOW);
         this.rule = rule;
         m_sticky = sticky;
         m_packagename = packagename;
@@ -64,14 +65,6 @@ class RuleAndPackage extends RuleWithDelayClassification {
         } else {
             return 0;
         }
-    }
-
-    public int getMajorCategory() {
-        return UniversalRule.MAJOR_CATEGORY_ALLOW;
-    }
-
-    public int getMinorCategory() {
-        return 0;
     }
 
     public String getPackageName() {

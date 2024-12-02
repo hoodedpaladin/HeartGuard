@@ -1334,8 +1334,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         boolean tethering = prefs.getBoolean("tethering", false);
         boolean lan = prefs.getBoolean("lan", false);
         boolean ip6 = prefs.getBoolean("ip6", true);
-        boolean filter = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceFilter(ServiceSinkhole.this);
-        boolean system = RulesManager.getInstance(ServiceSinkhole.this).getPreferenceManageSystem(ServiceSinkhole.this);
+        RulesManager rm = RulesManager.getInstance(ServiceSinkhole.this);
+        boolean filter = rm.getPreferenceFilter(ServiceSinkhole.this);
+        boolean system = rm.getPreferenceManageSystem(ServiceSinkhole.this);
 
         // Build VPN service
         Builder builder = new Builder();
@@ -1509,7 +1510,6 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             }
 
             //HeartGuard change - if we are capturing all traffic, don't exclude programs
-            RulesManager rm = RulesManager.getInstance(this);
             if (!rm.getPreferenceCaptureAllTraffic(this)) {
                 if (last_connected && !filter)
                     for (Rule rule : listAllowed)
