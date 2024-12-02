@@ -9,6 +9,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -1128,6 +1132,44 @@ public class RulesManager {
     public boolean hasFeatureRule(String featureName) {
         return m_featureRules.containsKey(featureName);
     }
+
+    public void checkStaticDns(Context context) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
+            return;
+        }
+
+        // Check if we have a nostatic rule
+        FeatureRule featureRule = getFeatureRule(FeatureRule.FEATURE_NAME_NO_STATIC_IP);
+        if (featureRule == null)
+            return;
+        if (!(featureRule instanceof NoStaticRule))
+            return;
+        NoStaticRule noStaticRule = (NoStaticRule)featureRule;
+        
+        // Make sure the user is using DHCP for DNS servers
+        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        Network an = cm.getActiveNetwork();
+        if (an == null)
+            return;
+        NetworkCapabilities anc = cm.getNetworkCapabilities(an);
+        if (anc == null)
+            return;
+        if (!anc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET))
+            return;
+        if (anc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))
+            return;
+        if (!anc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+            return;
+        LinkProperties lp = cm.getLinkProperties(an);
+        if (lp == null)
+            return;
+        if (lp.getDhcpServerAddress() != null)
+            return;
+
+        // If we are here, make a lockdown rule because we are using static
+        String ruletext = "feature " + FeatureRule.FEATURE_NAME_LOCKDOWN + " " + noStaticRule.getParam();
+        queueRuleText(context, ruletext);
+    }
 }
 
 class MyRule {
@@ -1442,12 +1484,14 @@ class FeatureRule extends MyRule {
     public static final String FEATURE_NAME_MANAGE_SYSTEM = "manage_system";
     public static final String FEATURE_NAME_LOCKDOWN = "lockdown";
     public static final String FEATURE_NAME_CAPTURE_ALL_TRAFFIC = "capture_all_traffic";
+    public static final String FEATURE_NAME_NO_STATIC_IP = "no_static_ip";
     public static final String FEATURE_NAME_ALLOW_LOGGING = "allow_logging";
     public static final String[] FEATURE_NAMES = {
             FEATURE_NAME_ENABLED,
             FEATURE_NAME_MANAGE_SYSTEM,
             FEATURE_NAME_LOCKDOWN,
             FEATURE_NAME_CAPTURE_ALL_TRAFFIC,
+            FEATURE_NAME_NO_STATIC_IP,
             FEATURE_NAME_ALLOW_LOGGING,
     };
     private String m_featurename;
@@ -1458,7 +1502,7 @@ class FeatureRule extends MyRule {
                                                           FEATURE_NAME_LOCKDOWN,
                                                           FEATURE_NAME_CAPTURE_ALL_TRAFFIC};
     private static final String[] permissive_features = {FEATURE_NAME_ALLOW_LOGGING};
-    private static final String[] both_features = {};
+    private static final String[] both_features = {FEATURE_NAME_NO_STATIC_IP};
 
     private static FeatureType getClassificationForName(String featurename) {
         for (String restrictive_feature : restrictive_features) {
@@ -1520,6 +1564,9 @@ class FeatureRule extends MyRule {
 
             if (fields[0].equals(FEATURE_NAME_LOCKDOWN)) {
                 return LockdownRule.parseRule(ruletext);
+            }
+            if (fields[0].equals(FEATURE_NAME_NO_STATIC_IP)) {
+                return NoStaticRule.parseRule(ruletext);
             }
             if (fields.length == 1) {
                 return new FeatureRule(ruletext, fields[0]);
@@ -1619,6 +1666,65 @@ class LockdownRule extends FeatureRule {
             return getSpecificDelay(main_delay);
         }
         return main_delay;
+    }
+}
+
+class NoStaticRule extends FeatureRule {
+    private int m_param;
+    public NoStaticRule(String ruletext, String featurename, int param) throws RuleParseNoMatchException {
+        super(ruletext, featurename);
+        m_param = param;
+        if (param < 0) {
+            throw new RuleParseNoMatchException();
+        }
+    }
+
+    public static NoStaticRule parseRule(String ruletext) {
+        Matcher m = Pattern.compile("([^\\s:]+) (.*)").matcher(ruletext);
+
+        if (m.matches()) {
+            String[] fields = m.group(2).split(" ");
+
+            if (!fields[0].equals(FEATURE_NAME_NO_STATIC_IP)) {
+                throw new RuleParseNoMatchException();
+            }
+            if (fields.length == 1) {
+                return new NoStaticRule(ruletext, fields[0], 0);
+            }
+            if (fields.length == 2) {
+                try {
+                    int delay = Integer.parseInt(fields[1]);
+                    return new NoStaticRule(ruletext, fields[0], delay);
+                } catch (NumberFormatException e) {
+                    throw new RuleParseNoMatchException();
+                }
+            }
+        }
+
+        throw new RuleParseNoMatchException();
+    }
+
+    @Override
+    public int getDelayToAdd(Context context, int main_delay) {
+        RulesManager rm = RulesManager.getInstance(context);
+        FeatureRule otherRule = rm.getFeatureRule(FEATURE_NAME_NO_STATIC_IP);
+        if (otherRule == null)
+            return 0;
+        if (!(otherRule instanceof NoStaticRule))
+            return 0;
+        NoStaticRule otherStatic = (NoStaticRule) otherRule;
+        if (m_param > otherStatic.getParam())
+            return 0;
+        return main_delay;
+    }
+
+    @Override
+    public int getDelayToRemove(Context context, int main_delay) {
+        return main_delay;
+    }
+
+    public int getParam() {
+        return m_param;
     }
 }
 

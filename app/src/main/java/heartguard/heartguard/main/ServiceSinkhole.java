@@ -1338,6 +1338,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         boolean filter = rm.getPreferenceFilter(ServiceSinkhole.this);
         boolean system = rm.getPreferenceManageSystem(ServiceSinkhole.this);
 
+        //Enforce static DNS rule
+        rm.checkStaticDns(ServiceSinkhole.this);
+
         // Build VPN service
         Builder builder = new Builder();
         builder.setSession(getString(R.string.app_name));
