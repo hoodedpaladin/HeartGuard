@@ -71,7 +71,7 @@ class RuleAndPackage extends MyRule {
         return m_packagename;
     }
 
-    public int getUid(Context context) {
+    public int getUid() {
         return m_uid;
     }
 
@@ -337,7 +337,7 @@ public class WhitelistManager {
             List<RuleAndPackage> ruleslist = rm.getCurrentRules(context);
 
             for (RuleAndPackage ruleandpackage : ruleslist) {
-                int uid = ruleandpackage.getUid(context);
+                int uid = ruleandpackage.getUid();
                 if (uid == RuleAndPackage.UID_GLOBAL) {
                     addGlobalRule(ruleandpackage.rule);
                 } else if (uid == RuleAndPackage.UID_NOT_FOUND) {
@@ -349,13 +349,13 @@ public class WhitelistManager {
         } finally {
             lock.writeLock().unlock();
         }
+
+        updateAllPendingFlags(context);
     }
 
     public RuleAllowData isAllowed(Context context, String daddr, int uid) {
         lock.readLock().lock();
 
-        List<String> onedname = new LinkedList<>();
-        onedname.add(daddr);
         List<String> alldnames = new LinkedList<>();
         try (Cursor cursor = DatabaseHelper.getInstance(context).getAllQNames(daddr)) {
             while (cursor.moveToNext()) {
@@ -388,6 +388,73 @@ public class WhitelistManager {
         }
     }
 
+    public RuleAllowData isPendingAllowed(Context context, String daddr, int uid) {
+        lock.readLock().lock();
+
+        List<String> alldnames = new LinkedList<>();
+        try (Cursor cursor = DatabaseHelper.getInstance(context).getAllQNames(daddr)) {
+            while (cursor.moveToNext()) {
+                alldnames.add(cursor.getString(0));
+            }
+        }
+        if (alldnames.isEmpty())
+        {
+            alldnames.add(daddr);
+        }
+        try {
+            // TODO: common code for both loops
+            RulesManager rm = RulesManager.getInstance(context);
+            List<RuleAndPackage> rules = rm.getPendingRules();
+            for (RuleAndPackage rule : rules)
+            {
+                if ((rule.getUid() != RuleAndPackage.UID_GLOBAL) &&
+                    (rule.getUid() != uid))
+                {
+                    // does not apply
+                    continue;
+                }
+                RuleAllowData result = rule.rule.isAllowed(daddr, alldnames);
+                if (result != null && result.allowed == 1) {
+                    return result;
+                }
+            }
+
+            return null;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public void updateAllPendingFlags(Context context) {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+
+        try (Cursor cursor = dh.getAllAccess()) {
+
+            int col_id = cursor.getColumnIndexOrThrow("ID");
+            int col_uid = cursor.getColumnIndexOrThrow("uid");
+            int col_daddr = cursor.getColumnIndexOrThrow("daddr");
+            //int col_block = cursor.getColumnIndexOrThrow("block");
+            int col_allowed = cursor.getColumnIndexOrThrow("allowed");
+            int col_pending = cursor.getColumnIndexOrThrow("pending_allow");
+
+            while (cursor.moveToNext()) {
+                int allow = cursor.getInt(col_allowed);
+                if (allow > 0)
+                    continue;
+                int uid = cursor.getInt(col_uid);
+                String daddr = cursor.getString(col_daddr);
+                RuleAllowData result = isPendingAllowed(context, daddr, uid);
+                int pending = 0;
+                if (result != null && result.allowed == 1) {
+                    pending = 1;
+                }
+                if (pending != cursor.getInt(col_pending)) {
+                    dh.setAccessPending(Long.toString(cursor.getLong(col_id)), pending);
+                }
+            }
+        }
+    }
+
     public void addGlobalRule(RuleForApp rule) {
         this.global_rules.add(rule);
     }
@@ -416,7 +483,7 @@ public class WhitelistManager {
                 int uid = cursor.getInt(col_uid);
 
                 // Check if UID matches or is global
-                int rule_uid = addedrule.getUid(context);
+                int rule_uid = addedrule.getUid();
                 if (rule_uid == RuleAndPackage.UID_NOT_FOUND) {
                     // The package doesn't exist, so, no access rules must match
                     continue;

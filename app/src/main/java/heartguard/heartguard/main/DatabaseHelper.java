@@ -48,7 +48,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "Netguard";
     // HeartGuard change - version 22 adds rules table
-    private static final int DB_VERSION = 24;
+    private static final int DB_VERSION = 25;
 
     private static boolean once = true;
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
@@ -188,6 +188,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", input_daddr TEXT" +
                 ", relevant_daddr TEXT" +
                 ", comment TEXT" +
+                ", pending_allow INTEGER NOT NULL" +
                 ");");
         db.execSQL("CREATE UNIQUE INDEX idx_access ON access(uid, version, protocol, daddr, dport)");
         db.execSQL("CREATE INDEX idx_access_daddr ON access(daddr)");
@@ -395,6 +396,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 oldVersion = 24;
             }
 
+            if (oldVersion < 25) {
+                db.execSQL("DROP TABLE access");
+                createTableAccess(db);
+                oldVersion = 25;
+            }
+
             if (oldVersion == DB_VERSION) {
                 db.setVersion(oldVersion);
                 db.setTransactionSuccessful();
@@ -593,6 +600,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
                     // HeartGuard change - simple whitelist feature
                     WhitelistManager wm = WhitelistManager.getInstance(context);
+                    int pending = 0;
+                    RuleAllowData result = wm.isPendingAllowed(context, dname == null ? packet.daddr : dname, packet.uid);
+                    if (result != null && result.allowed > 0)
+                        pending = 1;
+                    cv.put("pending_allow", pending);
 
                     RuleAllowData match = wm.isAllowed(context, packet.daddr, packet.uid);
                     if (match != null && match.allowed == 1)
@@ -1537,5 +1549,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
 
         notifyRuleChanged();
+    }
+
+    public void setAccessPending(String ID, int pending) {
+        ContentValues cv = new ContentValues();
+        cv.put("pending_allow", pending);
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+
+            db.update("access", cv, "ID = ?", new String[]{ID});
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyAccessChanged();
     }
 }

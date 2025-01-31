@@ -1,6 +1,7 @@
 <resources>
     <attr name="colorOn" format="reference" />
     <attr name="colorOff" format="reference" />
+    <attr name="colorPending" format="reference" />
     <attr name="expander" format="reference" />
     <attr name="iconQueue" format="reference" />
     <attr name="iconMetered" format="reference" />
@@ -48,6 +49,7 @@
         <item name="colorAccent">@color/colorTealAccent</item>
         <item name="colorOn">@color/colorTealOn</item>
         <item name="colorOff">@color/colorTealOff</item>
+        <item name="colorPending">@color/colorTealPending</item>
     </style>
 
     <style name="AppThemeTealDark" parent="BaseThemeLight">
@@ -56,6 +58,7 @@
         <item name="colorAccent">@color/colorTealAccent</item>
         <item name="colorOn">@color/colorTealOn</item>
         <item name="colorOff">@color/colorTealOff</item>
+        <item name="colorPending">@color/colorTealPending</item>
     </style>
 
     <style name="AppThemeBlue" parent="BaseThemeDark">
@@ -64,6 +67,7 @@
         <item name="colorAccent">@color/colorBlueAccent</item>
         <item name="colorOn">@color/colorBlueOn</item>
         <item name="colorOff">@color/colorBlueOff</item>
+        <item name="colorPending">@color/colorBluePending</item>
     </style>
 
     <style name="AppThemeBlueDark" parent="BaseThemeLight">
@@ -72,6 +76,7 @@
         <item name="colorAccent">@color/colorBlueAccent</item>
         <item name="colorOn">@color/colorBlueOn</item>
         <item name="colorOff">@color/colorBlueOff</item>
+        <item name="colorPending">@color/colorBluePending</item>
     </style>
 
     <style name="AppThemePurple" parent="BaseThemeDark">
@@ -80,6 +85,7 @@
         <item name="colorAccent">@color/colorPurpleAccent</item>
         <item name="colorOn">@color/colorPurpleOn</item>
         <item name="colorOff">@color/colorPurpleOff</item>
+        <item name="colorPending">@color/colorPurplePending</item>
     </style>
 
     <style name="AppThemePurpleDark" parent="BaseThemeLight">
@@ -88,6 +94,7 @@
         <item name="colorAccent">@color/colorPurpleAccent</item>
         <item name="colorOn">@color/colorPurpleOn</item>
         <item name="colorOff">@color/colorPurpleOff</item>
+        <item name="colorPending">@color/colorPurplePending</item>
     </style>
 
     <style name="AppThemeAmber" parent="BaseThemeDark">
@@ -96,6 +103,7 @@
         <item name="colorAccent">@color/colorAmberAccent</item>
         <item name="colorOn">@color/colorAmberOn</item>
         <item name="colorOff">@color/colorAmberOff</item>
+        <item name="colorPending">@color/colorAmberPending</item>
     </style>
 
     <style name="AppThemeAmberDark" parent="BaseThemeLight">
@@ -104,6 +112,7 @@
         <item name="colorAccent">@color/colorAmberAccent</item>
         <item name="colorOn">@color/colorAmberOn</item>
         <item name="colorOff">@color/colorAmberOff</item>
+        <item name="colorPending">@color/colorAmberPending</item>
     </style>
 
     <style name="AppThemeOrange" parent="BaseThemeDark">
@@ -112,6 +121,7 @@
         <item name="colorAccent">@color/colorOrangeAccent</item>
         <item name="colorOn">@color/colorOrangeOn</item>
         <item name="colorOff">@color/colorOrangeOff</item>
+        <item name="colorPending">@color/colorOrangePending</item>
     </style>
 
     <style name="AppThemeOrangeDark" parent="BaseThemeLight">
@@ -120,6 +130,7 @@
         <item name="colorAccent">@color/colorOrangeAccent</item>
         <item name="colorOn">@color/colorOrangeOn</item>
         <item name="colorOff">@color/colorOrangeOff</item>
+        <item name="colorPending">@color/colorOrangePending</item>
     </style>
 
     <style name="AppThemeGreen" parent="BaseThemeDark">
@@ -128,6 +139,7 @@
         <item name="colorAccent">@color/colorGreenAccent</item>
         <item name="colorOn">@color/colorGreenOn</item>
         <item name="colorOff">@color/colorGreenOff</item>
+        <item name="colorPending">@color/colorGreenPending</item>
     </style>
 
     <style name="AppThemeGreenDark" parent="BaseThemeLight">
@@ -136,5 +148,6 @@
         <item name="colorAccent">@color/colorGreenAccent</item>
         <item name="colorOn">@color/colorGreenOn</item>
         <item name="colorOff">@color/colorGreenOff</item>
+        <item name="colorPending">@color/colorGreenPending</item>
     </style>
 </resources>

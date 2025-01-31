@@ -60,6 +60,7 @@ public class RulesManager {
     // m_allCurrentRules being the master list, and the rest of these should
     // always be updated based on its contents
     private List<MyRule> m_allCurrentRules = new ArrayList<>();
+    private List<MyRule> m_allPendingRules = new ArrayList<>();
     private int m_delay = 0;
     private Map<String, Boolean> m_allowedPackages;
     private Map<String, Integer> m_packageDelays;
@@ -289,6 +290,23 @@ public class RulesManager {
         return results;
     }
 
+    public List<RuleAndPackage> getPendingRules() {
+        if (hasFeatureRule(FeatureRule.FEATURE_NAME_LOCKDOWN)) {
+            return Collections.EMPTY_LIST;
+        }
+        lock.readLock().lock();
+        List<RuleAndPackage> results = new ArrayList<>();
+
+        for (MyRule rule : m_allPendingRules) {
+            if (rule instanceof RuleAndPackage) {
+                results.add((RuleAndPackage)rule);
+            }
+        }
+        lock.readLock().unlock();
+
+        return results;
+    }
+
     public boolean getPreferenceFilter(Context context) {
         return true;
     }
@@ -444,6 +462,7 @@ public class RulesManager {
             int col_enact_time = cursor.getColumnIndexOrThrow("enact_time");
 
             int num_enacted = 0;
+            int num_abandoned = 0;
             List<String> enacted_ruletexts = new LinkedList<>();
             while (cursor.moveToNext()) {
                 String ruletext = cursor.getString(col_ruletext);
@@ -455,17 +474,23 @@ public class RulesManager {
                 if (enact_time > current_time) {
                     break;
                 }
-                boolean changed = enactRule(context, ruletext, id);
-                if (changed) {
+                int type_of_changes = enactRule(context, ruletext, id);
+                if ((type_of_changes &
+                    (ENACT_RESULT_ADD_RULE | ENACT_RESULT_DELETE_RULE)) != 0) {
                     num_enacted += 1;
                     enacted_ruletexts.add(ruletext);
                 }
+                if ((type_of_changes & ENACT_RESULT_ABANDON_RULE) != 0) {
+                    num_abandoned += 1;
+                }
             }
 
-            if (num_enacted > 0) {
+            if ((num_enacted > 0) || (num_abandoned > 0)) {
                 // Move all rules from text to RM and WM
                 getAllEnactedRulesFromDb(context);
                 WhitelistManager.getInstance(context).updateRulesFromRulesManager(context);
+            }
+            if (num_enacted > 0) {
                 if (!startup) {
                     LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(ActivityMain.ACTION_RULES_CHANGED));
                 }
@@ -542,7 +567,10 @@ public class RulesManager {
     }
 
     // Sets a row to enacted. Returns true if this makes a runtime change.
-    private boolean enactRule(Context context, String ruletext, long id) {
+    public static final int ENACT_RESULT_ADD_RULE = (1);
+    public static final int ENACT_RESULT_DELETE_RULE = (1);
+    public static final int ENACT_RESULT_ABANDON_RULE = (1<<1);
+    private int enactRule(Context context, String ruletext, long id) {
         Log.w(TAG, "Enacting rule \"" + sanitizeRuletext(ruletext) + "\" ID=" + Long.toString(id));
 
         if (ruletext.startsWith("- ")) {
@@ -564,7 +592,7 @@ public class RulesManager {
         MyRule rule = MyRule.getRuleFromText(context, ruletext);
         if (rule == null) {
             Log.e(TAG, "Ruletext \"" + ruletext + "\" didn't make a rule");
-            return false;
+            return 0;
         }
 
         Map<Long, String> rulesToRemove = rule.getRulesToRemoveAfterAdd(context);
@@ -577,10 +605,10 @@ public class RulesManager {
             dh.removeRulesById(idsToRemove.toArray(new Long[0]));
         }
 
-        return true;
+        return ENACT_RESULT_ADD_RULE;
     }
 
-    private boolean enactNegativeRule(Context context, String ruletext, long id) {
+    private int enactNegativeRule(Context context, String ruletext, long id) {
         Matcher m = Pattern.compile("- (.*)").matcher(ruletext);
 
         if (!m.matches()) {
@@ -595,7 +623,7 @@ public class RulesManager {
             if (!cursor.moveToFirst()) {
                 Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", sanitizeRuletext(ruletext)));
                 dh.removeRulesById(new Long[]{id});
-                return false;
+                return 0;
             }
             int col_id = cursor.getColumnIndexOrThrow("_id");
             int col_enacted = cursor.getColumnIndexOrThrow("enacted");
@@ -606,12 +634,19 @@ public class RulesManager {
             Log.w(TAG, String.format("Removing IDs %d and %d due to deletion rule", id, otherid));
             dh.removeRulesById(new Long[]{id, otherid});
 
-            return was_enacted;
+            if (was_enacted)
+            {
+                return ENACT_RESULT_ADD_RULE;
+            }
+            else
+            {
+                return ENACT_RESULT_ABANDON_RULE;
+            }
         }
     }
 
     // Sets a row to enacted. Returns true if this makes a runtime change.
-    private boolean enactAbandonRule(Context context, String ruletext, long id) {
+    private int enactAbandonRule(Context context, String ruletext, long id) {
         Matcher m = Pattern.compile("abandon (.*)").matcher(ruletext);
 
         if (!m.matches()) {
@@ -626,7 +661,7 @@ public class RulesManager {
             if (!cursor.moveToFirst()) {
                 Log.w(TAG, String.format("Didn't find the positive rule for \"%s\"", sanitizeRuletext(ruletext)));
                 dh.removeRulesById(new Long[]{id});
-                return false;
+                return 0;
             }
             int col_id = cursor.getColumnIndexOrThrow("_id");
             int col_enacted = cursor.getColumnIndexOrThrow("enacted");
@@ -638,13 +673,13 @@ public class RulesManager {
                 // Can't abandon an enacted rule
                 Log.w(TAG, String.format("Not removing ID %d because you can't abandon an enacted rule", otherid));
                 dh.removeRulesById(new Long[]{id});
-                return false;
+                return 0;
             }
             Log.w(TAG, String.format("Removing IDs %d and %d due to abandon rule", id, otherid));
             dh.removeRulesById(new Long[]{id, otherid});
 
             // Never makes runtime changes, since we can only abandon pending rules
-            return false;
+            return ENACT_RESULT_ABANDON_RULE;
         } finally {
             lock.writeLock().unlock();
         }
@@ -684,6 +719,10 @@ public class RulesManager {
         for (String ruletext : rulesToCommit) {
             commitRuleText(context, ruletext, realTime);
         }
+
+        // Those rules may be pending, but we want to load them and give them to WM for pending colors
+        getAllEnactedRulesFromDb(context);
+        WhitelistManager.getInstance(context).updateRulesFromRulesManager(context);
     }
 
     // Commits a rule to the database, but uses realTime to be sure
@@ -779,21 +818,65 @@ public class RulesManager {
 
         try (Cursor cursor = dh.getEnactedRules()) {
             int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+            int col_enacted = cursor.getColumnIndexOrThrow("enacted");
 
             // Read all rules from DB into list
             List<MyRule> allrules = new ArrayList<>();
+            List<MyRule> allPendingRules = new ArrayList<>();
             while (cursor.moveToNext()) {
                 String ruletext = cursor.getString(col_ruletext);
+                int enacted = cursor.getInt(col_enacted);
+
+                if (enacted > 0 && (ruletext.startsWith("- ")))
+                    continue;
                 MyRule rule = MyRule.getRuleFromText(context, ruletext);
                 if (rule == null) {
                     Log.e(TAG, "Rule \"" + ruletext + "\" isn't a rule");
-                } else {
+                    continue;
+                }
+                if (enacted > 0) {
                     allrules.add(rule);
+                } else {
+                    allPendingRules.add(rule);
                 }
             }
 
             m_allCurrentRules = allrules;
+            m_allPendingRules = allPendingRules;
             updateFieldsFromCurrentRules(context);
+
+            Log.w(TAG, "Got " + Integer.toString(m_allCurrentRules.size()) + " rules from DB");
+        } finally {
+            lock.writeLock().unlock();
+        }
+        getPendingRulesFromDb(context);
+    }
+
+    private void getPendingRulesFromDb(Context context)
+    {
+        DatabaseHelper dh = DatabaseHelper.getInstance(context);
+
+        lock.writeLock().lock();
+
+        try (Cursor cursor = dh.getPendingRules()) {
+            int col_ruletext = cursor.getColumnIndexOrThrow("ruletext");
+
+            // Read all rules from DB into list
+            List<MyRule> allPendingRules = new ArrayList<>();
+            while (cursor.moveToNext()) {
+                String ruletext = cursor.getString(col_ruletext);
+
+                if (ruletext.startsWith("- "))
+                    continue;
+                MyRule rule = MyRule.getRuleFromText(context, ruletext);
+                if (rule == null) {
+                    Log.e(TAG, "Rule \"" + ruletext + "\" isn't a rule");
+                    continue;
+                }
+                allPendingRules.add(rule);
+            }
+
+            m_allPendingRules = allPendingRules;
 
             Log.w(TAG, "Got " + Integer.toString(m_allCurrentRules.size()) + " rules from DB");
         } finally {

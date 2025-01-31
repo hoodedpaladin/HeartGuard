@@ -7,36 +7,42 @@
     <color name="colorTealAccent">#FF5722</color>
     <color name="colorTealOn">#009688</color>
     <color name="colorTealOff">#FF5722</color>
+    <color name="colorTealPending">#FF00FF</color>
 
     <color name="colorBluePrimary">#2196F3</color>
     <color name="colorBluePrimaryDark">#1976D2</color>
     <color name="colorBlueAccent">#FF5722</color>
     <color name="colorBlueOn">#2196F3</color>
     <color name="colorBlueOff">#FF5722</color>
+    <color name="colorBluePending">#FF00FF</color>
 
     <color name="colorPurplePrimary">#9C27B0</color>
     <color name="colorPurplePrimaryDark">#7B1FA2</color>
     <color name="colorPurpleAccent">#FF5252</color>
     <color name="colorPurpleOn">#9C27B0</color>
     <color name="colorPurpleOff">#FF5252</color>
+    <color name="colorPurplePending">#2222FF</color>
 
     <color name="colorAmberPrimary">#FFC107</color>
     <color name="colorAmberPrimaryDark">#FFA000</color>
     <color name="colorAmberAccent">#448AFF</color>
     <color name="colorAmberOn">#448AFF</color>
     <color name="colorAmberOff">#FFC107</color>
+    <color name="colorAmberPending">#FF00FF</color>
 
     <color name="colorOrangePrimary">#FF5722</color>
     <color name="colorOrangePrimaryDark">#E64A19</color>
     <color name="colorOrangeAccent">#607D8B</color>
     <color name="colorOrangeOn">#607D8B</color>
     <color name="colorOrangeOff">#FF5722</color>
+    <color name="colorOrangePending">#FF00FF</color>
 
     <color name="colorGreenPrimary">#4CAF50</color>
     <color name="colorGreenPrimaryDark">#388E3C</color>
     <color name="colorGreenAccent">#8BC34A</color>
     <color name="colorGreenOn">#8BC34A</color>
     <color name="colorGreenOff">#F44336</color>
+    <color name="colorGreenPending">#FF00FF</color>
 
     <color name="colorSend">#FF0000</color>
     <color name="colorReceive">#0000FF</color>

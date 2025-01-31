@@ -51,10 +51,12 @@ public class AdapterAccess extends CursorAdapter {
     private int colSent;
     private int colReceived;
     private int colConnections;
+    private int colPending;
 
-    private int colorText;
-    private int colorOn;
-    private int colorOff;
+    private final int colorText;
+    private final int colorOn;
+    private final int colorOff;
+    private final int colorPending;
 
     public AdapterAccess(Context context, Cursor cursor) {
         super(context, cursor, 0);
@@ -69,6 +71,7 @@ public class AdapterAccess extends CursorAdapter {
         colSent = cursor.getColumnIndex("sent");
         colReceived = cursor.getColumnIndex("received");
         colConnections = cursor.getColumnIndex("connections");
+        colPending = cursor.getColumnIndex("pending_allow");
 
         TypedArray ta = context.getTheme().obtainStyledAttributes(new int[]{android.R.attr.textColorSecondary});
         try {
@@ -82,6 +85,8 @@ public class AdapterAccess extends CursorAdapter {
         colorOn = tv.data;
         context.getTheme().resolveAttribute(R.attr.colorOff, tv, true);
         colorOff = tv.data;
+        context.getTheme().resolveAttribute(R.attr.colorPending, tv, true);
+        colorPending = tv.data;
     }
 
     @Override
@@ -103,6 +108,7 @@ public class AdapterAccess extends CursorAdapter {
         long sent = cursor.isNull(colSent) ? -1 : cursor.getLong(colSent);
         long received = cursor.isNull(colReceived) ? -1 : cursor.getLong(colReceived);
         int connections = cursor.isNull(colConnections) ? -1 : cursor.getInt(colConnections);
+        int pending = cursor.isNull(colPending) ? 0 : cursor.getInt(colPending);
 
         // Get views
         TextView tvTime = view.findViewById(R.id.tvTime);
@@ -160,6 +166,8 @@ public class AdapterAccess extends CursorAdapter {
             tvDest.setTextColor(colorText);
         else if (allowed > 0)
             tvDest.setTextColor(colorOn);
+        else if (pending > 0)
+            tvDest.setTextColor(colorPending);
         else
             tvDest.setTextColor(colorOff);
 
