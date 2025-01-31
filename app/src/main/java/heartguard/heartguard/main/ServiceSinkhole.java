@@ -2009,6 +2009,11 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     // Called from native code
     private void dnsResolved(ResourceRecord rr) {
+        // HeartGuard change - let's not log this DNS if it's blocked
+        if (isDomainBlocked(rr.QName))
+        {
+            return;
+        }
         if (DatabaseHelper.getInstance(ServiceSinkhole.this).insertDns(rr)) {
             //Log.i(TAG, "New IP " + rr);
             prepareUidIPFilters(rr.QName);
