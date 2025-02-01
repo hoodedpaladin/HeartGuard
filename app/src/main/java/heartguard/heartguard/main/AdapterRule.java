@@ -710,6 +710,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                     final int dport = cursor.getInt(cursor.getColumnIndex("dport"));
                     long time = cursor.getLong(cursor.getColumnIndex("time"));
                     int block = cursor.getInt(cursor.getColumnIndex("block"));
+                    final int pending = cursor.getInt(cursor.getColumnIndexOrThrow("pending_allow"));
 
                     PopupMenu popup = new PopupMenu(context, anchor);
                     popup.inflate(R.menu.access);
@@ -762,7 +763,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                                 //    result = true;
                                 //    break;
                                     RulesManager rm = RulesManager.getInstance(context);
-                                    rm.resetRulesForAccess(context, rule.uid, daddr);
+                                    rm.resetRulesForAccess(context, rule.uid, daddr, pending);
                                     result = true;
                                     break;
 

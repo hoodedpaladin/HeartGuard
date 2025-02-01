@@ -164,6 +164,14 @@ class DomainRule implements RuleForApp {
                 return result;
             }
         }
+        if (matchesAddr(daddr)) {
+            RuleAllowData result = new RuleAllowData();
+            result.ruletext = this.m_ruletext;
+            result.allowed = this.allowed;
+            result.input_daddr = daddr;
+            result.relevant_daddr = daddr;
+            return result;
+        }
         return null;
     }
 
@@ -396,10 +404,6 @@ public class WhitelistManager {
             while (cursor.moveToNext()) {
                 alldnames.add(cursor.getString(0));
             }
-        }
-        if (alldnames.isEmpty())
-        {
-            alldnames.add(daddr);
         }
         try {
             // TODO: common code for both loops

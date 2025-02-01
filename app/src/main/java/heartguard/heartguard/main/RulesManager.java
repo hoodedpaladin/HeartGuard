@@ -849,6 +849,8 @@ public class RulesManager {
         } finally {
             lock.writeLock().unlock();
         }
+
+        // Also get the pending rules now
         getPendingRulesFromDb(context);
     }
 
@@ -1084,17 +1086,20 @@ public class RulesManager {
     }
 
     // The user has clicked to reset an access rule
-    public void resetRulesForAccess(Context context, int uid, String daddr) {
+    public void resetRulesForAccess(Context context, int uid, String daddr, int pending) {
         List<String> ruletexts = new LinkedList<>();
 
         List<String> daddrs = DatabaseHelper.getInstance(context).getListAlternateQNames(daddr);
 
+        // Get the list of either the current rules or the pending rules
+        List<MyRule> rules = (pending > 0) ? m_allPendingRules : m_allCurrentRules;
+
         // Check all current rules to see if they apply
         lock.readLock().lock();
         try {
-            for (MyRule rule : m_allCurrentRules) {
+            for (MyRule rule : rules) {
                 if (rule instanceof RuleAndPackage) {
-                    RuleAndPackage rap = (RuleAndPackage)rule;
+                    RuleAndPackage rap = (RuleAndPackage) rule;
                     if (rap.appliesToAccess(uid, daddrs)) {
                         ruletexts.add("- " + rule.getRuleText());
                     }
