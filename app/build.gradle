@@ -9,10 +9,10 @@ android {
 
     defaultConfig {
         applicationId = "heartguard.heartguard.main"
-        versionName = "2.314"
+        versionName = "2.315"
         minSdkVersion 22
         targetSdkVersion 31
-        versionCode = 2024120101
+        versionCode = 2025020301
         archivesBaseName = "HeartGuard-v$versionName"
 
         externalNativeBuild {
