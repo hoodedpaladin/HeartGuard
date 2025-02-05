@@ -505,17 +505,23 @@ public class RulesManager {
 
                 boolean reload = false;
                 boolean clear_dns = false;
+                boolean clear_accesses = false;
                 List<Integer> uids_to_reload = new LinkedList<>();
 
                 for (String action : actions) {
-                    if (action == "reload") {
+                    if (action.equals("reload")) {
                         reload = true;
                         continue;
                     }
 
-                    if (action == "clear_dns") {
+                    if (action.equals("clear_dns")) {
                         clear_dns = true;
                         reload = true;
+                        continue;
+                    }
+
+                    if (action.equals("clear_accesses")) {
+                        clear_accesses = true;
                         continue;
                     }
 
@@ -532,6 +538,9 @@ public class RulesManager {
                     break;
                 }
 
+                if (clear_accesses) {
+                    DatabaseHelper.getInstance(context).clearAccess();
+                }
                 if (clear_dns) {
                     DatabaseHelper.getInstance(context).clearDns();
                 }
@@ -2022,6 +2031,7 @@ class BlockedDomainRule extends MyRule {
 
         Set<String> results = new HashSet<>();
         results.add("reload");
+        results.add("clear_accesses");
         results.add("clear_dns");
         return results;
     }
