@@ -1583,6 +1583,7 @@ class FeatureRule extends MyRule {
     public static final String FEATURE_NAME_CAPTURE_ALL_TRAFFIC = "capture_all_traffic";
     public static final String FEATURE_NAME_NO_STATIC_IP = "no_static_ip";
     public static final String FEATURE_NAME_ALLOW_LOGGING = "allow_logging";
+    public static final String FEATURE_NAME_NO_TRY = "no_try";
     public static final String[] FEATURE_NAMES = {
             FEATURE_NAME_ENABLED,
             FEATURE_NAME_MANAGE_SYSTEM,
@@ -1590,6 +1591,7 @@ class FeatureRule extends MyRule {
             FEATURE_NAME_CAPTURE_ALL_TRAFFIC,
             FEATURE_NAME_NO_STATIC_IP,
             FEATURE_NAME_ALLOW_LOGGING,
+            FEATURE_NAME_NO_TRY,
     };
     private String m_featurename;
     private enum FeatureType {feature_restrictive, feature_permissive, feature_both};
@@ -1597,7 +1599,8 @@ class FeatureRule extends MyRule {
     private static final String[] restrictive_features = {FEATURE_NAME_ENABLED,
                                                           FEATURE_NAME_MANAGE_SYSTEM,
                                                           FEATURE_NAME_LOCKDOWN,
-                                                          FEATURE_NAME_CAPTURE_ALL_TRAFFIC};
+                                                          FEATURE_NAME_CAPTURE_ALL_TRAFFIC,
+                                                          FEATURE_NAME_NO_TRY};
     private static final String[] permissive_features = {FEATURE_NAME_ALLOW_LOGGING};
     private static final String[] both_features = {FEATURE_NAME_NO_STATIC_IP};
 
@@ -1982,7 +1985,8 @@ class BlockedDomainRule extends MyRule {
         return 0;
     }
     public int getDelayToRemove(Context context, int main_delay) {
-        if (m_try)
+        // Removing 'try' rules is free unless we have feature 'no_try'
+        if (m_try && (!RulesManager.getInstance(context).hasFeatureRule(FeatureRule.FEATURE_NAME_NO_TRY)))
             return 0;
         return main_delay;
     }
