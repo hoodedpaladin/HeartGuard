@@ -252,7 +252,7 @@ public class RulesManager {
                 Log.e(TAG, "Rule string " + ruletext + " has invalid combination of types");
                 return null;
             }
-            apprule = new IPRule(ruletext, data_bundle.getString("ip"), 1);
+            apprule = IPRule.factory(ruletext, data_bundle.getString("ip"), 1);
         }
         else if (directip) {
             if (data_bundle.containsKey("ip")) {

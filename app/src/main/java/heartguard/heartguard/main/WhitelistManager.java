@@ -5,6 +5,9 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.util.Log;
 
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -185,12 +188,13 @@ class IPRule implements RuleForApp {
     private static int TYPE_SINGLE = 0;
     private static int TYPE_IPV4_SUBNET = 1;
 
-    private String m_ip;
-    private int m_allowed;
+    protected String m_ip;
+    protected int m_allowed;
     private int m_subnet_ip;
     private int m_subnetmask;
     private int m_type;
-    private String m_ruletext;
+    protected String m_ruletext;
+
 
     IPRule(String ruletext, String ip, int allowed) {
         m_ip = ip;
@@ -199,7 +203,7 @@ class IPRule implements RuleForApp {
         m_ruletext = ruletext;
 
         try {
-            Matcher m = Pattern.compile("(\\d+.\\d+.\\d+.\\d+)/(\\d+)").matcher(ip);
+            Matcher m = Pattern.compile("(\\d+\\.\\d+\\.\\d+\\.\\d+)/(\\d+)").matcher(ip);
             if (m.matches()) {
                 long numeric_ip = stringToIp(m.group(1));
                 int subnetbits = Integer.parseInt(m.group(2));
@@ -276,6 +280,134 @@ class IPRule implements RuleForApp {
 
     public String getRuletext() {
         return m_ruletext;
+    }
+
+    public static IPRule factory(String ruletext, String ip, int allowed) {
+        IPV6Rule ipv6rule = IPV6Rule.factory(ruletext, ip, allowed);
+        if (ipv6rule != null) {
+            return ipv6rule;
+        }
+
+        return new IPRule(ruletext, ip, allowed);
+    }
+}
+
+class IPV6Rule extends IPRule {
+    private static final String TAG = "NetGuard.IPV6Rule";
+    private final int m_subnetLen;
+    private Inet6Address m_inet6Address;
+    public IPV6Rule(String ruletext, String ip, int subnetLen, int allowed) {
+        super(ruletext, ip, allowed);
+        m_inet6Address = null;
+        try {
+            InetAddress inetAddress = InetAddress.getByName(ip);
+            if (inetAddress instanceof Inet6Address) {
+                m_inet6Address = (Inet6Address) inetAddress;
+            }
+        } catch (UnknownHostException e) {
+            Log.e(TAG, "UnknownHostException on " + ruletext);
+        }
+        m_subnetLen = subnetLen;
+    }
+
+    public static IPV6Rule factory(String ruletext, String ip, int allowed) {
+
+        Inet6Address inet6Address;
+
+        inet6Address = getInet6Address(ip);
+        if (inet6Address != null) {
+            return new IPV6Rule(ruletext, ip, 64, allowed);
+        }
+
+        Matcher m = Pattern.compile("([0-9a-fA-F:]+)/(\\d+)").matcher(ip);
+        if (m.matches()) {
+            String addr = m.group(1);
+            inet6Address = getInet6Address(addr);
+            if (inet6Address == null)
+                return null;
+
+            String subnetString = m.group(2);
+            if (subnetString == null)
+                return null;
+
+            int subnetLen;
+            try {
+                subnetLen = Integer.parseInt(m.group(2));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+
+            if (subnetLen > 64) return null;
+
+            return new IPV6Rule(ruletext, addr, subnetLen, allowed);
+        }
+
+        return null;
+    }
+
+    private static Inet6Address getInet6Address(String ip) {
+        if (ip == null)
+            return null;
+        if (!Util.isNumericAddress(ip))
+            return null;
+
+        InetAddress addr;
+        try {
+            addr = InetAddress.getByName(ip);
+        } catch (UnknownHostException e) {
+            return null;
+        }
+
+        if (!(addr instanceof Inet6Address)) {
+            return null;
+        }
+        return (Inet6Address)addr;
+    }
+
+    @Override
+    public RuleAllowData isAllowed(String daddr, List<String> dnames) {
+        if (m_inet6Address == null) {
+            return null;
+        }
+
+        if (matchesAddr(daddr)) {
+            RuleAllowData result = new RuleAllowData();
+            result.ruletext = this.m_ruletext;
+            result.allowed = this.m_allowed;
+            result.input_daddr = daddr;
+            result.relevant_daddr = this.m_ip;
+            return result;
+        }
+        return null;
+    }
+
+    @Override
+    public boolean matchesAddr(String dname) {
+        if (m_inet6Address == null)
+            return false;
+
+        Inet6Address daddr = getInet6Address(dname);
+        if (daddr == null)
+            return false;
+
+        int subnet = m_subnetLen;
+        int i= 0;
+        byte[] thisdata = m_inet6Address.getAddress();
+        byte[] thatdata = daddr.getAddress();
+        while (subnet >= 8) {
+            if (thisdata[i] != thatdata[i]) {
+                return false;
+            }
+            i += 1;
+            subnet -= 8;
+        }
+        if (subnet > 0) {
+            int mask = ~(1 << (8-subnet)) - 1;
+            if ((thisdata[i] & mask) != (thatdata[i] & mask)) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
