@@ -160,8 +160,10 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         final View actionView = getLayoutInflater().inflate(R.layout.actionmain, null, false);
         ivIcon = actionView.findViewById(R.id.ivIcon);
         ivQueue = actionView.findViewById(R.id.ivQueue);
+        ivQueue.setVisibility(View.GONE);
         swEnabled = actionView.findViewById(R.id.swEnabled);
         ivMetered = actionView.findViewById(R.id.ivMetered);
+        ivMetered.setVisibility(View.GONE);
 
         // Icon
         ivIcon.setOnLongClickListener(new View.OnLongClickListener() {
@@ -174,22 +176,6 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
 
         // Title
         getSupportActionBar().setTitle(null);
-
-        // Netguard is busy
-        ivQueue.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View view) {
-                int location[] = new int[2];
-                actionView.getLocationOnScreen(location);
-                Toast toast = Toast.makeText(ActivityMain.this, R.string.msg_queue, Toast.LENGTH_LONG);
-                toast.setGravity(
-                        Gravity.TOP | Gravity.LEFT,
-                        location[0] + ivQueue.getLeft(),
-                        Math.round(location[1] + ivQueue.getBottom() - toast.getView().getPaddingTop()));
-                toast.show();
-                return true;
-            }
-        });
 
         // On/off switch
         swEnabled.setChecked(enabled);
@@ -209,22 +195,6 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
         });
         if (enabled)
             checkDoze();
-
-        // Network is metered
-        ivMetered.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View view) {
-                int location[] = new int[2];
-                actionView.getLocationOnScreen(location);
-                Toast toast = Toast.makeText(ActivityMain.this, R.string.msg_metered, Toast.LENGTH_LONG);
-                toast.setGravity(
-                        Gravity.TOP | Gravity.LEFT,
-                        location[0] + ivMetered.getLeft(),
-                        Math.round(location[1] + ivMetered.getBottom() - toast.getView().getPaddingTop()));
-                toast.show();
-                return true;
-            }
-        });
 
         getSupportActionBar().setDisplayShowCustomEnabled(true);
         getSupportActionBar().setCustomView(actionView);
@@ -684,10 +654,8 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                             adapter.setMobileActive();
                         else
                             adapter.setWifiActive();
-                        ivMetered.setVisibility(Util.isMeteredNetwork(ActivityMain.this) ? View.VISIBLE : View.INVISIBLE);
                     } else {
                         adapter.setDisconnected();
-                        ivMetered.setVisibility(View.INVISIBLE);
                     }
                 } else
                     updateApplicationList(null);
@@ -703,7 +671,6 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
             Util.logExtras(intent);
             int size = intent.getIntExtra(EXTRA_SIZE, -1);
             ivIcon.setVisibility(size == 0 ? View.VISIBLE : View.GONE);
-            ivQueue.setVisibility(size == 0 ? View.GONE : View.VISIBLE);
         }
     };
 
